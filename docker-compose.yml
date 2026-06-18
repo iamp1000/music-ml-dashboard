@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  backend:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: bash -c "pip install fastapi uvicorn websockets httpx python-dotenv celery redis && uvicorn main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
