@@ -5,5 +5,8 @@ redis-server --daemonize yes
 # Start celery worker in the background
 celery -A celery_worker.celery_app worker --loglevel=info &
 
+# Start celery beat for scheduled tasks in the background
+celery -A celery_worker.celery_app beat --loglevel=info &
+
 # Start the FastAPI app in the foreground
 uvicorn main:app --host 0.0.0.0 --port 8000
