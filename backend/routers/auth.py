@@ -30,12 +30,20 @@ def login_spotify():
     url = f"https://accounts.spotify.com/authorize?{urllib.parse.urlencode(params)}"
     return RedirectResponse(url)
 
+from typing import Optional
+
 @router.get("/callback")
-async def spotify_callback(code: str):
+async def spotify_callback(code: Optional[str] = None, error: Optional[str] = None):
     """
     Handles the Spotify OAuth callback.
     Exchanges the code for tokens, fetches user ID, stores in DB, and redirects with JWT.
     """
+    if error:
+        # Redirect back to frontend with the error so the user isn't stuck on a blank JSON screen
+        return RedirectResponse(f"{FRONTEND_URL}?error={error}")
+    
+    if not code:
+        return RedirectResponse(f"{FRONTEND_URL}?error=missing_code")
     auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
     auth_bytes = auth_string.encode("utf-8")
     auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
