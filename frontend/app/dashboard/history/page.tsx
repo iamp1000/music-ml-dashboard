@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { 
     Clock, Filter, Loader2, AlertCircle, Activity, Calendar, Music, 
-    Sliders, Smile, BrainCircuit, Info, ChevronRight 
+    Sliders, Smile, BrainCircuit, Info, ChevronRight, ArrowRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -122,40 +122,68 @@ export default function AnalyticsHubPage() {
 
     // --- Sub-Render: History & Habits ---
     const renderHistoryTab = () => {
-        // Group history by date (last 10 days)
-        const dateCounts: Record<string, number> = {};
+        // --- Today's Stats ---
+        const todayStr = new Date().toDateString();
+        const todayHistory = history.filter(h => {
+            const t = h.time || h.played_at;
+            return t ? new Date(t).toDateString() === todayStr : false;
+        });
+        
+        const todaySongsCount = todayHistory.length;
+        let todayValence = 0;
+        let todayEnergy = 0;
+        let positive = 0, neutral = 0, negative = 0;
+        
+        // Time of Day Bins
+        const todBins = {
+            Morning: { val: 0, count: 0, name: "Morning (6AM - 12PM)" },
+            Afternoon: { val: 0, count: 0, name: "Afternoon (12PM - 6PM)" },
+            Evening: { val: 0, count: 0, name: "Evening (6PM - 12AM)" },
+            Night: { val: 0, count: 0, name: "Night (12AM - 6AM)" }
+        };
+
+        const timeline: Record<string, any> = {};
+
         history.forEach(item => {
             const timeVal = item.time || item.played_at;
-            if (timeVal) {
-                const dateStr = new Date(timeVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                dateCounts[dateStr] = (dateCounts[dateStr] || 0) + 1;
+            if (!timeVal) return;
+            const dateObj = new Date(timeVal);
+            const dStr = dateObj.toDateString();
+            const hour = dateObj.getHours();
+            const val = item.valence || 0.5;
+            
+            // Stats
+            if (dStr === todayStr) {
+                todayValence += val;
+                todayEnergy += (item.energy || item.arousal || 0.5);
+                if (val > 0.6) positive++;
+                else if (val < 0.4) negative++;
+                else neutral++;
             }
+
+            // Time of Day
+            let todKey = "Night";
+            if (hour >= 6 && hour < 12) todKey = "Morning";
+            else if (hour >= 12 && hour < 18) todKey = "Afternoon";
+            else if (hour >= 18) todKey = "Evening";
+
+            todBins[todKey as keyof typeof todBins].val += val;
+            todBins[todKey as keyof typeof todBins].count += 1;
+
+            // Timeline Grouping
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+            if (!timeline[dayName]) timeline[dayName] = { Morning: [], Afternoon: [], Evening: [], Night: [] };
+            timeline[dayName][todKey].push(val);
         });
 
-        const areaData = Object.entries(dateCounts).map(([date, count]) => ({
-            name: date,
-            volume: count
-        })).reverse();
+        const avgTodayVal = todaySongsCount > 0 ? (todayValence / todaySongsCount) : 0;
+        const avgTodayEng = todaySongsCount > 0 ? (todayEnergy / todaySongsCount) : 0;
 
-        // 7x24 grid for Heatmap
-        const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-        const hours = Array.from({ length: 24 }).map((_, i) => i);
-        const heatmapGrid = Array(7).fill(0).map(() => Array(24).fill(0));
-        let maxCount = 1;
-
-        history.forEach(item => {
-            const timeVal = item.time || item.played_at;
-            if (timeVal) {
-                const d = new Date(timeVal);
-                const dayIdx = d.getDay(); 
-                const alignedDayIdx = dayIdx === 0 ? 6 : dayIdx - 1; 
-                const hr = d.getHours();
-                heatmapGrid[alignedDayIdx][hr] += 1;
-                if (heatmapGrid[alignedDayIdx][hr] > maxCount) {
-                    maxCount = heatmapGrid[alignedDayIdx][hr];
-                }
-            }
-        });
+        const getMoodString = (v: number) => {
+            if (v > 0.6) return "Positive / Energetic";
+            if (v < 0.4) return "Melancholic / Reflective";
+            return "Neutral / Balanced";
+        };
 
         const formatDuration = (ms: number) => {
             if (!ms || isNaN(ms)) return "3:12";
@@ -167,158 +195,102 @@ export default function AnalyticsHubPage() {
 
         return (
             <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Listening Volume Chart */}
-                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[320px]">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-theme-accent" />
-                                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Listening Volume</h3>
-                            </div>
-                            <span className="text-[10px] text-theme-accent bg-theme-accent/10 border border-theme-accent/20 px-3 py-1 rounded-full font-bold">
-                                {history.length} Total plays logged
-                            </span>
+                {/* 1. Today Dashboard */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-theme-accent" />
+                        Today's Listening
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4">
+                            <div className="text-[10px] font-bold text-theme-text-muted uppercase mb-1">Songs Played</div>
+                            <div className="text-3xl font-black text-white">{todaySongsCount}</div>
+                        </div>
+                        
+                        <div className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4">
+                            <div className="text-[10px] font-bold text-theme-text-muted uppercase mb-1">Average Energy</div>
+                            <div className="text-3xl font-black text-white">{avgTodayEng.toFixed(2)}</div>
                         </div>
 
-                        <div className="flex-1 w-full min-h-0">
-                            {hasHistory ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={areaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="habitVolumeGrad" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="var(--theme-accent)" stopOpacity="0.25"/>
-                                                <stop offset="95%" stopColor="var(--theme-accent)" stopOpacity="0"/>
-                                            </linearGradient>
-                                        </defs>
-                                        <XAxis dataKey="name" tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <Tooltip 
-                                            contentStyle={{ backgroundColor: '#0D111A', borderColor: '#1B2332', borderRadius: '12px' }}
-                                            itemStyle={{ color: 'var(--theme-accent)' }}
-                                        />
-                                        <Area type="monotone" dataKey="volume" stroke="var(--theme-accent)" strokeWidth={2.5} fillOpacity={1} fill="url(#habitVolumeGrad)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-sm text-theme-text-muted">
-                                    No history data. Play tracks on Spotify to compile volume trends.
+                        <div className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4 col-span-1 md:col-span-2 flex items-center">
+                            <div className="w-full">
+                                <div className="text-[10px] font-bold text-theme-text-muted uppercase mb-2">Mood Breakdown</div>
+                                <div className="flex gap-1 w-full h-4 rounded-full overflow-hidden mb-2 bg-[#1B2332]/40">
+                                    <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${todaySongsCount ? (positive/todaySongsCount)*100 : 33}%` }}></div>
+                                    <div className="bg-yellow-500 h-full transition-all duration-500" style={{ width: `${todaySongsCount ? (neutral/todaySongsCount)*100 : 34}%` }}></div>
+                                    <div className="bg-red-500 h-full transition-all duration-500" style={{ width: `${todaySongsCount ? (negative/todaySongsCount)*100 : 33}%` }}></div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Heatmap Grid */}
-                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-2">
-                                <Calendar className="w-5 h-5 text-theme-accent" />
-                                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Weekly Heatmap</h3>
-                            </div>
-                            <span className="text-[10px] text-theme-text-muted">Play distribution by day and hour</span>
-                        </div>
-
-                        <div className="flex items-end gap-4 overflow-x-auto pb-2 scrollbar-thin">
-                            <div className="flex flex-col justify-between h-[180px] text-[10px] font-bold text-theme-text-muted uppercase tracking-wider pb-6 shrink-0">
-                                {days.map(day => <span key={day} className="h-5 flex items-center">{day}</span>)}
-                            </div>
-
-                            <div className="flex-1 flex flex-col justify-between h-[180px] min-w-[320px]">
-                                {days.map((day, r) => (
-                                    <div key={r} className="flex gap-1 h-5">
-                                        {hours.map(c => {
-                                            const count = heatmapGrid[r][c];
-                                            const intensity = count / maxCount;
-                                            let bgColor = 'bg-[#070A0F] border-[#1B2332]/40';
-                                            
-                                            if (count > 0) {
-                                                if (intensity > 0.75) bgColor = 'bg-theme-accent border-theme-accent';
-                                                else if (intensity > 0.50) bgColor = 'bg-theme-accent/70 border-theme-accent/70';
-                                                else if (intensity > 0.25) bgColor = 'bg-theme-accent/40 border-theme-accent/40';
-                                                else bgColor = 'bg-theme-accent/20 border-theme-accent/20';
-                                            }
-
-                                            return (
-                                                <div 
-                                                    key={c} 
-                                                    className={`flex-1 rounded-sm border hover:border-white cursor-pointer transition-colors duration-200 ${bgColor}`}
-                                                    title={`${day} at ${c}:00 - ${count} play${count === 1 ? '' : 's'}`}
-                                                ></div>
-                                            );
-                                        })}
-                                    </div>
-                                ))}
-
-                                <div className="flex justify-between text-[9px] font-bold text-theme-text-muted mt-2 px-1">
-                                    <span>12 AM</span>
-                                    <span>6 AM</span>
-                                    <span>12 PM</span>
-                                    <span>6 PM</span>
-                                    <span>11 PM</span>
+                                <div className="flex justify-between text-[10px] font-bold text-theme-text-muted">
+                                    <span className="text-green-500">{todaySongsCount ? Math.round((positive/todaySongsCount)*100) : 0}% Positive</span>
+                                    <span className="text-yellow-500">{todaySongsCount ? Math.round((neutral/todaySongsCount)*100) : 0}% Neutral</span>
+                                    <span className="text-red-500">{todaySongsCount ? Math.round((negative/todaySongsCount)*100) : 0}% Negative</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Table Container Card */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col min-h-[400px]">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* 2. Time Of Day Analysis */}
+                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
                             <Clock className="w-5 h-5 text-theme-accent" />
-                            Historical Logs
+                            Time of Day Analysis
                         </h3>
+                        <div className="space-y-4">
+                            {Object.entries(todBins).map(([key, data]) => {
+                                const avg = data.count > 0 ? data.val / data.count : 0.5;
+                                return (
+                                    <div key={key} className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4 flex justify-between items-center group hover:border-[#1B2332] transition-colors">
+                                        <div>
+                                            <div className="text-xs font-bold text-white">{data.name}</div>
+                                            <div className="text-[10px] text-theme-text-muted mt-1 uppercase tracking-wider">{getMoodString(avg)} <span className="text-theme-accent ml-1">{(avg*100).toFixed(0)}%</span></div>
+                                        </div>
+                                        <div className="text-[10px] font-bold text-theme-accent bg-theme-accent/10 border border-theme-accent/20 px-3 py-1.5 rounded-md">
+                                            {data.count} plays
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-w-full">
-                        <div className="grid grid-cols-12 gap-4 text-[10px] font-bold uppercase tracking-widest text-theme-text-muted pb-3 border-b border-[#1B2332] px-4 shrink-0">
-                            <div className="col-span-2">Played At</div>
-                            <div className="col-span-4">Track Title</div>
-                            <div className="col-span-3">Artist</div>
-                            <div className="col-span-2">Telemetry</div>
-                            <div className="col-span-1 text-right">Duration</div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto max-h-[400px] pr-1 mt-2 space-y-1.5 scrollbar-thin">
-                            {hasHistory ? (
-                                history.map((item, i) => {
-                                    const playedAt = new Date(item.time || item.played_at);
-                                    return (
-                                        <div key={item.id || i} className="grid grid-cols-12 gap-4 text-xs items-center bg-[#070A0F]/30 hover:bg-[#070A0F] p-3 px-4 rounded-xl transition-all border border-[#1B2332]/40 hover:border-[#1B2332] group">
-                                            <div className="col-span-2 text-theme-text-muted font-mono">
-                                                {format(playedAt, "MMM dd • hh:mm a")}
-                                            </div>
-                                            <div className="col-span-4 flex items-center gap-3 min-w-0">
-                                                <div className="w-8 h-8 rounded-lg bg-[#070A0F] border border-[#1B2332] flex items-center justify-center text-theme-accent text-[10px] font-bold shrink-0 relative overflow-hidden shadow-sm">
-                                                    <Music className="w-4 h-4 text-theme-accent" />
-                                                    <div className="absolute inset-0 bg-theme-accent/5"></div>
-                                                </div>
-                                                <div className="truncate font-bold text-white group-hover:text-theme-accent transition-colors">
-                                                    {item.track_name || "Unknown Track"}
-                                                </div>
-                                            </div>
-                                            <div className="col-span-3 truncate text-theme-text-muted font-medium">
-                                                {item.artist_name || "Unknown Artist"}
-                                            </div>
-                                            <div className="col-span-2 flex items-center gap-4 text-theme-text-muted">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] font-bold text-theme-accent uppercase font-mono">Val:</span>
-                                                    <span className="font-mono font-bold text-white text-[10px]">{(item.valence || 0.5).toFixed(2)}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] font-bold text-purple-400 uppercase font-mono">Eng:</span>
-                                                    <span className="font-mono font-bold text-white text-[10px]">{(item.energy || item.arousal || 0.5).toFixed(2)}</span>
-                                                </div>
-                                            </div>
-                                            <div className="col-span-1 text-right text-theme-text-muted font-mono font-bold">
-                                                {formatDuration(item.duration_ms)}
-                                            </div>
+                    {/* 3. Listening History Timeline */}
+                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-theme-accent" />
+                            Behavioral Timeline
+                        </h3>
+                        <div className="space-y-6 h-[300px] overflow-y-auto scrollbar-thin pr-4">
+                            {Object.keys(timeline).length > 0 ? (
+                                Object.entries(timeline).map(([day, periods]) => (
+                                    <div key={day} className="mb-4 relative">
+                                        <div className="text-xs font-bold text-theme-accent mb-3 bg-[#0D111A] inline-block pr-4 relative z-10">{day}</div>
+                                        <div className="absolute left-[3px] top-4 bottom-0 w-[2px] bg-[#1B2332] -z-0"></div>
+                                        <div className="space-y-3 pl-5 relative z-10">
+                                            {Object.entries(periods as any).map(([period, vals]) => {
+                                                const vArray = vals as number[];
+                                                if (vArray.length === 0) return null;
+                                                const pAvg = vArray.reduce((a,b)=>a+b,0) / vArray.length;
+                                                return (
+                                                    <div key={period} className="text-[11px] font-bold flex justify-between items-center bg-[#070A0F] border border-[#1B2332]/40 p-2.5 rounded-lg">
+                                                        <span className="text-theme-text-muted flex items-center gap-2">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-theme-accent"></div>
+                                                            {period}
+                                                        </span>
+                                                        <span className="text-white flex items-center gap-2 uppercase tracking-wider">
+                                                            <ArrowRight className="w-3 h-3 text-theme-text-muted" />
+                                                            {getMoodString(pAvg)}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    );
-                                })
+                                    </div>
+                                ))
                             ) : (
-                                <div className="flex h-[200px] items-center justify-center text-sm text-theme-text-muted">
-                                    No playback history found.
-                                </div>
+                                <div className="text-theme-text-muted text-sm flex h-full items-center justify-center">No timeline data available.</div>
                             )}
                         </div>
                     </div>
