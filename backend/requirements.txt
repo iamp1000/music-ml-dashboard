@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+websockets
+httpx
+python-dotenv
+celery
+redis
+firebase-admin
