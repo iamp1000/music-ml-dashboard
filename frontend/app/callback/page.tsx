@@ -13,7 +13,7 @@ export default function CallbackPage() {
       const token = hashParams.get('token');
       
       if (token) {
-        localStorage.setItem('auth_token', token);
+        localStorage.setItem('jwt', token);
         router.push('/dashboard');
         return;
       }
