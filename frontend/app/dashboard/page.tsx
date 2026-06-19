@@ -41,8 +41,8 @@ export default function DashboardOverviewPage() {
                 const fetchProfileOnce = async () => {
                     try {
                         const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
-                        if (data) {
-                            setProfile(data);
+                        if (data && data.data) {
+                            setProfile(data.data);
                             return true;
                         }
                     } catch (e: any) {
@@ -55,8 +55,8 @@ export default function DashboardOverviewPage() {
                     try {
                         // Fetch history telemetry
                         const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
-                        if (historyData) {
-                            setHistory(historyData);
+                        if (historyData && historyData.data) {
+                            setHistory(historyData.data);
                         }
 
                         // Fetch real Spotify top tracks via our backend proxy
@@ -462,7 +462,7 @@ export default function DashboardOverviewPage() {
                                 <div key={track.rank} className="flex items-center gap-3">
                                     <span className="text-xs font-mono text-theme-text-muted w-4">{track.rank}</span>
                                     <div className="w-10 h-10 rounded-lg bg-[#070A0F] border border-[#1B2332] flex items-center justify-center text-theme-accent shrink-0 font-bold relative overflow-hidden shadow-md">
-                                        🎵
+                                        <Music className="w-4 h-4 text-theme-accent" />
                                         <div className="absolute inset-0 bg-theme-accent/5"></div>
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -514,14 +514,11 @@ export default function DashboardOverviewPage() {
                             <Info className="w-4 h-4 text-theme-text-muted/60 cursor-help" />
                         </div>
                         {/* Fake weather/mood selectors matching the screenshot */}
-                        <div className="flex bg-[#070A0F] border border-[#1B2332] rounded-xl p-0.5 text-xs">
-                            <span className="px-2 py-1 cursor-pointer hover:text-white transition-colors">😊</span>
-                            <span className="px-2 py-1 cursor-pointer hover:text-white transition-colors">🌊</span>
-                            <span className="px-2 py-1 cursor-pointer hover:text-white transition-colors">☀️</span>
-                            <span className="px-2 py-1 cursor-pointer hover:text-white transition-colors">☁️</span>
-                            <span className="px-2 py-1 cursor-pointer hover:text-white transition-colors">💧</span>
-                            <span className="px-2 py-1 cursor-pointer hover:text-white transition-colors">⚡</span>
-                            <span className="px-2.5 py-1 rounded-lg bg-theme-accent/15 border border-theme-accent/25 text-theme-accent cursor-pointer">🎧</span>
+                        <div className="flex bg-[#070A0F] border border-[#1B2332] rounded-xl p-0.5 text-[10px] uppercase font-bold text-theme-text-muted">
+                            <span className="px-2.5 py-1 cursor-pointer hover:text-white transition-colors">Melancholic</span>
+                            <span className="px-2.5 py-1 cursor-pointer hover:text-white transition-colors">Chill</span>
+                            <span className="px-2.5 py-1 cursor-pointer hover:text-white transition-colors">Energetic</span>
+                            <span className="px-2.5 py-1 rounded-lg bg-theme-accent/15 border border-theme-accent/25 text-theme-accent cursor-pointer">Intense</span>
                         </div>
                     </div>
 

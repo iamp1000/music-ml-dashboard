@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useThemeStore } from "@/store/useThemeStore";
-import { Settings, Database, Activity, Moon, Palette, Trash2, Power, Check } from "lucide-react";
+import { Settings, Database, Activity, Moon, Palette, Trash2, Power, Check, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { fetchWithRateLimit } from "@/utils/api";
 
 // Use hardcoded backend URL similar to layout
 const BACKEND_URL = "https://music-ml-dashboard.onrender.com";
@@ -13,25 +14,20 @@ export default function SettingsPage() {
     const [mlEnabled, setMlEnabled] = useState(true);
     const [appSleep, setAppSleep] = useState(false);
     const [saveStatus, setSaveStatus] = useState<string | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
         const fetchPreferences = async () => {
             try {
-                const token = localStorage.getItem("jwt");
-                if (!token) return;
-                const res = await fetch(`${BACKEND_URL}/settings/preferences`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json.data) {
-                        setMlEnabled(json.data.ml_enabled);
-                        setAppSleep(json.data.app_sleep);
-                    }
+                const json = await fetchWithRateLimit(`${BACKEND_URL}/settings/preferences`);
+                if (json && json.data) {
+                    setMlEnabled(json.data.ml_enabled);
+                    setAppSleep(json.data.app_sleep);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to fetch preferences:", err);
+                setErrorMsg(err.message);
             }
         };
         fetchPreferences();
@@ -40,32 +36,32 @@ export default function SettingsPage() {
     const toggleMlEnabled = async () => {
         const newVal = !mlEnabled;
         setMlEnabled(newVal);
-        const token = localStorage.getItem("jwt");
-        await fetch(`${BACKEND_URL}/settings/preferences`, {
-            method: "POST",
-            headers: { 
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ ml_enabled: newVal })
-        });
-        setSaveStatus("ML Telemetry updated.");
+        try {
+            await fetchWithRateLimit(`${BACKEND_URL}/settings/preferences`, {
+                method: "POST",
+                body: JSON.stringify({ ml_enabled: newVal })
+            });
+            setSaveStatus("ML Telemetry updated.");
+        } catch (err: any) {
+            setErrorMsg(err.message);
+            setMlEnabled(!newVal);
+        }
         setTimeout(() => setSaveStatus(null), 2000);
     };
 
     const toggleAppSleep = async () => {
         const newVal = !appSleep;
         setAppSleep(newVal);
-        const token = localStorage.getItem("jwt");
-        await fetch(`${BACKEND_URL}/settings/preferences`, {
-            method: "POST",
-            headers: { 
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ app_sleep: newVal })
-        });
-        setSaveStatus("App Sleep Mode updated.");
+        try {
+            await fetchWithRateLimit(`${BACKEND_URL}/settings/preferences`, {
+                method: "POST",
+                body: JSON.stringify({ app_sleep: newVal })
+            });
+            setSaveStatus("App Sleep Mode updated.");
+        } catch (err: any) {
+            setErrorMsg(err.message);
+            setAppSleep(!newVal);
+        }
         setTimeout(() => setSaveStatus(null), 2000);
     };
 
@@ -73,19 +69,14 @@ export default function SettingsPage() {
         if (!confirm("Are you sure you want to permanently delete your listening history? This cannot be undone.")) return;
         
         try {
-            const token = localStorage.getItem("jwt");
-            const res = await fetch(`${BACKEND_URL}/settings/history`, {
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
+            await fetchWithRateLimit(`${BACKEND_URL}/settings/history`, {
+                method: "DELETE"
             });
-            if (res.ok) {
-                setSaveStatus("Purge complete: Firestore listening records deleted.");
-            } else {
-                setSaveStatus("Failed to purge history.");
-            }
-        } catch (err) {
+            setSaveStatus("Purge complete: Firestore listening records deleted.");
+        } catch (err: any) {
             console.error("Purge error", err);
             setSaveStatus("Error purging history.");
+            setErrorMsg(err.message);
         }
         setTimeout(() => setSaveStatus(null), 3000);
     };
@@ -94,13 +85,12 @@ export default function SettingsPage() {
         if (!confirm("Are you sure you want to disconnect? This will delete your account and all history.")) return;
         
         try {
-            const token = localStorage.getItem("jwt");
-            await fetch(`${BACKEND_URL}/settings/disconnect`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}` }
+            await fetchWithRateLimit(`${BACKEND_URL}/settings/disconnect`, {
+                method: "POST"
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error("Disconnect error", err);
+            setErrorMsg(err.message);
         }
         
         localStorage.removeItem("jwt");
@@ -118,6 +108,14 @@ export default function SettingsPage() {
                 <h2 className="text-2xl font-black tracking-tight text-white uppercase">Settings</h2>
                 <p className="text-sm text-theme-text-muted mt-1">Manage UI styling options, database records, and telemetry states.</p>
             </div>
+
+            {/* Error notifications banner */}
+            {errorMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-500 text-xs py-3 px-4 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <AlertCircle className="w-4.5 h-4.5 text-red-500" />
+                    <span>{errorMsg}</span>
+                </div>
+            )}
 
             {/* Layout Panels */}
             <div className="space-y-6">

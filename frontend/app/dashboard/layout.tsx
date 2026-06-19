@@ -7,8 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import LiveSyncPlayer from "@/components/LiveSyncPlayer";
 import { ThemeSettings } from "@/components/ThemeSettings";
 import { 
-    LayoutDashboard, TrendingUp, Music, Sliders, 
-    Smile, ListMusic, GitCompare, History, Settings
+    LayoutDashboard, Activity, Compass
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -34,13 +33,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const navItems = [
         { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
-        { href: "/dashboard/history-over-time", icon: TrendingUp, label: "Listening Habits" },
-        { href: "/dashboard/top-artists", icon: Music, label: "Tracks" },
-        { href: "/dashboard/features", icon: Sliders, label: "Audio Features" },
-        { href: "/dashboard/mood", icon: Smile, label: "Mood Explorer" },
-        { href: "/dashboard/recommendations", icon: ListMusic, label: "Playlists" },
-        { href: "/dashboard/neural", icon: GitCompare, label: "Compare" },
-        { href: "/dashboard/history", icon: History, label: "History" },
+        { href: "/dashboard/analytics", icon: Activity, label: "Analytics Hub" },
+        { href: "/dashboard/music", icon: Compass, label: "Music & Discovery" },
     ];
 
     return (

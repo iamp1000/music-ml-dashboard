@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Play, Pause, SkipBack, SkipForward, Heart, Shuffle, Repeat, Volume2, AlertTriangle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Shuffle, Repeat, Volume2, AlertTriangle, Music } from "lucide-react";
 import { fetchWithRateLimit } from "@/utils/api";
 
 export default function LiveSyncPlayer() {
@@ -38,9 +38,9 @@ export default function LiveSyncPlayer() {
             try {
                 // Fetch profile to get token
                 const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
-                if (data && data.access_token) {
-                    setSpotifyToken(data.access_token);
-                    initializePlayer(data.access_token);
+                if (data && data.data?.access_token) {
+                    setSpotifyToken(data.data.access_token);
+                    initializePlayer(data.data.access_token);
                 }
             } catch (err) {
                 console.error("Failed to fetch token for player", err);
@@ -245,7 +245,7 @@ export default function LiveSyncPlayer() {
                     {currentTrack && currentTrack.album?.images[0]?.url ? (
                         <img src={currentTrack.album.images[0].url} alt={trackName} className="w-full h-full object-cover" />
                     ) : (
-                        <span className="text-lg">🎵</span>
+                        <Music className="w-5 h-5 text-theme-accent" />
                     )}
                 </div>
 
