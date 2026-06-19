@@ -12,8 +12,7 @@ const EmotionalScatterPlot: React.FC = () => {
     if (!token) return;
 
     // Fetch initial history
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    fetch(`${API_URL}/telemetry/history`, {
+    fetch('https://music-ml-dashboard.onrender.com/telemetry/history', {
       headers: {
         'Authorization': `Bearer ${token}`
       }

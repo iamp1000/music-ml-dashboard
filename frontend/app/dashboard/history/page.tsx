@@ -15,8 +15,7 @@ export default function CompleteHistoryPage() {
                 const token = localStorage.getItem("jwt");
                 if (!token) return;
                 
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                const res = await fetch(`${API_URL}/telemetry/history?limit=20`, {
+                const res = await fetch("https://music-ml-dashboard.onrender.com/telemetry/history?limit=20", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (res.ok) {

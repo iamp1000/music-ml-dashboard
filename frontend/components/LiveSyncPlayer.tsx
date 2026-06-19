@@ -25,8 +25,7 @@ export default function LiveSyncPlayer() {
             try {
                 // For security, the backend should have an endpoint that returns the decrypted access token
                 // If it doesn't exist yet, we'll gracefully fallback to WebSocket only.
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                const res = await fetch(`${API_URL}/auth/profile`, {
+                const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (res.ok) {
@@ -84,7 +83,7 @@ export default function LiveSyncPlayer() {
 
         // Standard WebSocket fallback for Valence/Energy sync
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).host : 'localhost:8000';
+        const host = 'music-ml-dashboard.onrender.com';
         const wsUrl = `${protocol}//${host}/ws/stream/live?token=${token}`;
         const ws = new WebSocket(wsUrl);
         

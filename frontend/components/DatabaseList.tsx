@@ -24,7 +24,7 @@ export default function DatabaseList() {
 
             try {
                 const protocol = window.location.protocol;
-                const host = process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).host : 'localhost:8000';
+                const host = 'music-ml-dashboard.onrender.com';
                 const res = await fetch(`${protocol}//${host}/telemetry/history`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
