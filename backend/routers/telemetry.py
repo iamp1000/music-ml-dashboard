@@ -4,18 +4,8 @@ import os
 from database import db
 from security import verify_access_token
 from firebase_admin import firestore
-import torch
-from ml_engine.models.context_model import ContextAwareRecommender
-from ml_engine.utils.context_encoder import encode_cyclical_time
-
-# Instantiate model
-sandbox_model = ContextAwareRecommender()
-# We don't train it here, just randomly initialized for the sandbox to show weight shifting
-sandbox_model.eval()
-
 # Dummy mood classes
 MOOD_CLASSES = ["Deep Focus", "Aggressive", "Depressive Spiral", "Euphoric"]
-from inference_service import inference_engine
 
 router = APIRouter(tags=["Telemetry"])
 
@@ -84,12 +74,9 @@ class AudioAnalysisRequest(BaseModel):
 @router.post("/analyze_audio")
 async def analyze_audio(payload: AudioAnalysisRequest):
     """
-    Process an audio file through the ML inference engine to predict valence and arousal.
+    Mock audio analysis to save memory on Render.
     """
-    result = inference_engine.analyze_audio_file(payload.file_path)
-    if "error" in result:
-        raise HTTPException(status_code=500, detail=result["error"])
-    return {"status": "success", "data": result}
+    return {"status": "success", "data": {"valence": 0.5, "arousal": 0.5}}
 
 class SandboxRequest(BaseModel):
     time_of_day: float
@@ -99,24 +86,20 @@ class SandboxRequest(BaseModel):
 @router.post("/sandbox_inference")
 async def sandbox_inference(payload: SandboxRequest):
     """
-    Runs the CARS PyTorch model for the interactive Neural Mood Predictor sandbox.
+    Math-based mock of the CARS model to save memory on Render.
     """
     try:
-        # 1. Temporal Context (sin, cos)
-        sin_time, cos_time = encode_cyclical_time(payload.time_of_day)
-        # Dummy days for sandbox
-        x_ctx = torch.tensor([[sin_time, cos_time, 0.0, 0.0]], dtype=torch.float32)
-        
-        # 2. Sequential Momentum (energy, valence)
-        # Sequence dim = 4 [valence, energy, danceability, acousticness]
-        x_seq = torch.tensor([[payload.valence, payload.energy, 0.5, 0.5]], dtype=torch.float32)
-        
-        with torch.no_grad():
-            probs = sandbox_model(x_seq, x_ctx)
+        # Simple heuristic instead of PyTorch
+        if payload.valence > 0.5 and payload.energy > 0.5:
+            predicted_mood = "Euphoric"
+        elif payload.valence < 0.5 and payload.energy > 0.5:
+            predicted_mood = "Aggressive"
+        elif payload.valence < 0.5 and payload.energy < 0.5:
+            predicted_mood = "Depressive Spiral"
+        else:
+            predicted_mood = "Deep Focus"
             
-        probs_list = probs.squeeze().tolist()
-        max_idx = probs.argmax().item()
-        predicted_mood = MOOD_CLASSES[max_idx]
+        probs_list = [0.25, 0.25, 0.25, 0.25]
         
         return {
             "status": "success", 
