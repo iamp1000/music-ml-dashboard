@@ -127,8 +127,10 @@ async def get_user_profile(request: Request):
     # Decrypt access token from the root user document
     user_doc = db.collection("users").document(user_id).get()
     access_token = None
+    display_name = None
     if user_doc.exists:
         u_dict = user_doc.to_dict()
+        display_name = u_dict.get("display_name")
         cipher = u_dict.get("access_token_cipher")
         nonce = u_dict.get("access_token_nonce")
         if cipher and nonce:
@@ -140,11 +142,13 @@ async def get_user_profile(request: Request):
     stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
     if not stats_doc.exists:
         # If stats do not exist yet, we still return pending but can provide access token
-        return {"status": "pending", "data": {"access_token": access_token} if access_token else None}
+        return {"status": "pending", "data": {"access_token": access_token, "display_name": display_name} if access_token or display_name else None}
         
     data = stats_doc.to_dict()
     if access_token:
         data["access_token"] = access_token
+    if display_name:
+        data["display_name"] = display_name
         
     return {"status": "success", "data": data}
 

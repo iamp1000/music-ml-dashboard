@@ -494,7 +494,7 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     <div className="border-t border-[#1B2332]/60 pt-4 mt-4">
-                        <Link href="/dashboard/music" className="flex items-center justify-between text-xs text-theme-text-muted hover:text-white transition-colors group">
+                        <Link href="/dashboard/discovery" className="flex items-center justify-between text-xs text-theme-text-muted hover:text-white transition-colors group">
                             <span>View all tracks</span>
                             <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                         </Link>
@@ -614,7 +614,7 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     <div className="border-t border-[#1B2332]/60 pt-4 mt-2">
-                        <Link href="/dashboard/analytics" className="flex items-center justify-between text-xs text-theme-text-muted hover:text-white transition-colors group">
+                        <Link href="/dashboard/history" className="flex items-center justify-between text-xs text-theme-text-muted hover:text-white transition-colors group">
                             <span>Explore all audio features</span>
                             <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                         </Link>
