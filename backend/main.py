@@ -10,7 +10,7 @@ import math
 import time
 
 from database import init_db, db
-from routers import auth, telemetry, settings
+from routers import auth, telemetry, settings, spotify
 
 # Load environment variables
 load_dotenv()
@@ -29,6 +29,7 @@ async def startup_event():
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
 app.include_router(settings.router, prefix="/settings", tags=["Settings"])
+app.include_router(spotify.router, prefix="/api/spotify", tags=["Spotify API"])
 
 # Allow CORS for GitHub Pages / Next.js frontend
 app.add_middleware(

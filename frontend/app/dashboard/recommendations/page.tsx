@@ -1,40 +1,24 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Sparkles, Play, Info, Loader2 } from "lucide-react";
+import { Sparkles, Play, Info, Loader2, AlertCircle } from "lucide-react";
+import { fetchWithRateLimit } from "@/utils/api";
 
 export default function RecommendationsPage() {
-    const [profile, setProfile] = useState<any>(null);
-    const [history, setHistory] = useState<any[]>([]);
+    const [recTracks, setRecTracks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchRecommendationsData = async () => {
             try {
-                const token = localStorage.getItem("jwt");
-                if (!token) return;
-
-                const profileRes = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (profileRes.ok) {
-                    const data = await profileRes.json();
-                    if (data.status === "success" && data.data) {
-                        setProfile(data.data);
-                    }
+                const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/spotify/recommendations");
+                if (data && data.tracks) {
+                    setRecTracks(data.tracks);
                 }
-
-                const historyRes = await fetch("https://music-ml-dashboard.onrender.com/telemetry/history", {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (historyRes.ok) {
-                    const data = await historyRes.json();
-                    if (data.status === "success" && data.data) {
-                        setHistory(data.data);
-                    }
-                }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to load recommendations", err);
+                setErrorMsg(err.message);
             } finally {
                 setLoading(false);
             }
@@ -51,36 +35,28 @@ export default function RecommendationsPage() {
         );
     }
 
-    const hasHistory = history.length > 0;
-    const topArtist = profile?.top_artists?.[0]?.name || (hasHistory ? history[0].artist_name : "your favorites");
-    const topGenre = profile?.top_artists?.[0]?.genres?.[0] || "Pop";
-    const sampleTrack = hasHistory ? history[0].track_name : "your favorites";
-
-    // Generate dynamic AI playlists using the user's actual music details
-    const playlists = [
+    // Segment recommended tracks into custom mixes dynamically
+    const customMixes = [
         {
-            id: "vba",
             title: "Vibe Booster AI",
-            description: `High-energy vectors optimized using your love for ${topArtist}`,
-            color: "var(--theme-accent)",
+            emoji: "⚡",
             gradient: "from-green-600/30 to-emerald-950/20",
-            icon: "⚡"
+            color: "var(--theme-accent)",
+            tracks: recTracks.slice(0, 5)
         },
         {
-            id: "dff",
-            title: "Deep Focus Flow",
-            description: `Calming low-valence ambient tracks derived from ${sampleTrack}`,
-            color: "#8B5CF6",
+            title: "Deep Focus Ambient Flow",
+            emoji: "🌌",
             gradient: "from-purple-600/30 to-violet-950/20",
-            icon: "🌌"
+            color: "#8B5CF6",
+            tracks: recTracks.slice(5, 10)
         },
         {
-            id: "dac",
             title: "Discovery Accelerator",
-            description: `Fresh experimental discoveries matching your top genre: ${topGenre}`,
-            color: "#3B82F6",
+            emoji: "🧭",
             gradient: "from-blue-600/30 to-indigo-950/20",
-            icon: "🧭"
+            color: "#3B82F6",
+            tracks: recTracks.slice(10, 15)
         }
     ];
 
@@ -88,54 +64,69 @@ export default function RecommendationsPage() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <h2 className="text-2xl font-black tracking-tight text-white uppercase">AI Playlists</h2>
-                <p className="text-sm text-theme-text-muted mt-1">Custom recommendation containers computed using your audio features and listening vectors.</p>
+                <h2 className="text-2xl font-black tracking-tight text-white uppercase">AI Recommendations</h2>
+                <p className="text-sm text-theme-text-muted mt-1">Live recommended mixes and individual seed recommendations computed directly from your Spotify profile.</p>
             </div>
 
-            {/* Custom Playlist Container */}
-            <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col">
-                <div className="flex justify-between items-center border-b border-[#1B2332]/60 pb-4 mb-6">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <Sparkles className="w-4.5 h-4.5 text-theme-accent" />
-                        Custom Recommended Mixes
-                    </h3>
-                    <div className="text-[10px] text-theme-accent bg-theme-accent/10 border border-theme-accent/20 px-3 py-1 rounded-full font-bold">
-                        Calculated from Spotify telemetry
-                    </div>
+            {/* Error notifications banner */}
+            {errorMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-500 text-xs py-3 px-4 rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4.5 h-4.5 text-red-500" />
+                    <span>{errorMsg}</span>
                 </div>
+            )}
 
-                <div className="space-y-4">
-                    {playlists.map((pl) => (
-                        <div key={pl.id} className="group flex items-center justify-between bg-[#070A0F] hover:bg-[#070A0F]/80 border border-[#1B2332]/60 hover:border-[#1B2332] rounded-2xl p-4 transition-all duration-300 cursor-pointer overflow-hidden relative">
-                            {/* Hover accent background glow */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-theme-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-                            
-                            <div className="flex items-center gap-5 z-10 relative w-full">
-                                {/* Playlist cover with premium gradient and emoji */}
-                                <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${pl.gradient} border border-[#1B2332] shrink-0 relative shadow-md flex items-center justify-center text-3xl group-hover:scale-105 transition-transform duration-500`}>
-                                    <span>{pl.icon}</span>
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
-                                        <Play className="w-6 h-6 text-white fill-white" />
-                                    </div>
-                                </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="text-base font-bold text-white group-hover:text-theme-accent transition-colors mb-1 truncate">{pl.title}</h4>
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pl.color, boxShadow: `0 0 6px ${pl.color}` }}></span>
-                                        <p className="text-xs text-theme-text-muted truncate uppercase tracking-wider">{pl.description}</p>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-6 text-theme-text-muted px-2 shrink-0">
-                                    <button className="p-2 rounded-xl hover:bg-[#0D111A] hover:text-white transition-colors">
-                                        <Info className="w-4 h-4" />
-                                    </button>
-                                </div>
+            {/* AI Playlists Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {customMixes.map((mix, idx) => (
+                    <div key={idx} className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 flex flex-col h-[400px]">
+                        {/* Header Box */}
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${mix.gradient} border border-[#1B2332] flex items-center justify-center text-xl`}>
+                                <span>{mix.emoji}</span>
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-black text-white uppercase tracking-wider leading-tight">{mix.title}</h4>
+                                <span className="text-[9px] text-theme-text-muted">AI-Generated Mix</span>
                             </div>
                         </div>
-                    ))}
-                </div>
+
+                        {/* Recommendation list */}
+                        <div className="flex-1 space-y-3 overflow-y-auto pr-1 scrollbar-thin">
+                            {mix.tracks.length > 0 ? (
+                                mix.tracks.map((track: any, tIdx: number) => (
+                                    <div key={track.id || tIdx} className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[#070A0F] border border-transparent hover:border-[#1B2332] transition-colors group cursor-pointer">
+                                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-[#1B2332] relative flex items-center justify-center text-theme-accent text-[10px]">
+                                            {track.album?.images?.[0]?.url ? (
+                                                <img src={track.album.images[0].url} alt={track.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span>🎵</span>
+                                            )}
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <Play className="w-3.5 h-3.5 text-white fill-white" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h5 className="text-[10px] font-bold text-white truncate leading-tight group-hover:text-theme-accent transition-colors">{track.name}</h5>
+                                            <span className="text-[9px] text-theme-text-muted truncate block mt-0.5">{track.artists[0].name}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex h-full items-center justify-center text-[10px] text-theme-text-muted text-center py-10">
+                                    No tracks returned. Link your Spotify to generate seeds.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-[#1B2332]/60 pt-3 mt-3 flex justify-between items-center text-[9px] text-theme-text-muted">
+                            <span className="font-mono">{mix.tracks.length} tracks synced</span>
+                            <span className="text-theme-accent uppercase font-bold tracking-wider hover:underline flex items-center gap-0.5">
+                                Play Mix <span className="font-serif">→</span>
+                            </span>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

@@ -3,19 +3,22 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, Loader2
+    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, Loader2, AlertCircle
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
     BarChart, Bar, LineChart, Line, RadarChart, PolarGrid, 
     PolarAngleAxis, PolarRadiusAxis, Radar 
 } from "recharts";
+import { fetchWithRateLimit } from "@/utils/api";
 
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
+    const [realTopTracks, setRealTopTracks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeTab, setTimeTab] = useState<"D" | "W" | "M">("D");
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
         const loadDashboardData = async () => {
@@ -36,48 +39,55 @@ export default function DashboardOverviewPage() {
 
                 // Poll profile details
                 const fetchProfileOnce = async () => {
-                    const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.status === "success" && data.data) {
-                            setProfile(data.data);
+                    try {
+                        const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
+                        if (data) {
+                            setProfile(data);
                             return true;
                         }
+                    } catch (e: any) {
+                        setErrorMsg(e.message);
                     }
                     return false;
                 };
 
-                const fetchHistory = async () => {
-                    const res = await fetch("https://music-ml-dashboard.onrender.com/telemetry/history", {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.status === "success" && data.data) {
-                            setHistory(data.data);
+                const fetchHistoryAndTopTracks = async () => {
+                    try {
+                        // Fetch history telemetry
+                        const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
+                        if (historyData) {
+                            setHistory(historyData);
                         }
+
+                        // Fetch real Spotify top tracks via our backend proxy
+                        const topTracksData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/spotify/top-tracks?limit=5");
+                        if (topTracksData && topTracksData.items) {
+                            setRealTopTracks(topTracksData.items);
+                        }
+                    } catch (e: any) {
+                        console.error("Failed to load history or top tracks", e);
+                        setErrorMsg(e.message);
                     }
                 };
 
                 const success = await fetchProfileOnce();
                 if (success) {
-                    await fetchHistory();
+                    await fetchHistoryAndTopTracks();
                     setLoading(false);
                 } else {
                     // Poll if backend data isn't synced yet
                     const interval = setInterval(async () => {
                         if (await fetchProfileOnce()) {
-                            await fetchHistory();
+                            await fetchHistoryAndTopTracks();
                             setLoading(false);
                             clearInterval(interval);
                         }
                     }, 2000);
                     return () => clearInterval(interval);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Dashboard overview load failed", err);
+                setErrorMsg(err.message);
                 setLoading(false);
             }
         };
@@ -136,36 +146,45 @@ export default function DashboardOverviewPage() {
         .reverse()
         .slice(-10);
 
-    // If no history data yet, we show a clean empty state or actual empty structure
     const hasHistory = history.length > 0;
 
-    // 2. Top Tracks from actual history (most frequent plays)
-    const trackCounts: Record<string, { name: string; artist: string; count: number; id: string }> = {};
-    history.forEach(item => {
-        const key = `${item.track_name} - ${item.artist_name}`;
-        if (!trackCounts[key]) {
-            trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0, id: item.track_id };
-        }
-        trackCounts[key].count += 1;
-    });
-
-    const topTracksData = Object.values(trackCounts)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5)
-        .map((t, idx) => ({
+    // 2. Render Top Tracks from Spotify API (or fallback to history occurrences if list empty)
+    let displayTracks = [];
+    if (realTopTracks.length > 0) {
+        displayTracks = realTopTracks.map((t: any, idx: number) => ({
             rank: idx + 1,
             name: t.name,
-            artist: t.artist,
-            plays: t.count,
-            score: Math.min(100, Math.round((t.count / (history.length || 1)) * 400 + 40)) // Relative percentage score
+            artist: t.artists[0].name,
+            plays: t.popularity, // Use popularity index
+            score: t.popularity
         }));
+    } else {
+        const trackCounts: Record<string, { name: string; artist: string; count: number; id: string }> = {};
+        history.forEach(item => {
+            const key = `${item.track_name} - ${item.artist_name}`;
+            if (!trackCounts[key]) {
+                trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0, id: item.track_id };
+            }
+            trackCounts[key].count += 1;
+        });
+
+        displayTracks = Object.values(trackCounts)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5)
+            .map((t, idx) => ({
+                rank: idx + 1,
+                name: t.name,
+                artist: t.artist,
+                plays: t.count,
+                score: Math.min(100, Math.round((t.count / (history.length || 1)) * 400 + 40))
+            }));
+    }
 
     // 3. Mood Timeline Stacked Data from actual history valence/energy
     const moodTimelineData = history.slice(0, 12).map((item, idx) => {
         const v = item.valence || 0.5;
         const e = item.energy || item.arousal || 0.5;
         
-        // Define percentages representing active states
         return {
             name: new Date(item.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             Happy: v > 0.6 ? Math.round(v * 100) : Math.round(v * 20),
@@ -212,10 +231,10 @@ export default function DashboardOverviewPage() {
     ];
 
     // Sparks data for mini charts
-    const timeSpark = history.slice(0, 10).map((h, i) => ({ val: (h.energy || 0.5) + (h.valence || 0.5) }));
+    const timeSpark = history.slice(0, 10).map((h) => ({ val: (h.energy || 0.5) + (h.valence || 0.5) }));
     const tracksSpark = history.slice(0, 10).map((h, i) => ({ val: i + 1 }));
-    const artistsSpark = history.slice(0, 10).map((h, i) => ({ val: Math.round((h.valence || 0.5) * 50) }));
-    const genresSpark = history.slice(0, 10).map((h, i) => ({ val: Math.round((h.energy || 0.5) * 40) }));
+    const artistsSpark = history.slice(0, 10).map((h) => ({ val: Math.round((h.valence || 0.5) * 50) }));
+    const genresSpark = history.slice(0, 10).map((h) => ({ val: Math.round((h.energy || 0.5) * 40) }));
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -249,6 +268,14 @@ export default function DashboardOverviewPage() {
                     </Link>
                 </div>
             </div>
+
+            {/* Error notifications banner */}
+            {errorMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-500 text-xs py-3 px-4 rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4.5 h-4.5 text-red-500" />
+                    <span>{errorMsg}</span>
+                </div>
+            )}
 
             {/* Stat Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -430,8 +457,8 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-                        {topTracksData.length > 0 ? (
-                            topTracksData.map((track) => (
+                        {displayTracks.length > 0 ? (
+                            displayTracks.map((track) => (
                                 <div key={track.rank} className="flex items-center gap-3">
                                     <span className="text-xs font-mono text-theme-text-muted w-4">{track.rank}</span>
                                     <div className="w-10 h-10 rounded-lg bg-[#070A0F] border border-[#1B2332] flex items-center justify-center text-theme-accent shrink-0 font-bold relative overflow-hidden shadow-md">
@@ -443,7 +470,7 @@ export default function DashboardOverviewPage() {
                                         <span className="text-[10px] text-theme-text-muted truncate block mt-0.5">{track.artist}</span>
                                     </div>
                                     <div className="flex flex-col items-end shrink-0 pl-2">
-                                        <span className="text-xs font-bold text-white font-mono">{track.plays} plays</span>
+                                        <span className="text-xs font-bold text-white font-mono">{track.plays} {realTopTracks.length > 0 ? 'pop' : 'plays'}</span>
                                         {/* Little custom block indicators */}
                                         <div className="flex gap-0.5 mt-1">
                                             {Array.from({ length: 10 }).map((_, i) => {

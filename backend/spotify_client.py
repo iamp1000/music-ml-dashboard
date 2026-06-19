@@ -173,5 +173,38 @@ class SpotifyClient:
     async def get_saved_tracks(self, limit=50):
         return await self._fetch_endpoint(f"https://api.spotify.com/v1/me/tracks?limit={limit}")
 
+    async def request_endpoint(self, method: str, url: str, **kwargs):
+        """Generic request handler with token refresh and rate limit awareness"""
+        if not self.access_token and self.refresh_token:
+            await self.get_access_token()
+        
+        headers = kwargs.pop("headers", {})
+        headers["Authorization"] = f"Bearer {self.access_token}"
+        
+        response = await self.client.request(method, url, headers=headers, **kwargs)
+        
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 1))
+            return {"status": "rate_limited", "retry_after": retry_after}
+            
+        if response.status_code == 401 and self.refresh_token:
+            await self.get_access_token()
+            headers["Authorization"] = f"Bearer {self.access_token}"
+            response = await self.client.request(method, url, headers=headers, **kwargs)
+            
+            if response.status_code == 429:
+                retry_after = int(response.headers.get("Retry-After", 1))
+                return {"status": "rate_limited", "retry_after": retry_after}
+
+        # Check success for 2xx status codes
+        if 200 <= response.status_code < 300:
+            try:
+                data = response.json()
+            except Exception:
+                data = None
+            return {"status": "success", "data": data}
+            
+        return {"status": "error", "message": f"HTTP {response.status_code}", "code": response.status_code}
+
     async def close(self):
         await self.client.aclose()

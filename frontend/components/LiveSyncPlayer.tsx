@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { Play, Pause, SkipBack, SkipForward, Heart, Shuffle, Repeat, Volume2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Play, Pause, SkipBack, SkipForward, Heart, Shuffle, Repeat, Volume2, AlertTriangle } from "lucide-react";
+import { fetchWithRateLimit } from "@/utils/api";
 
 export default function LiveSyncPlayer() {
     const [trackName, setTrackName] = useState("Waiting for Spotify...");
@@ -25,6 +26,9 @@ export default function LiveSyncPlayer() {
     const [progressMs, setProgressMs] = useState(0);
     const [durationMs, setDurationMs] = useState(0);
 
+    // Rate limiting tracking state
+    const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+
     // Fetch Spotify Token and initialize Player
     useEffect(() => {
         const token = localStorage.getItem("jwt");
@@ -32,15 +36,11 @@ export default function LiveSyncPlayer() {
 
         const fetchSpotifyToken = async () => {
             try {
-                const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.status === "success" && data.data && data.data.access_token) {
-                        setSpotifyToken(data.data.access_token);
-                        initializePlayer(data.data.access_token);
-                    }
+                // Fetch profile to get token
+                const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
+                if (data && data.access_token) {
+                    setSpotifyToken(data.access_token);
+                    initializePlayer(data.access_token);
                 }
             } catch (err) {
                 console.error("Failed to fetch token for player", err);
@@ -48,7 +48,6 @@ export default function LiveSyncPlayer() {
         };
 
         const initializePlayer = (spotifyToken: string) => {
-            // Avoid duplicate scripts
             if (!document.getElementById("spotify-player-sdk")) {
                 const script = document.createElement("script");
                 script.id = "spotify-player-sdk";
@@ -86,7 +85,7 @@ export default function LiveSyncPlayer() {
                     if (state.track_window.current_track) {
                         setTrackName(state.track_window.current_track.name);
                         setArtistName(state.track_window.current_track.artists[0].name);
-                        checkLikedStatus(state.track_window.current_track.id, spotifyToken);
+                        checkLikedStatus(state.track_window.current_track.id);
                     }
 
                     setIsActive(true);
@@ -98,6 +97,24 @@ export default function LiveSyncPlayer() {
 
         fetchSpotifyToken();
     }, []);
+
+    // Rate-limiting listener
+    useEffect(() => {
+        const handleRateLimit = (e: any) => {
+            setRateLimitSeconds(e.detail.retryAfter);
+        };
+        window.addEventListener("spotify-rate-limit", handleRateLimit);
+        return () => window.removeEventListener("spotify-rate-limit", handleRateLimit);
+    }, []);
+
+    // Rate-limiting cooldown timer
+    useEffect(() => {
+        if (rateLimitSeconds <= 0) return;
+        const interval = setInterval(() => {
+            setRateLimitSeconds(prev => prev - 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [rateLimitSeconds]);
 
     // Progress bar ticking timer
     useEffect(() => {
@@ -114,79 +131,74 @@ export default function LiveSyncPlayer() {
         return () => clearInterval(interval);
     }, [isPaused, durationMs]);
 
-    // Check if current track is liked
-    const checkLikedStatus = async (trackId: string, token: string) => {
+    // Check if current track is liked via backend proxy
+    const checkLikedStatus = async (trackId: string) => {
         try {
-            const res = await fetch(`https://api.spotify.com/v1/me/tracks/contains?ids=${trackId}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setIsLiked(data[0]);
+            const data = await fetchWithRateLimit(
+                `https://music-ml-dashboard.onrender.com/api/spotify/player/like?track_id=${trackId}`
+            );
+            if (data) {
+                setIsLiked(data.liked);
             }
         } catch (err) {
             console.error("Failed to check like status", err);
         }
     };
 
-    // Toggle track like state
+    // Toggle track like state via backend proxy
     const handleLikeToggle = async () => {
-        if (!currentTrack || !spotifyToken) return;
+        if (!currentTrack || rateLimitSeconds > 0) return;
         const trackId = currentTrack.id;
-        const method = isLiked ? "DELETE" : "PUT";
+        const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/like?track_id=${trackId}`;
         try {
-            const res = await fetch(`https://api.spotify.com/v1/me/tracks?ids=${trackId}`, {
-                method,
-                headers: { "Authorization": `Bearer ${spotifyToken}` }
-            });
-            if (res.ok) {
-                setIsLiked(!isLiked);
-            }
+            await fetchWithRateLimit(url, { method: isLiked ? "DELETE" : "PUT" });
+            setIsLiked(!isLiked);
         } catch (err) {
             console.error("Failed to toggle like", err);
         }
     };
 
-    // Toggle shuffle mode
+    // Toggle shuffle mode via backend proxy
     const handleShuffleToggle = async () => {
-        if (!spotifyToken) return;
+        if (rateLimitSeconds > 0) return;
         const newShuffle = !isShuffle;
+        const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/shuffle?state=${newShuffle}${deviceId ? `&device_id=${deviceId}` : ""}`;
         try {
-            const res = await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=${newShuffle}`, {
-                method: "PUT",
-                headers: { "Authorization": `Bearer ${spotifyToken}` }
-            });
-            if (res.ok) {
-                setIsShuffle(newShuffle);
-            }
+            await fetchWithRateLimit(url, { method: "PUT" });
+            setIsShuffle(newShuffle);
         } catch (err) {
             console.error("Failed to toggle shuffle", err);
         }
     };
 
-    // Toggle repeat mode
+    // Toggle repeat mode via backend proxy
     const handleRepeatToggle = async () => {
-        if (!spotifyToken) return;
+        if (rateLimitSeconds > 0) return;
         const nextMode = repeatMode === "off" ? "track" : repeatMode === "track" ? "context" : "off";
+        const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/repeat?state=${nextMode}${deviceId ? `&device_id=${deviceId}` : ""}`;
         try {
-            const res = await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${nextMode}`, {
-                method: "PUT",
-                headers: { "Authorization": `Bearer ${spotifyToken}` }
-            });
-            if (res.ok) {
-                setRepeatMode(nextMode);
-            }
+            await fetchWithRateLimit(url, { method: "PUT" });
+            setRepeatMode(nextMode);
         } catch (err) {
             console.error("Failed to toggle repeat", err);
         }
     };
 
-    // Control volume
+    // Control volume via both backend proxy and local SDK
     const handleVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseFloat(e.target.value);
         setVolume(val);
         if (player) {
             await player.setVolume(val);
+        }
+        if (rateLimitSeconds === 0) {
+            const volPercent = Math.round(val * 100);
+            const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/volume?volume_percent=${volPercent}${deviceId ? `&device_id=${deviceId}` : ""}`;
+            try {
+                await fetchWithRateLimit(url, { method: "PUT" });
+            } catch (err) {
+                console.error("Failed to set volume on Spotify API", err);
+            }
         }
     };
 
@@ -214,9 +226,19 @@ export default function LiveSyncPlayer() {
     const handlePlayPause = () => player && player.togglePlay();
     const handleNext = () => player && player.nextTrack();
 
+    const isButtonsDisabled = !isActive || rateLimitSeconds > 0;
+
     return (
-        <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-4 text-[#8293B4] w-full flex flex-col space-y-4">
+        <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-4 text-[#8293B4] w-full flex flex-col space-y-4 relative">
             
+            {/* Rate limit warning banner */}
+            {rateLimitSeconds > 0 && (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-[10px] font-bold py-2 px-3 rounded-lg flex items-center gap-2 animate-pulse uppercase tracking-wider">
+                    <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-yellow-500" />
+                    <span>Rate limit backoff: {rateLimitSeconds}s</span>
+                </div>
+            )}
+
             {/* Album Cover & Track Details */}
             <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-[#06080C] border border-[#1B2332] shrink-0 overflow-hidden relative flex items-center justify-center text-theme-accent">
@@ -236,7 +258,8 @@ export default function LiveSyncPlayer() {
                 {isActive && (
                     <button 
                         onClick={handleLikeToggle}
-                        className={`p-1 hover:text-white transition-colors shrink-0 ${isLiked ? 'text-theme-accent' : ''}`}
+                        disabled={rateLimitSeconds > 0}
+                        className={`p-1 hover:text-white transition-colors shrink-0 disabled:opacity-40 ${isLiked ? 'text-theme-accent' : ''}`}
                     >
                         <Heart className="w-4 h-4 fill-current" />
                     </button>
@@ -265,7 +288,8 @@ export default function LiveSyncPlayer() {
                 {/* Shuffle Button */}
                 <button 
                     onClick={handleShuffleToggle}
-                    className={`p-1 hover:text-white transition-colors ${isShuffle ? 'text-theme-accent' : 'text-theme-text-muted'}`}
+                    disabled={isButtonsDisabled}
+                    className={`p-1 hover:text-white transition-colors disabled:opacity-30 ${isShuffle ? 'text-theme-accent' : 'text-theme-text-muted'}`}
                 >
                     <Shuffle className="w-3.5 h-3.5" />
                 </button>
@@ -274,7 +298,7 @@ export default function LiveSyncPlayer() {
                 <button 
                     onClick={handlePrev}
                     className="p-1.5 hover:text-white transition-colors disabled:opacity-30"
-                    disabled={!isActive}
+                    disabled={isButtonsDisabled}
                 >
                     <SkipBack className="w-4 h-4" />
                 </button>
@@ -283,7 +307,7 @@ export default function LiveSyncPlayer() {
                 <button 
                     onClick={handlePlayPause}
                     className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-md shrink-0 disabled:opacity-50"
-                    disabled={!isActive}
+                    disabled={isButtonsDisabled}
                 >
                     {isPaused ? <Play className="w-3.5 h-3.5 fill-black ml-0.5" /> : <Pause className="w-3.5 h-3.5 fill-black" />}
                 </button>
@@ -292,7 +316,7 @@ export default function LiveSyncPlayer() {
                 <button 
                     onClick={handleNext}
                     className="p-1.5 hover:text-white transition-colors disabled:opacity-30"
-                    disabled={!isActive}
+                    disabled={isButtonsDisabled}
                 >
                     <SkipForward className="w-4 h-4" />
                 </button>
@@ -300,7 +324,8 @@ export default function LiveSyncPlayer() {
                 {/* Repeat Button */}
                 <button 
                     onClick={handleRepeatToggle}
-                    className={`p-1 hover:text-white transition-colors ${repeatMode !== 'off' ? 'text-theme-accent' : 'text-theme-text-muted'}`}
+                    disabled={isButtonsDisabled}
+                    className={`p-1 hover:text-white transition-colors disabled:opacity-30 ${repeatMode !== 'off' ? 'text-theme-accent' : 'text-theme-text-muted'}`}
                 >
                     <Repeat className="w-3.5 h-3.5" />
                 </button>
