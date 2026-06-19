@@ -3,7 +3,7 @@ from database import db
 from security import verify_access_token, encryptor
 from spotify_client import SpotifyClient
 
-router = APIRouter(prefix="/spotify", tags=["Spotify API"])
+router = APIRouter(tags=["Spotify API"])
 
 async def get_user_spotify_client(request: Request) -> SpotifyClient:
     """Helper function to authenticate and initialize SpotifyClient for the user."""

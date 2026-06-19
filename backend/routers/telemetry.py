@@ -5,7 +5,7 @@ from database import db
 from security import verify_access_token
 from firebase_admin import firestore
 
-router = APIRouter(prefix="/telemetry", tags=["Telemetry"])
+router = APIRouter(tags=["Telemetry"])
 
 class HeartRatePayload(BaseModel):
     tenant_id: str
