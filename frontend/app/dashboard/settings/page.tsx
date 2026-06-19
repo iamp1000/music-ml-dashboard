@@ -1,31 +1,118 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useThemeStore } from "@/store/useThemeStore";
 import { Settings, Database, Activity, Moon, Palette, Trash2, Power, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+// Use hardcoded backend URL similar to layout
+const BACKEND_URL = "https://music-ml-dashboard.onrender.com";
 
 export default function SettingsPage() {
     const { theme, setTheme } = useThemeStore();
     const [mlEnabled, setMlEnabled] = useState(true);
     const [appSleep, setAppSleep] = useState(false);
     const [saveStatus, setSaveStatus] = useState<string | null>(null);
+    const router = useRouter();
 
-    const handlePurge = () => {
-        setSaveStatus("Purge requested: Firestore listening records deleted.");
+    useEffect(() => {
+        const fetchPreferences = async () => {
+            try {
+                const token = localStorage.getItem("jwt");
+                if (!token) return;
+                const res = await fetch(`${BACKEND_URL}/settings/preferences`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.data) {
+                        setMlEnabled(json.data.ml_enabled);
+                        setAppSleep(json.data.app_sleep);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch preferences:", err);
+            }
+        };
+        fetchPreferences();
+    }, []);
+
+    const toggleMlEnabled = async () => {
+        const newVal = !mlEnabled;
+        setMlEnabled(newVal);
+        const token = localStorage.getItem("jwt");
+        await fetch(`${BACKEND_URL}/settings/preferences`, {
+            method: "POST",
+            headers: { 
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ml_enabled: newVal })
+        });
+        setSaveStatus("ML Telemetry updated.");
+        setTimeout(() => setSaveStatus(null), 2000);
+    };
+
+    const toggleAppSleep = async () => {
+        const newVal = !appSleep;
+        setAppSleep(newVal);
+        const token = localStorage.getItem("jwt");
+        await fetch(`${BACKEND_URL}/settings/preferences`, {
+            method: "POST",
+            headers: { 
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ app_sleep: newVal })
+        });
+        setSaveStatus("App Sleep Mode updated.");
+        setTimeout(() => setSaveStatus(null), 2000);
+    };
+
+    const handlePurge = async () => {
+        if (!confirm("Are you sure you want to permanently delete your listening history? This cannot be undone.")) return;
+        
+        try {
+            const token = localStorage.getItem("jwt");
+            const res = await fetch(`${BACKEND_URL}/settings/history`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setSaveStatus("Purge complete: Firestore listening records deleted.");
+            } else {
+                setSaveStatus("Failed to purge history.");
+            }
+        } catch (err) {
+            console.error("Purge error", err);
+            setSaveStatus("Error purging history.");
+        }
         setTimeout(() => setSaveStatus(null), 3000);
     };
 
-    const handleDisconnect = () => {
+    const handleDisconnect = async () => {
+        if (!confirm("Are you sure you want to disconnect? This will delete your account and all history.")) return;
+        
+        try {
+            const token = localStorage.getItem("jwt");
+            await fetch(`${BACKEND_URL}/settings/disconnect`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+        } catch (err) {
+            console.error("Disconnect error", err);
+        }
+        
         localStorage.removeItem("jwt");
         setSaveStatus("Logged out: Spotify connection revoked.");
         setTimeout(() => {
             setSaveStatus(null);
-            window.location.href = "/";
+            router.push("/");
         }, 1500);
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-20">
             {/* Header */}
             <div>
                 <h2 className="text-2xl font-black tracking-tight text-white uppercase">Settings</h2>
@@ -103,7 +190,7 @@ export default function SettingsPage() {
                                 <p className="text-[10px] text-theme-text-muted mt-1 max-w-md">Continually fetch lyric sentiment (VADER) and audio features to construct predictive mood models.</p>
                             </div>
                             <button 
-                                onClick={() => setMlEnabled(!mlEnabled)}
+                                onClick={toggleMlEnabled}
                                 className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors shrink-0 ${mlEnabled ? 'bg-theme-accent' : 'bg-[#1B2332]'}`}
                             >
                                 <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${mlEnabled ? 'translate-x-5.5' : 'translate-x-1'}`}/>
@@ -119,7 +206,7 @@ export default function SettingsPage() {
                                 <p className="text-[10px] text-theme-text-muted mt-1 max-w-md">Suspend all background Celery polling and websocket live-sync to save memory and API limits.</p>
                             </div>
                             <button 
-                                onClick={() => setAppSleep(!appSleep)}
+                                onClick={toggleAppSleep}
                                 className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors shrink-0 ${appSleep ? 'bg-theme-accent' : 'bg-[#1B2332]'}`}
                             >
                                 <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${appSleep ? 'translate-x-5.5' : 'translate-x-1'}`}/>
@@ -166,7 +253,7 @@ export default function SettingsPage() {
 
                 {/* Save State Notification */}
                 {saveStatus && (
-                    <div className="text-[10px] font-bold text-center text-theme-accent bg-theme-accent/5 border border-theme-accent/20 py-2.5 rounded-xl uppercase tracking-wider animate-pulse">
+                    <div className="text-[10px] font-bold text-center text-theme-accent bg-theme-accent/5 border border-theme-accent/20 py-2.5 rounded-xl uppercase tracking-wider animate-pulse transition-all duration-300">
                         {saveStatus}
                     </div>
                 )}

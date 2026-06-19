@@ -36,6 +36,15 @@ def fetch_recent_history_for_user(self, user_id, refresh_token_cipher, nonce_hex
 
 async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonce_hex):
     try:
+        user_doc = db.collection("users").document(user_id).get()
+        if not user_doc.exists:
+            return f"User {user_id} not found."
+            
+        prefs = user_doc.to_dict().get("preferences", {})
+        if prefs.get("app_sleep", False):
+            return f"User {user_id} is in app sleep mode. Skipping."
+        ml_enabled = prefs.get("ml_enabled", True)
+
         refresh_token = encryptor.decrypt(refresh_token_cipher, nonce_hex)
         client = SpotifyClient(refresh_token=refresh_token)
         
@@ -113,7 +122,9 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
                 energy = feat.get("energy", 0.5)
                 
                 # Analyze lyrics to adjust valence (fallback for "happy sounding but sad lyrics")
-                _, lyrical_valence = await get_lyrics_and_sentiment(track_name, artist_name)
+                lyrical_valence = None
+                if ml_enabled:
+                    _, lyrical_valence = await get_lyrics_and_sentiment(track_name, artist_name)
                 
                 final_valence = base_valence
                 if lyrical_valence is not None:
