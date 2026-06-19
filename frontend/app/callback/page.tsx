@@ -22,7 +22,8 @@ export default function CallbackPage() {
     // Fallback: If Spotify redirected here with a code, forward it to the backend
     const query = window.location.search;
     if (query.includes('code=')) {
-      window.location.href = `http://localhost:8000/auth/callback${query}`;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      window.location.href = `${API_URL}/auth/callback${query}`;
     } else {
       router.push('/dashboard');
     }

@@ -104,7 +104,7 @@ export default function Home() {
             
             <div className="mt-16 overflow-hidden">
               <a 
-                href="http://localhost:8000/auth/login"
+                href={process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/auth/login` : "http://localhost:8000/auth/login"}
                 className="group relative inline-flex items-center justify-center px-8 py-4 text-sm font-bold uppercase tracking-[0.2em] text-white bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 hover:border-zinc-700 transition-all duration-500 overflow-hidden"
               >
                 <div className="absolute inset-0 w-0 bg-gradient-to-r from-rose-600 to-indigo-600 transition-all duration-[400ms] ease-out group-hover:w-full"></div>

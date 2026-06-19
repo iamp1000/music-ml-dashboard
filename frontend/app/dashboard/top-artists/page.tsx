@@ -15,7 +15,8 @@ export default function TopArtistsPage() {
                 const token = localStorage.getItem("jwt");
                 if (!token) return;
                 
-                const res = await fetch("http://localhost:8000/auth/profile", {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                const res = await fetch(`${API_URL}/auth/profile`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (res.ok) {

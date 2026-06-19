@@ -25,7 +25,8 @@ export default function LiveSyncPlayer() {
             try {
                 // For security, the backend should have an endpoint that returns the decrypted access token
                 // If it doesn't exist yet, we'll gracefully fallback to WebSocket only.
-                const res = await fetch("http://localhost:8000/auth/profile", {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                const res = await fetch(`${API_URL}/auth/profile`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (res.ok) {
