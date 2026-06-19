@@ -8,16 +8,38 @@ const EmotionalScatterPlot: React.FC = () => {
   const [data, setData] = useState<{valence: number, arousal: number, size: number}[]>([]);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/stream/live");
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    // Fetch initial history
+    fetch('http://localhost:8000/telemetry/history', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(res => res.json())
+    .then(historyResp => {
+      if (historyResp.status === 'success' && historyResp.data) {
+        const historyData = historyResp.data.map((item: any) => ({
+          valence: (item.valence * 2) - 1,
+          arousal: (item.arousal * 2) - 1,
+          size: 6
+        }));
+        setData(historyData);
+      }
+    })
+    .catch(err => console.error("Error fetching history:", err));
+
+    // Connect WebSocket for live updates
+    const ws = new WebSocket(`ws://localhost:8000/ws/stream/live?token=${token}`);
     ws.onmessage = (event) => {
       const parsed = JSON.parse(event.data);
       if (parsed.metrics) {
-        // Map 0 to 1 range from backend to -1 to 1 for the Circumplex model
         const v = (parsed.metrics.valence * 2) - 1;
         const a = (parsed.metrics.arousal * 2) - 1;
         setData(prev => {
           const newData = [...prev, { valence: v, arousal: a, size: 8 }];
-          return newData.length > 50 ? newData.slice(newData.length - 50) : newData; // Keep last 50 points
+          return newData.length > 50 ? newData.slice(newData.length - 50) : newData;
         });
       }
     };
@@ -96,8 +118,8 @@ const EmotionalScatterPlot: React.FC = () => {
       .attr('color', '#6B7280')
       .call(g => g.select('.domain').attr('stroke', '#4B5563').attr('stroke-width', 2));
 
-    // Scatter points (Live Trajectory)
-    const circles = g.selectAll('circle')
+    // Scatter points
+    g.selectAll('circle')
       .data(data)
       .enter()
       .append('circle')
@@ -105,7 +127,6 @@ const EmotionalScatterPlot: React.FC = () => {
       .attr('cy', d => yScale(d.arousal))
       .attr('r', d => d.size)
       .attr('fill', d => d.valence > 0 ? (d.arousal > 0 ? '#10B981' : '#3B82F6') : (d.arousal > 0 ? '#EF4444' : '#8B5CF6'))
-      // Older points fade out
       .attr('opacity', (_, i) => 0.2 + (0.8 * (i / data.length)))
       .attr('stroke', '#1F2937')
       .attr('stroke-width', 1.5)
@@ -149,7 +170,7 @@ const EmotionalScatterPlot: React.FC = () => {
   return (
     <div className="flex flex-col items-center w-full">
       <h2 className="text-2xl font-bold mb-6 text-gray-100 tracking-wide">
-        Live Circumplex Affect Trajectory
+        Affect Trajectory
       </h2>
       <div className="relative">
         <svg ref={svgRef} className="filter drop-shadow-lg"></svg>
@@ -165,3 +186,4 @@ const EmotionalScatterPlot: React.FC = () => {
 };
 
 export default EmotionalScatterPlot;
+

@@ -1,19 +1,25 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 import os
 import urllib.parse
+import base64
+import httpx
+from database import db
+from security import encryptor, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 @router.get("/login")
 def login_spotify():
     """
     Initiates the Spotify OAuth 2.0 flow.
     """
-    scope = "user-read-playback-state user-read-recently-played user-read-private"
+    scope = "user-read-currently-playing user-read-playback-state user-read-recently-played user-read-private user-read-email user-top-read user-follow-read playlist-read-private user-library-read"
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
         "response_type": "code",
@@ -28,9 +34,9 @@ def login_spotify():
 async def spotify_callback(code: str):
     """
     Handles the Spotify OAuth callback.
-    Exchanges the code for tokens and stores them in memory.
+    Exchanges the code for tokens, fetches user ID, stores in DB, and redirects with JWT.
     """
-    auth_string = f"{SPOTIFY_CLIENT_ID}:{os.getenv('SPOTIFY_CLIENT_SECRET')}"
+    auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
     auth_bytes = auth_string.encode("utf-8")
     auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
 
@@ -44,15 +50,74 @@ async def spotify_callback(code: str):
         "redirect_uri": SPOTIFY_REDIRECT_URI
     }
 
-    from state import global_tokens
-    import httpx
-    
     async with httpx.AsyncClient() as client:
+        # 1. Get Tokens
         response = await client.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
-        if response.status_code == 200:
-            token_data = response.json()
-            global_tokens["access_token"] = token_data.get("access_token")
-            global_tokens["refresh_token"] = token_data.get("refresh_token")
+        if response.status_code != 200:
+            return RedirectResponse(f"{FRONTEND_URL}/?error=token_failed")
+            
+        token_data = response.json()
+        access_token = token_data.get("access_token")
+        refresh_token = token_data.get("refresh_token")
 
-    # Redirect back to the React dashboard
-    return RedirectResponse("http://localhost:3000/dashboard")
+        # 2. Get User Info
+        me_headers = {"Authorization": f"Bearer {access_token}"}
+        me_response = await client.get("https://api.spotify.com/v1/me", headers=me_headers)
+        if me_response.status_code != 200:
+            return RedirectResponse(f"{FRONTEND_URL}/?error=profile_failed")
+            
+        me_data = me_response.json()
+        spotify_id = me_data.get("id")
+        display_name = me_data.get("display_name", "")
+
+    # 3. Encrypt Tokens
+    access_cipher, access_nonce = encryptor.encrypt(access_token)
+    refresh_cipher, refresh_nonce = encryptor.encrypt(refresh_token)
+
+    # 4. Store in Firestore (with fallback if DB doesn't exist yet)
+    try:
+        user_ref = db.collection("users").document(spotify_id)
+        user_ref.set({
+            "display_name": display_name,
+            "access_token_cipher": access_cipher,
+            "access_token_nonce": access_nonce,
+            "refresh_token_cipher": refresh_cipher,
+            "refresh_token_nonce": refresh_nonce,
+        }, merge=True)
+        
+        # Trigger Celery background task to immediately pull recent listening history and profile data
+        from celery_worker import fetch_recent_history_for_user, sync_user_profile_data
+        fetch_recent_history_for_user.delay(spotify_id, refresh_cipher, refresh_nonce)
+        sync_user_profile_data.delay(spotify_id, refresh_cipher, refresh_nonce)
+        print(f"Triggered history and profile sync for {spotify_id}")
+    except Exception as e:
+        print(f"Warning: Could not save to Firestore (has it been created?): {e}")
+
+    # 5. Create JWT for Frontend Session
+    jwt_token = create_access_token({"sub": spotify_id, "name": display_name})
+
+    # Redirect back to the React dashboard with the token in the URL hash
+    # (GitHub pages static export works well with URL hashes for passing tokens)
+    return RedirectResponse(f"{FRONTEND_URL}/callback#token={jwt_token}")
+
+from fastapi import HTTPException
+from security import verify_access_token
+
+@router.get("/profile")
+async def get_user_profile(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not logged in")
+    
+    token = auth_header.split("Bearer ")[1]
+    user_data = verify_access_token(token)
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = user_data.get("sub")
+    doc = db.collection("users").document(user_id).collection("stats").document("current").get()
+    if not doc.exists:
+        return {"status": "pending", "data": None}
+    return {"status": "success", "data": doc.to_dict()}
+
+

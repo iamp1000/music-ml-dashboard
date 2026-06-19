@@ -7,14 +7,23 @@ export default function CallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Extract query string
+    // Check if there is a hash with a token from the backend
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const token = hashParams.get('token');
+      
+      if (token) {
+        localStorage.setItem('auth_token', token);
+        router.push('/dashboard');
+        return;
+      }
+    }
+
+    // Fallback: If Spotify redirected here with a code, forward it to the backend
     const query = window.location.search;
-    
-    // Redirect to backend callback to process the token if code is present
     if (query.includes('code=')) {
       window.location.href = `http://localhost:8000/auth/callback${query}`;
     } else {
-      // Fallback if no code is present
       router.push('/dashboard');
     }
   }, [router]);
@@ -28,3 +37,4 @@ export default function CallbackPage() {
     </div>
   );
 }
+

@@ -1,9 +1,30 @@
 import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import secrets
+import jwt
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# JWT Config
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+def verify_access_token(token: str) -> dict | None:
+    try:
+        decoded_data = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return decoded_data
+    except jwt.PyJWTError:
+        return None
 
 class TokenEncryptor:
     """
@@ -19,7 +40,7 @@ class TokenEncryptor:
 
     def encrypt(self, plaintext: str) -> tuple[str, str]:
         """
-        Encrypts a string and returns the base64 encoded ciphertext and nonce.
+        Encrypts a string and returns the hex encoded ciphertext and nonce.
         """
         nonce = secrets.token_bytes(12) # 96-bit nonce required for GCM
         ciphertext = self.aesgcm.encrypt(nonce, plaintext.encode('utf-8'), None)
@@ -36,3 +57,4 @@ class TokenEncryptor:
 
 # Singleton instance
 encryptor = TokenEncryptor()
+

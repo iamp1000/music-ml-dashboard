@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import CustomCursor from '../components/CustomCursor'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,22 +18,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <div id="custom-cursor" className="custom-cursor"></div>
+        <CustomCursor />
         {children}
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            const cursor = document.getElementById('custom-cursor');
-            document.addEventListener('mousemove', (e) => {
-              cursor.style.left = e.clientX + 'px';
-              cursor.style.top = e.clientY + 'px';
-            });
-            document.querySelectorAll('a, button').forEach(el => {
-              el.addEventListener('mouseenter', () => cursor.classList.add('active'));
-              el.addEventListener('mouseleave', () => cursor.classList.remove('active'));
-            });
-          `
-        }} />
       </body>
     </html>
   )
 }
+

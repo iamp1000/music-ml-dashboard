@@ -82,5 +82,96 @@ class SpotifyClient:
             
         return {"status": "error", "message": f"HTTP {response.status_code}"}
 
+    async def get_recently_played(self, limit=50):
+        """Fetch recently played tracks (up to 50)"""
+        if not self.access_token and self.refresh_token:
+            await self.get_access_token()
+
+        headers = {
+            "Authorization": f"Bearer {self.access_token}"
+        }
+
+        response = await self.client.get(f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}", headers=headers)
+        
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 1))
+            return {"status": "rate_limited", "retry_after": retry_after}
+
+        if response.status_code == 401 and self.refresh_token:
+            await self.get_access_token()
+            return await self.get_recently_played(limit)
+
+        if response.status_code == 200:
+            return {"status": "success", "data": response.json().get("items", [])}
+            
+        return {"status": "error", "message": f"HTTP {response.status_code}"}
+
+    async def get_audio_features(self, track_ids: list):
+        """Fetch audio features for up to 100 tracks at once"""
+        if not track_ids:
+            return {"status": "success", "data": []}
+
+        if not self.access_token and self.refresh_token:
+            await self.get_access_token()
+
+        headers = {
+            "Authorization": f"Bearer {self.access_token}"
+        }
+        
+        ids_string = ",".join(track_ids)
+        response = await self.client.get(f"https://api.spotify.com/v1/audio-features?ids={ids_string}", headers=headers)
+
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 1))
+            return {"status": "rate_limited", "retry_after": retry_after}
+
+        if response.status_code == 401 and self.refresh_token:
+            await self.get_access_token()
+            return await self.get_audio_features(track_ids)
+
+        if response.status_code == 200:
+            return {"status": "success", "data": response.json().get("audio_features", [])}
+            
+        return {"status": "error", "message": f"HTTP {response.status_code}"}
+
+    async def _fetch_endpoint(self, url):
+        """Generic endpoint fetcher with token refresh and rate limit handling"""
+        if not self.access_token and self.refresh_token:
+            await self.get_access_token()
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+        
+        response = await self.client.get(url, headers=headers)
+        
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 1))
+            return {"status": "rate_limited", "retry_after": retry_after}
+            
+        if response.status_code == 401 and self.refresh_token:
+            await self.get_access_token()
+            return await self._fetch_endpoint(url)
+            
+        if response.status_code == 200:
+            return {"status": "success", "data": response.json()}
+            
+        return {"status": "error", "message": f"HTTP {response.status_code}"}
+
+    async def get_profile(self):
+        return await self._fetch_endpoint("https://api.spotify.com/v1/me")
+
+    async def get_top_items(self, item_type="artists", time_range="short_term", limit=50):
+        return await self._fetch_endpoint(f"https://api.spotify.com/v1/me/top/{item_type}?time_range={time_range}&limit={limit}")
+
+    async def get_followed_artists(self, limit=50):
+        return await self._fetch_endpoint(f"https://api.spotify.com/v1/me/following?type=artist&limit={limit}")
+
+    async def get_playlists(self, limit=50):
+        return await self._fetch_endpoint(f"https://api.spotify.com/v1/me/playlists?limit={limit}")
+
+    async def get_saved_albums(self, limit=50):
+        return await self._fetch_endpoint(f"https://api.spotify.com/v1/me/albums?limit={limit}")
+
+    async def get_saved_tracks(self, limit=50):
+        return await self._fetch_endpoint(f"https://api.spotify.com/v1/me/tracks?limit={limit}")
+
     async def close(self):
         await self.client.aclose()

@@ -1,63 +1,38 @@
-import asyncpg
 import os
+import json
+import base64
+import firebase_admin
+from firebase_admin import credentials, firestore
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+db = None
 
-async def init_db():
+def init_db():
     """
-    Initializes PostgreSQL connection and creates TimescaleDB hypertables.
+    Initializes Firebase Cloud Firestore.
     """
-    conn = await asyncpg.connect(DATABASE_URL)
+    global db
+    if not firebase_admin._apps:
+        # Expected to be a base64 encoded string of the Firebase service account JSON
+        firebase_b64 = os.getenv("FIREBASE_JSON_BASE64")
+        if firebase_b64:
+            cert_dict = json.loads(base64.b64decode(firebase_b64).decode('utf-8'))
+            cred = credentials.Certificate(cert_dict)
+        else:
+            # Fallback for local development if the file exists directly
+            cred = credentials.Certificate("firebase-adminsdk.json") if os.path.exists("firebase-adminsdk.json") else None
+        
+        if cred:
+            firebase_admin.initialize_app(cred)
+        else:
+            firebase_admin.initialize_app()
     
-    # Ensure TimescaleDB extension is loaded
-    await conn.execute("CREATE EXTENSION IF NOT EXISTS timescaledb;")
-    
-    # 1. Users Table
-    await conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            spotify_id TEXT PRIMARY KEY,
-            display_name TEXT,
-            access_token_cipher TEXT,
-            access_token_nonce TEXT,
-            refresh_token_cipher TEXT,
-            refresh_token_nonce TEXT,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-    """)
+    db = firestore.client()
+    print("Firebase Firestore initialized successfully.")
 
-    # 2. Telemetry (Heart Rate) Hypertable
-    await conn.execute("""
-        CREATE TABLE IF NOT EXISTS telemetry_heart_rate (
-            time TIMESTAMPTZ NOT NULL,
-            tenant_id TEXT NOT NULL REFERENCES users(spotify_id),
-            bpm FLOAT NOT NULL,
-            motion_context TEXT
-        );
-    """)
-    # Convert to Hypertable partitioned by time
-    try:
-        await conn.execute("SELECT create_hypertable('telemetry_heart_rate', 'time', if_not_exists => TRUE);")
-    except Exception as e:
-        print("Hypertable telemetry_heart_rate may already exist.")
+# Initialize immediately for synchronous access in routers
+init_db()
 
-    # 3. Listening History Hypertable
-    await conn.execute("""
-        CREATE TABLE IF NOT EXISTS listening_history (
-            time TIMESTAMPTZ NOT NULL,
-            tenant_id TEXT NOT NULL REFERENCES users(spotify_id),
-            track_id TEXT NOT NULL,
-            valence FLOAT,
-            arousal FLOAT,
-            energy FLOAT
-        );
-    """)
-    try:
-        await conn.execute("SELECT create_hypertable('listening_history', 'time', if_not_exists => TRUE);")
-    except Exception as e:
-        print("Hypertable listening_history may already exist.")
 
-    await conn.close()
-    print("Database schemas and Hypertables initialized successfully.")
