@@ -10,7 +10,7 @@ import math
 import time
 
 from database import init_db, db
-from routers import auth, telemetry
+from routers import auth, telemetry, settings
 
 # Load environment variables
 load_dotenv()
@@ -26,8 +26,9 @@ async def startup_event():
     except Exception as e:
         print(f"Warning: Database initialization failed. Ensure Firebase is configured. Error: {e}")
 
-app.include_router(auth.router)
-app.include_router(telemetry.router)
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
+app.include_router(settings.router, prefix="/settings", tags=["Settings"])
 
 # Allow CORS for GitHub Pages / Next.js frontend
 app.add_middleware(

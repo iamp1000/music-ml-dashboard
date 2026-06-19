@@ -123,9 +123,29 @@ async def get_user_profile(request: Request):
         raise HTTPException(status_code=401, detail="Invalid token")
         
     user_id = user_data.get("sub")
-    doc = db.collection("users").document(user_id).collection("stats").document("current").get()
-    if not doc.exists:
-        return {"status": "pending", "data": None}
-    return {"status": "success", "data": doc.to_dict()}
+    
+    # Decrypt access token from the root user document
+    user_doc = db.collection("users").document(user_id).get()
+    access_token = None
+    if user_doc.exists:
+        u_dict = user_doc.to_dict()
+        cipher = u_dict.get("access_token_cipher")
+        nonce = u_dict.get("access_token_nonce")
+        if cipher and nonce:
+            try:
+                access_token = encryptor.decrypt(cipher, nonce)
+            except Exception as e:
+                print(f"Decryption error in profile load: {e}")
+
+    stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
+    if not stats_doc.exists:
+        # If stats do not exist yet, we still return pending but can provide access token
+        return {"status": "pending", "data": {"access_token": access_token} if access_token else None}
+        
+    data = stats_doc.to_dict()
+    if access_token:
+        data["access_token"] = access_token
+        
+    return {"status": "success", "data": data}
 
 

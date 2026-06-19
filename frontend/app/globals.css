@@ -12,42 +12,42 @@
 
 @layer base {
   :root {
-    --theme-bg: #1a201b; 
-    --theme-panel: rgba(43, 53, 44, 0.6);
-    --theme-border: rgba(73, 87, 75, 0.5);
-    --theme-text: #e2e8e3;
-    --theme-text-muted: #a3b3a6;
-    --theme-accent: #86A789; 
-    --theme-accent-hover: #739072;
-    --theme-chart-1: #86A789;
-    --theme-chart-2: #D2E3C8;
-    --theme-chart-3: #4F6F52;
+    --theme-bg: #0A0D14; 
+    --theme-panel: #0D111A;
+    --theme-border: rgba(27, 36, 54, 0.6);
+    --theme-text: #F8FAFC;
+    --theme-text-muted: #8293B4;
+    --theme-accent: #22C55E; 
+    --theme-accent-hover: #16A34A;
+    --theme-chart-1: #22C55E;
+    --theme-chart-2: #8B5CF6;
+    --theme-chart-3: #3B82F6;
   }
 
   .theme-olive {
-    --theme-bg: #1a201b;
-    --theme-panel: rgba(43, 53, 44, 0.6);
-    --theme-border: rgba(73, 87, 75, 0.5);
-    --theme-text: #e2e8e3;
-    --theme-text-muted: #a3b3a6;
-    --theme-accent: #86A789;
-    --theme-accent-hover: #739072;
-    --theme-chart-1: #86A789;
-    --theme-chart-2: #D2E3C8;
-    --theme-chart-3: #4F6F52;
+    --theme-bg: #0A0D14;
+    --theme-panel: #0D111A;
+    --theme-border: rgba(27, 36, 54, 0.6);
+    --theme-text: #F8FAFC;
+    --theme-text-muted: #8293B4;
+    --theme-accent: #22C55E;
+    --theme-accent-hover: #16A34A;
+    --theme-chart-1: #22C55E;
+    --theme-chart-2: #8B5CF6;
+    --theme-chart-3: #3B82F6;
   }
 
   .theme-cyan {
-    --theme-bg: #0f172a;
-    --theme-panel: rgba(30, 41, 59, 0.7);
-    --theme-border: rgba(51, 65, 85, 0.5);
-    --theme-text: #f8fafc;
-    --theme-text-muted: #94a3b8;
-    --theme-accent: #06b6d4;
-    --theme-accent-hover: #0891b2;
-    --theme-chart-1: #06b6d4;
-    --theme-chart-2: #3b82f6;
-    --theme-chart-3: #6366f1;
+    --theme-bg: #0A0D14;
+    --theme-panel: #0D111A;
+    --theme-border: rgba(27, 36, 54, 0.6);
+    --theme-text: #F8FAFC;
+    --theme-text-muted: #8293B4;
+    --theme-accent: #06B6D4;
+    --theme-accent-hover: #0891B2;
+    --theme-chart-1: #06B6D4;
+    --theme-chart-2: #3B82F6;
+    --theme-chart-3: #6366F1;
   }
 }
 

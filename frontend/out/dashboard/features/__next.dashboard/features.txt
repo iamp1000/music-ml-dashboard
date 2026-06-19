@@ -1,5 +1,5 @@
 1:"$Sreact.fragment"
-2:I[39756,["/_next/static/chunks/0e2_yqu912c-0.js","/_next/static/chunks/3u8v3tzu3aoox.js"],"default"]
-3:I[37457,["/_next/static/chunks/0e2_yqu912c-0.js","/_next/static/chunks/3u8v3tzu3aoox.js"],"default"]
+2:I[39756,["/music-ml-dashboard/_next/static/chunks/0e2_yqu912c-0.js","/music-ml-dashboard/_next/static/chunks/3u8v3tzu3aoox.js"],"default"]
+3:I[37457,["/music-ml-dashboard/_next/static/chunks/0e2_yqu912c-0.js","/music-ml-dashboard/_next/static/chunks/3u8v3tzu3aoox.js"],"default"]
 4:[]
-0:{"rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"isPartial":false,"staleTime":300,"varyParams":"$W4","buildId":"7PmN81RQ00ieVcnSasIYM"}
+0:{"rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"isPartial":false,"staleTime":300,"varyParams":"$W4","buildId":"kNxyC5HkvmzIZOe5-33gc"}
