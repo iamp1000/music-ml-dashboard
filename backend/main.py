@@ -44,6 +44,7 @@ from state import global_tokens
 from spotify_client import SpotifyClient
 from security import verify_access_token, encryptor
 from database import db
+from lyric_analyzer import get_lyrics_and_sentiment
 
 @app.websocket("/ws/stream/live")
 async def websocket_endpoint(websocket: WebSocket, token: str = None):
@@ -81,12 +82,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
             valence = 0.0
             arousal = 0.0
             energy = 0.0
+            lyrics_text = None
+            lyrical_valence = 0.0
 
             if spotify_client:
                 try:
                     current_track = await spotify_client.get_currently_playing()
                     if current_track and current_track.get("status") == "playing":
-                        track_name = f"{current_track.get('artist')} - {current_track.get('track')}"
+                        artist_name = current_track.get('artist')
+                        track_title = current_track.get('track')
+                        track_name = f"{artist_name} - {track_title}"
 
                         # Try to fetch real audio features for live inference
                         feat_resp = await spotify_client.get_audio_features([current_track["id"]])
@@ -96,6 +101,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                                 valence = feat.get("valence", 0.0)
                                 energy = feat.get("energy", 0.0)
                                 arousal = energy
+                                
+                        # Try to fetch lyrics
+                        lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_title, artist_name)
+                        if lyr_val is not None:
+                            lyrical_valence = lyr_val
+                        else:
+                            lyrical_valence = 1.0 - valence if valence else 0.0
+
                     elif current_track and current_track.get("status") == "rate_limited":
                         print(f"Rate limited on Live Stream, backing off: {current_track.get('retry_after')}")
                         await asyncio.sleep(current_track.get("retry_after", 5))
@@ -115,7 +128,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                 },
                 "dissonance": {
                     "acoustic_valence": valence,
-                    "lyrical_valence": 1.0 - valence if valence else 0.0
+                    "lyrical_valence": lyrical_valence,
+                    "lyrics": lyrics_text[:100] + "..." if lyrics_text else "No lyrics found for live track."
                 }
             }
             await websocket.send_json(data)

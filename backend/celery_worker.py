@@ -117,28 +117,13 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
 
             # Insert into Firestore
             for played_at, track_id, track_name, artist_name, doc_ref in new_tracks:
-                feat = offline_features.get(track_id, {})
-                base_valence = feat.get("valence", 0.5)
-                energy = feat.get("energy", 0.5)
-                
-                # Analyze lyrics to adjust valence (fallback for "happy sounding but sad lyrics")
-                lyrical_valence = None
-                if ml_enabled:
-                    _, lyrical_valence = await get_lyrics_and_sentiment(track_name, artist_name)
-                
-                final_valence = base_valence
-                if lyrical_valence is not None:
-                    final_valence = (base_valence + lyrical_valence) / 2.0
-                
                 doc_ref.set({
                     "time": played_at,
                     "tenant_id": user_id,
                     "track_id": track_id,
                     "track_name": track_name,
                     "artist_name": artist_name,
-                    "valence": float(final_valence),
-                    "arousal": float(energy),
-                    "energy": float(energy)
+                    "ml_analyzed": False,  # Stage 1: Batch LLM processing will pick this up
                 })
 
             await client.close()
@@ -251,12 +236,69 @@ async def async_sync_profile(task_instance, user_id, refresh_token_cipher, nonce
     except Exception as exc:
         raise task_instance.retry(exc=exc, countdown=30)
 
+from llm_telemetry import extract_semantic_telemetry
+import httpx
+
+@celery_app.task(bind=True, max_retries=3)
+def process_unanalyzed_tracks(self):
+    """
+    Stage 1: Batch processing. Scans for tracks with ml_analyzed: False,
+    fetches lyrics, gets LLM telemetry, and updates the database.
+    """
+    return asyncio.run(async_process_unanalyzed(self))
+
+async def async_process_unanalyzed(task_instance):
+    # Fetch up to 10 un-analyzed tracks
+    try:
+        unanalyzed_ref = db.collection("listening_history").where("ml_analyzed", "==", False).limit(10).stream()
+        tracks = list(unanalyzed_ref)
+        
+        if not tracks:
+            return "No unanalyzed tracks."
+
+        updated_count = 0
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for doc in tracks:
+                data = doc.to_dict()
+                track_name = data.get("track_name", "")
+                artist_name = data.get("artist_name", "")
+                
+                # 1. Fetch Lyrics (Mocked to LRCLIB or simple fetch here, we will just use a placeholder for now since get_lyrics_and_sentiment is heavy)
+                lyrics = ""
+                try:
+                    resp = await client.get(f"https://lrclib.net/api/search?track_name={track_name}&artist_name={artist_name}")
+                    if resp.status_code == 200 and len(resp.json()) > 0:
+                        lyrics = resp.json()[0].get("syncedLyrics") or resp.json()[0].get("plainLyrics", "")
+                except:
+                    pass
+                
+                # 2. Extract LLM Telemetry
+                semantic_data = await extract_semantic_telemetry(track_name, artist_name, lyrics)
+                
+                # 3. Update Firestore (turning strings into dense vectors)
+                doc.reference.update({
+                    "valence": semantic_data.valence,
+                    "energy": semantic_data.energy,
+                    "danceability": semantic_data.danceability,
+                    "mood_category": semantic_data.mood_category,
+                    "ml_analyzed": True
+                })
+                updated_count += 1
+                
+        return f"Batch processed {updated_count} tracks via LLM pipeline."
+    except Exception as exc:
+        raise task_instance.retry(exc=exc, countdown=30)
+
 # Celery Beat Schedule
 celery_app.conf.beat_schedule = {
     'poll-all-history-every-2-minutes': {
         'task': 'celery_worker.master_fetch_all_users',
         'schedule': 120.0, # 2 minutes
     },
+    'process-llm-batch-every-minute': {
+        'task': 'celery_worker.process_unanalyzed_tracks',
+        'schedule': 60.0, # 1 minute
+    }
 }
 
 
