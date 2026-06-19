@@ -12,8 +12,20 @@ export default function UserProfilePage() {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
+                // First check if a new token was passed in the URL (from Spotify redirect)
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlToken = urlParams.get('token');
+                if (urlToken) {
+                    localStorage.setItem("jwt", urlToken);
+                    // Clean up the URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+
                 const token = localStorage.getItem("jwt");
-                if (!token) return;
+                if (!token) {
+                    console.error("No token found!");
+                    return;
+                }
                 
                 const fetchOnce = async () => {
                     const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
