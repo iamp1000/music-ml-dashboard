@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "node -e \"const fs = require('fs'); const path = require('path'); const deleteTxt = (dir) => { if (!fs.existsSync(dir)) return; fs.readdirSync(dir).forEach(file => { const p = path.join(dir, file); if (fs.statSync(p).isDirectory()) { deleteTxt(p); } else if (p.endsWith('.txt')) { fs.unlinkSync(p); } }); }; deleteTxt('out');\"",
+    "postbuild": "node -e \"const fs = require('fs'); fs.writeFileSync('out/.nojekyll', '');\"",
     "start": "next start",
     "lint": "next lint"
   },

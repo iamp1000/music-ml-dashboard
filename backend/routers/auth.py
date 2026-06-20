@@ -140,9 +140,10 @@ async def get_user_profile(request: Request):
     stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
     if not stats_doc.exists:
         # If stats do not exist yet, we still return pending but can provide access token
-        return {"status": "pending", "data": {"access_token": access_token, "display_name": display_name} if access_token or display_name else None}
+        return {"status": "pending", "data": {"id": user_id, "access_token": access_token, "display_name": display_name} if access_token or display_name else {"id": user_id}}
         
     data = stats_doc.to_dict()
+    data["id"] = user_id
     if access_token:
         data["access_token"] = access_token
     if display_name:
