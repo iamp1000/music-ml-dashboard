@@ -144,6 +144,12 @@ async def save_track_to_db(user_id, state, client):
     except Exception as e:
         print(f"Failed to fetch features for background save: {e}")
 
+    lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
+    if lyr_val is not None:
+        lyrical_valence = lyr_val
+    else:
+        lyrical_valence = 1.0 - valence if valence else 0.0
+
     # Heuristic mood
     mood = "Unknown"
     if valence > 0.5 and energy > 0.5:
@@ -172,6 +178,9 @@ async def save_track_to_db(user_id, state, client):
             "valence": valence,
             "energy": energy,
             "mood_category": mood,
+            "acoustic_valence": valence,
+            "lyrical_valence": lyrical_valence,
+            "dissonance_score": abs(valence - lyrical_valence),
             "ml_analyzed": True
         })
         print(f"Background recorded track for {user_id}: {track_name}")
@@ -216,6 +225,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         started_at = None
         last_valence = 0.5
         last_energy = 0.5
+        last_lyrical_valence = 0.5
         last_mood = "Unknown"
         
         while True:
@@ -279,6 +289,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                                     "valence": last_valence,
                                     "energy": last_energy,
                                     "mood_category": last_mood,
+                                    "acoustic_valence": last_valence,
+                                    "lyrical_valence": last_lyrical_valence,
+                                    "dissonance_score": abs(last_valence - last_lyrical_valence),
                                     "ml_analyzed": True
                                 })
                             
@@ -290,6 +303,21 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             max_progress_ms = progress_ms
                             last_valence = valence
                             last_energy = energy
+                            
+                            # Try to fetch real audio features for live inference
+                            feat_resp = await spotify_client.get_audio_features([track_id])
+                            if feat_resp.get("status") == "success" and feat_resp.get("data"):
+                                feat = feat_resp["data"][0]
+                                if feat:
+                                    last_valence = feat.get("valence", 0.0)
+                                    last_energy = feat.get("energy", 0.0)
+
+                            # Fetch lyrics for the new track
+                            lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
+                            if lyr_val is not None:
+                                last_lyrical_valence = lyr_val
+                            else:
+                                last_lyrical_valence = 1.0 - last_valence if last_valence else 0.0
                             
                             # Calculate mood heuristically
                             if last_valence > 0.5 and last_energy > 0.5:
