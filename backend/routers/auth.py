@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
+from typing import Optional
 import os
 import urllib.parse
 import base64
@@ -35,7 +36,6 @@ def login_spotify(source: Optional[str] = None):
     url = f"https://accounts.spotify.com/authorize?{urllib.parse.urlencode(params)}"
     return RedirectResponse(url)
 
-from typing import Optional
 
 @router.get("/callback")
 async def spotify_callback(code: Optional[str] = None, error: Optional[str] = None, state: Optional[str] = None):
