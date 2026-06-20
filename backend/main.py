@@ -155,14 +155,20 @@ async def save_track_to_db(user_id, state, client):
     else:
         mood = "Deep Focus"
 
+    listen_weight = 1.0 if (state["max_progress_ms"] >= state["duration_ms"] * 0.95 or state["duration_ms"] - state["max_progress_ms"] < 30000) else 0.0
+    listen_type = "complete" if listen_weight > 0 else "skip"
+    
     try:
-        db.collection("users").document(user_id).collection("telemetry_history").add({
+        db.collection("listening_history").add({
+            "time": datetime.now(timezone.utc).isoformat(),
+            "tenant_id": user_id,
             "track_id": track_id,
             "track_name": track_name,
             "artist_name": artist_name,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "play_duration_ms": state["max_progress_ms"],
-            "total_duration_ms": state["duration_ms"],
+            "duration_ms": state["duration_ms"],
+            "played_ms": state["max_progress_ms"],
+            "listen_type": listen_type,
+            "listen_weight": listen_weight,
             "valence": valence,
             "energy": energy,
             "mood_category": mood,
