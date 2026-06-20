@@ -154,21 +154,31 @@ export default function HistoryPage() {
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="text-xs text-gray-400">Context:</span>
-                                            <select 
+                                            <input
+                                                list={`context-options-${session.id}`}
                                                 value={session.context}
-                                                onChange={(e) => updateSessionContext(session, e.target.value)}
-                                                className="bg-[#0D111A] text-white border border-[#1B2332] rounded px-3 py-1.5 text-xs outline-none focus:border-theme-accent transition-colors"
+                                                onChange={(e) => {
+                                                    // Only update UI state locally first
+                                                    const newSessions = [...sessions];
+                                                    const sess = newSessions.find(s => s.id === session.id);
+                                                    if (sess) sess.context = e.target.value;
+                                                    setSessions(newSessions);
+                                                }}
+                                                onBlur={(e) => updateSessionContext(session, e.target.value)}
+                                                className="bg-[#0D111A] text-white border border-[#1B2332] rounded px-3 py-1.5 text-xs outline-none focus:border-theme-accent transition-colors w-32"
                                                 disabled={updatingId === session.id}
-                                            >
-                                                <option value="None">None</option>
-                                                <option value="Gym">Gym</option>
-                                                <option value="Driving">Driving</option>
-                                                <option value="Study">Study</option>
-                                                <option value="Chill">Chill</option>
-                                                <option value="Party">Party</option>
-                                                <option value="Work">Work</option>
-                                                <option value="Commute">Commute</option>
-                                            </select>
+                                                placeholder="Custom tag..."
+                                            />
+                                            <datalist id={`context-options-${session.id}`}>
+                                                <option value="None" />
+                                                <option value="Gym" />
+                                                <option value="Driving" />
+                                                <option value="Study" />
+                                                <option value="Chill" />
+                                                <option value="Party" />
+                                                <option value="Work" />
+                                                <option value="Commute" />
+                                            </datalist>
                                             {updatingId === session.id && <Loader2 className="w-4 h-4 animate-spin text-theme-accent" />}
                                         </div>
                                     </div>

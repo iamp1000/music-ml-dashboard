@@ -51,7 +51,37 @@ export default function VibeSelector() {
                         {vibe}
                     </button>
                 ))}
+                
+                <form 
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.currentTarget);
+                        const custom = formData.get("customVibe")?.toString().trim();
+                        if (custom) updateVibe(custom);
+                    }}
+                    className="flex items-center gap-2 ml-auto"
+                >
+                    <input 
+                        name="customVibe"
+                        type="text"
+                        placeholder="Custom context..."
+                        className="bg-[#131823] border border-[#1B2332] text-xs px-3 py-1.5 rounded-full text-white outline-none focus:border-theme-accent transition-colors w-32"
+                        disabled={isUpdating}
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={isUpdating}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-full bg-[#1B2332] text-white hover:bg-theme-accent hover:text-black transition-colors"
+                    >
+                        Set
+                    </button>
+                </form>
             </div>
+            {currentVibe && !VIBES.includes(currentVibe) && currentVibe !== "None" && (
+                <div className="mt-3 text-xs text-theme-accent">
+                    Active Custom Context: <span className="font-bold">{currentVibe}</span>
+                </div>
+            )}
         </div>
     );
 }
