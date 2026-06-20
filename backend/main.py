@@ -49,12 +49,51 @@ app.add_middleware(
 class ContextUpdate(BaseModel):
     context: str
 
+from typing import List
+class SessionContextUpdate(BaseModel):
+    document_ids: List[str]
+    context: str
+
 @app.put("/api/context")
 async def update_context(request: ContextUpdate, token: str):
     user_data = verify_access_token(token)
     user_id = user_data.get("sub")
     db.collection("users").document(user_id).set({"current_context": request.context}, merge=True)
     return {"status": "success"}
+
+@app.put("/api/history/session/context")
+async def update_session_context(request: SessionContextUpdate, token: str):
+    user_data = verify_access_token(token)
+    user_id = user_data.get("sub")
+    
+    # Process each document ID
+    for doc_id in request.document_ids:
+        doc_ref = db.collection("listening_history").document(doc_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            continue
+            
+        data = doc.to_dict()
+        if data.get("tenant_id") != user_id:
+            continue # Unauthorized or wrong user
+            
+        # Re-run DeepSeek AI
+        track_name = data.get("track_name", "Unknown")
+        artist_name = data.get("artist_name", "Unknown")
+        valence = data.get("valence", 0.5)
+        energy = data.get("energy", 0.5)
+        
+        mood, ai_analysis, time_fit = await run_deepseek_analysis(track_name, artist_name, valence, energy, request.context)
+        
+        # Update the document
+        doc_ref.update({
+            "context": request.context,
+            "ai_mood": mood,
+            "ai_analysis": ai_analysis,
+            "time_of_day_fit": time_fit
+        })
+        
+    return {"status": "success", "message": f"Updated {len(request.document_ids)} tracks."}
 
 @app.get("/api/history")
 async def get_history(token: str, limit: int = 50):
@@ -158,34 +197,7 @@ async def background_polling_loop():
             
         await asyncio.sleep(20)
 
-async def save_track_to_db(user_id, state, client):
-    """Helper to analyze and save a track when it's done playing."""
-    track_id = state["last_track_id"]
-    track_name = state["track_name"]
-    artist_name = state["artist_name"]
-    
-    valence, energy = 0.5, 0.5
-    try:
-        feat_resp = await client.get_audio_features([track_id])
-        if feat_resp.get("status") == "success" and feat_resp.get("data"):
-            feat = feat_resp["data"][0]
-            if feat:
-                valence = feat.get("valence", 0.5)
-                energy = feat.get("energy", 0.5)
-    except Exception as e:
-        print(f"Failed to fetch features for background save: {e}")
-
-    lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
-    if lyr_val is not None:
-        lyrical_valence = lyr_val
-    else:
-        lyrical_valence = 1.0 - valence if valence else 0.5
-
-    # Retrieve user's current context
-    user_doc = db.collection("users").document(user_id).get()
-    current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
-
-    # DeepSeek AI Integration
+async def run_deepseek_analysis(track_name, artist_name, valence, energy, current_context):
     ai_mood = "Unknown"
     ai_analysis = "AI analysis unavailable."
     time_of_day_fit = "Anytime"
@@ -232,6 +244,38 @@ async def save_track_to_db(user_id, state, client):
             mood = "Depressive Spiral"
         else:
             mood = "Deep Focus"
+            
+    return mood, ai_analysis, time_of_day_fit
+
+async def save_track_to_db(user_id, state, client):
+    """Helper to analyze and save a track when it's done playing."""
+    track_id = state["last_track_id"]
+    track_name = state["track_name"]
+    artist_name = state["artist_name"]
+    
+    valence, energy = 0.5, 0.5
+    try:
+        feat_resp = await client.get_audio_features([track_id])
+        if feat_resp.get("status") == "success" and feat_resp.get("data"):
+            feat = feat_resp["data"][0]
+            if feat:
+                valence = feat.get("valence", 0.5)
+                energy = feat.get("energy", 0.5)
+    except Exception as e:
+        print(f"Failed to fetch features for background save: {e}")
+
+    lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
+    if lyr_val is not None:
+        lyrical_valence = lyr_val
+    else:
+        lyrical_valence = 1.0 - valence if valence else 0.5
+
+    # Retrieve user's current context
+    user_doc = db.collection("users").document(user_id).get()
+    current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
+
+    # Run DeepSeek AI Integration
+    mood, ai_analysis, time_of_day_fit = await run_deepseek_analysis(track_name, artist_name, valence, energy, current_context)
 
     listen_weight = 1.0 if (state["max_progress_ms"] >= state["duration_ms"] * 0.95 or state["duration_ms"] - state["max_progress_ms"] < 30000) else 0.0
     listen_type = "complete" if listen_weight > 0 else "skip"
