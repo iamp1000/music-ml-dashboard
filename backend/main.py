@@ -500,10 +500,11 @@ You are a high-performance audio telemetry feature engineering engine. Your task
 ### ACTIVE USER PROFILE CONTEXT: {current_context}
 
 ### COGNITIVE INSTRUCTIONS:
-1. Internally evaluate all 50 raw acoustic features (danceability, acousticness, tempo, instrumentalness, mode, etc.) alongside the lyric themes to determine how the track behaves emotionally, rhythmically, and structurally. Do NOT query external APIs, use your vast training data to estimate these features.
-2. Calculate an absolute "mood_vector" representing the spatial position of this song on a 3-dimensional coordinate grid: [Positivity, Intensity, Cognitive Load]. Scale each float from 0.0 to 1.0.
-3. Compare the song's profile against the Active User Profile Context. Determine if it enhances the state, conflicts with it, or is completely isolated to it.
-4. Compute an "incremental_weight" modifier between -20.0 and +20.0 based on how perfectly it snaps into the active user context profile.
+1. Identify each song and instantly recall its lyrics directly from your own pre-trained knowledge base. Do NOT expect external lyrics to be provided.
+2. Internally evaluate the song's acoustic features (danceability, tempo, etc.) alongside your recalled lyrical themes to determine how the track behaves emotionally, rhythmically, and structurally.
+3. Calculate an absolute "mood_vector" representing the spatial position of this song on a 3-dimensional coordinate grid: [Positivity, Intensity, Cognitive Load]. Scale each float from 0.0 to 1.0.
+4. Compare the song's profile against the Active User Profile Context. Determine if it enhances the state, conflicts with it, or is completely isolated to it.
+5. Compute an "incremental_weight" modifier between -20.0 and +20.0 based on how perfectly it snaps into the active user context profile.
 
 ### INPUT DATA TO EVALUATE:
 {prompt_body}
