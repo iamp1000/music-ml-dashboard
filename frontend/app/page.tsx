@@ -80,7 +80,7 @@ export default function Home() {
         </div>
 
         {/* Hero Background Canvas (Minimal Grain) */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')] pointer-events-none mix-blend-difference"></div>
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-difference" style={{ backgroundImage: `url('${process.env.NODE_ENV === "production" ? "/music-ml-dashboard" : ""}/noise.svg')` }}></div>
 
         {/* Main Content */}
         <div ref={contentRef} className="z-10 relative flex flex-col items-center justify-center w-full max-w-7xl px-6 min-h-screen">
