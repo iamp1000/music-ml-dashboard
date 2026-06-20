@@ -83,6 +83,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         last_duration_ms = 0
         max_progress_ms = 0
         started_at = None
+        last_valence = 0.5
+        last_energy = 0.5
+        last_mood = "Unknown"
         
         while True:
             # Fetch real live track data
@@ -97,12 +100,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
             if spotify_client:
                 try:
                     current_track = await spotify_client.get_currently_playing()
-                    if current_track and current_track.get("item"):
-                        track_id = current_track["item"]["id"]
-                        track_name = current_track["item"]["name"]
-                        artist_name = current_track["item"]["artists"][0]["name"]
+                    if current_track and current_track.get("status") == "playing":
+                        track_id = current_track["id"]
+                        track_name = current_track["track"]
+                        artist_name = current_track["artist"]
                         progress_ms = current_track.get("progress_ms", 0)
-                        duration_ms = current_track["item"].get("duration_ms", 1)
+                        duration_ms = current_track.get("duration_ms", 1)
                         
                         # Track changing logic
                         if track_id != last_track_id:
@@ -142,7 +145,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                                     "played_ms": max_progress_ms,
                                     "listen_type": listen_type,
                                     "listen_weight": weight,
-                                    "ml_analyzed": False
+                                    "valence": last_valence,
+                                    "energy": last_energy,
+                                    "mood_category": last_mood,
+                                    "ml_analyzed": True
                                 })
                             
                             # Initialize new track state
@@ -151,13 +157,26 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             last_artist_name = artist_name
                             last_duration_ms = duration_ms
                             max_progress_ms = progress_ms
+                            last_valence = valence
+                            last_energy = energy
+                            
+                            # Calculate mood heuristically
+                            if last_valence > 0.5 and last_energy > 0.5:
+                                last_mood = "Euphoric"
+                            elif last_valence < 0.5 and last_energy > 0.5:
+                                last_mood = "Aggressive"
+                            elif last_valence < 0.5 and last_energy < 0.5:
+                                last_mood = "Depressive Spiral"
+                            else:
+                                last_mood = "Deep Focus"
+                                
                             started_at = datetime.now(timezone.utc).isoformat()
                         else:
                             # Still same track
                             max_progress_ms = max(max_progress_ms, progress_ms)
                         
                         # Try to fetch real audio features for live inference
-                        feat_resp = await spotify_client.get_audio_features([current_track["item"]["id"]])
+                        feat_resp = await spotify_client.get_audio_features([track_id])
                         if feat_resp.get("status") == "success" and feat_resp.get("data"):
                             feat = feat_resp["data"][0]
                             if feat:
