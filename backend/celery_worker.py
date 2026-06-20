@@ -1,4 +1,5 @@
 import os
+import math
 from celery import Celery
 import asyncio
 from datetime import datetime, timezone
@@ -67,6 +68,7 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
                 track_id = item["track"]["id"]
                 track_name = item["track"]["name"]
                 artist_name = item["track"]["artists"][0]["name"]
+                duration_ms = item["track"].get("duration_ms", 0)
                 
                 # Firestore Composite Document ID to avoid duplicates
                 doc_id = f"{user_id}_{played_at}_{track_id}".replace(":", "_").replace(".", "_")
@@ -75,7 +77,7 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
                 # We can skip a read by using doc_ref.get() or just overwriting. 
                 # But to avoid unnecessary audio_features calls, let's check existence:
                 if not doc_ref.get().exists:
-                    new_tracks.append((played_at, track_id, track_name, artist_name, doc_ref))
+                    new_tracks.append((played_at, track_id, track_name, artist_name, duration_ms, doc_ref))
 
             if not new_tracks:
                 await client.close()
@@ -116,13 +118,14 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
                             offline_features[feature["id"]] = feature
 
             # Insert into Firestore
-            for played_at, track_id, track_name, artist_name, doc_ref in new_tracks:
+            for played_at, track_id, track_name, artist_name, duration_ms, doc_ref in new_tracks:
                 doc_ref.set({
                     "time": played_at,
                     "tenant_id": user_id,
                     "track_id": track_id,
                     "track_name": track_name,
                     "artist_name": artist_name,
+                    "duration_ms": duration_ms,
                     "ml_analyzed": False,  # Stage 1: Batch LLM processing will pick this up
                 })
 
@@ -257,13 +260,35 @@ async def async_process_unanalyzed(task_instance):
             return "No unanalyzed tracks."
 
         updated_count = 0
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        tenant_keys = {}
+        tenant_baselines = {}
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
             for doc in tracks:
                 data = doc.to_dict()
                 track_name = data.get("track_name", "")
                 artist_name = data.get("artist_name", "")
+                tenant_id = data.get("tenant_id")
                 
-                # 1. Fetch Lyrics (Mocked to LRCLIB or simple fetch here, we will just use a placeholder for now since get_lyrics_and_sentiment is heavy)
+                if not tenant_id:
+                    continue
+                    
+                # Fetch API Key if we haven't already for this tenant
+                if tenant_id not in tenant_keys:
+                    settings_ref = db.collection("users").document(tenant_id).collection("settings").document("ml_config")
+                    settings_doc = settings_ref.get()
+                    if settings_doc.exists:
+                        tenant_keys[tenant_id] = settings_doc.to_dict().get("deepseek_api_key")
+                    else:
+                        tenant_keys[tenant_id] = None
+                        
+                api_key = tenant_keys[tenant_id]
+                
+                # If no API key, we skip analyzing but leave ml_analyzed as False so it can be picked up later
+                if not api_key:
+                    continue
+                
+                # 1. Fetch Lyrics 
                 lyrics = ""
                 try:
                     resp = await client.get(f"https://lrclib.net/api/search?track_name={track_name}&artist_name={artist_name}")
@@ -273,14 +298,96 @@ async def async_process_unanalyzed(task_instance):
                     pass
                 
                 # 2. Extract LLM Telemetry
-                semantic_data = await extract_semantic_telemetry(track_name, artist_name, lyrics)
+                semantic_data = await extract_semantic_telemetry(track_name, artist_name, lyrics, api_key=api_key)
                 
-                # 3. Update Firestore (turning strings into dense vectors)
+                # 3. Factor AI Telemetry into the Song Weight
+                base_weight = data.get("listen_weight", 1.0)
+                
+                # We boost the weight if the song has high replay value and emotional complexity
+                ai_boost = 0.0
+                if semantic_data.replay_value > 0.8:
+                    ai_boost += 0.2
+                elif semantic_data.replay_value < 0.3:
+                    ai_boost -= 0.1
+                    
+                if semantic_data.emotional_complexity > 0.8:
+                    ai_boost += 0.15
+                    
+                if semantic_data.energy_weight > 0.9:
+                    ai_boost += 0.1
+                    
+                # High-dimensional baseline mood vector calculation
+                if tenant_id not in tenant_baselines:
+                    recent_docs = db.collection("listening_history").where("tenant_id", "==", tenant_id).where("ml_analyzed", "==", True).order_by("time", direction="DESCENDING").limit(10).stream()
+                    vectors = []
+                    for r_doc in list(recent_docs):
+                        r = r_doc.to_dict()
+                        # We exclude strongly tagged sessions from the baseline centroid to prevent pollution
+                        if r.get("context_tag", "None") == "None" and all(k in r for k in ["valence", "energy", "danceability", "energy_weight", "emotional_complexity", "replay_value"]):
+                            vectors.append([
+                                r["valence"], r["energy"], r["danceability"], r["energy_weight"], r["emotional_complexity"], r["replay_value"]
+                            ])
+                    
+                    if vectors:
+                        centroid = [sum(col) / len(col) for col in zip(*vectors)]
+                        tenant_baselines[tenant_id] = centroid
+                    else:
+                        tenant_baselines[tenant_id] = None
+                        
+                baseline = tenant_baselines[tenant_id]
+                is_contrasting = False
+                context_tag = data.get("context_tag", "None")
+                
+                if baseline:
+                    current_vec = [
+                        semantic_data.valence, semantic_data.energy, semantic_data.danceability, 
+                        semantic_data.energy_weight, semantic_data.emotional_complexity, semantic_data.replay_value
+                    ]
+                    dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(current_vec, baseline)))
+                    # Max dist in 6D [0,1] space is ~2.45.
+                    if dist < 0.4:
+                        ai_boost += 0.25 # Huge boost for perfectly matching current assumed mood!
+                    elif dist < 0.7:
+                        ai_boost += 0.1
+                    elif dist > 1.5:
+                        is_contrasting = True
+                    
+                # Calculate final adjusted weight
+                # If base_weight is 0 (a skip), we keep it 0.0 because they didn't listen to it!
+                if base_weight > 0.0:
+                    final_weight = max(0.1, base_weight + ai_boost)
+                    # If it's a tagged session (e.g., Gym, Focus), it's a CONTEXTUAL shift, NOT a psychological dissonance shift.
+                    # We dampen the extreme shift and do NOT flip the weight.
+                    if is_contrasting:
+                        if context_tag != "None":
+                            # Dampen the effect, don't flip it
+                            final_weight = final_weight * 0.5 
+                        else:
+                            # True cognitive dissonance (unexplained massive mood shift)
+                            final_weight = -final_weight 
+                else:
+                    final_weight = 0.0
+                
+                # 4. Update Firestore (turning strings into dense vectors)
                 doc.reference.update({
                     "valence": semantic_data.valence,
                     "energy": semantic_data.energy,
                     "danceability": semantic_data.danceability,
                     "mood_category": semantic_data.mood_category,
+                    "lyrics_analysis": semantic_data.lyrics_analysis,
+                    "energy_weight": semantic_data.energy_weight,
+                    "bpm_estimate": semantic_data.bpm_estimate,
+                    "song_genre_estimate": semantic_data.song_genre_estimate,
+                    "acoustic_profile": semantic_data.acoustic_profile,
+                    "emotional_complexity": semantic_data.emotional_complexity,
+                    "lyrical_theme": semantic_data.lyrical_theme,
+                    "narrative_arc": semantic_data.narrative_arc,
+                    "instrumental_density": semantic_data.instrumental_density,
+                    "vocal_intensity": semantic_data.vocal_intensity,
+                    "cultural_context": semantic_data.cultural_context,
+                    "replay_value": semantic_data.replay_value,
+                    "time_of_day_fit": semantic_data.time_of_day_fit,
+                    "listen_weight": round(final_weight, 2), # Overwrite with AI-adjusted weight
                     "ml_analyzed": True
                 })
                 updated_count += 1

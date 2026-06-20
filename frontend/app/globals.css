@@ -49,6 +49,28 @@
     --theme-chart-2: #3B82F6;
     --theme-chart-3: #6366F1;
   }
+
+  .theme-glass {
+    --theme-bg: transparent;
+    --theme-panel: rgba(255, 255, 255, 0.03);
+    --theme-border: rgba(255, 255, 255, 0.08);
+    --theme-text: #FFFFFF;
+    --theme-text-muted: rgba(255, 255, 255, 0.6);
+    --theme-accent: #E2E8F0;
+    --theme-accent-hover: #FFFFFF;
+    --theme-chart-1: #FFFFFF;
+    --theme-chart-2: rgba(255, 255, 255, 0.7);
+    --theme-chart-3: rgba(255, 255, 255, 0.4);
+  }
+
+  .theme-glass .bg-\[\#0A0D14\],
+  .theme-glass .bg-\[\#0D111A\],
+  .theme-glass .bg-\[\#070A0F\],
+  .theme-glass .bg-\[\#06080C\] {
+      background-color: var(--theme-panel) !important;
+      backdrop-filter: blur(24px) saturate(1.5) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(1.5) !important;
+  }
 }
 
 html.lenis {

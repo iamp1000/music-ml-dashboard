@@ -41,10 +41,36 @@ export default function LiveSyncPlayer() {
                 if (data && data.data?.access_token) {
                     setSpotifyToken(data.data.access_token);
                     initializePlayer(data.data.access_token);
+                    if (data.data.id) {
+                        initializeWebsocket(data.data.id);
+                    }
                 }
             } catch (err) {
                 console.error("Failed to fetch token for player", err);
             }
+        };
+
+        const initializeWebsocket = (userId: string) => {
+            const ws = new WebSocket(`wss://music-ml-dashboard.onrender.com/telemetry/stream?user_id=${userId}`);
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data && data.track && data.track !== "No track playing") {
+                        setTrackName(data.track);
+                        setArtistName(data.artist || "Unknown Artist");
+                        setIsActive(true);
+                    } else if (data && data.track === "No track playing") {
+                        setTrackName("No track playing");
+                        setArtistName("");
+                        setIsActive(false);
+                    }
+                } catch (e) {
+                    console.error("WS parse error", e);
+                }
+            };
+            ws.onclose = () => {
+                setTimeout(() => initializeWebsocket(userId), 5000);
+            };
         };
 
         const initializePlayer = (spotifyToken: string) => {

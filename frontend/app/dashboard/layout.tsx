@@ -7,24 +7,46 @@ import { usePathname, useRouter } from "next/navigation";
 import LiveSyncPlayer from "@/components/LiveSyncPlayer";
 import { ThemeSettings } from "@/components/ThemeSettings";
 import { 
-    LayoutDashboard, Activity, Compass
+    LayoutDashboard, Activity, Compass, Settings
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { theme } = useThemeStore();
+    const { theme, gradientColors } = useThemeStore();
     const [mounted, setMounted] = useState(false);
     const [isAuth, setIsAuth] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
 
     useEffect(() => {
-        const token = localStorage.getItem("jwt");
-        if (!token) {
-            router.replace("/");
-        } else {
-            setIsAuth(true);
-        }
-        setMounted(true);
+        const verifyAuth = async () => {
+            const token = localStorage.getItem("jwt");
+            if (!token) {
+                router.replace("/");
+                setMounted(true);
+                return;
+            }
+            
+            try {
+                // Actually verify the token with the backend
+                const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    setIsAuth(true);
+                } else {
+                    localStorage.removeItem("jwt");
+                    router.replace("/");
+                }
+            } catch (err) {
+                console.error("Auth verification failed", err);
+                router.replace("/");
+            } finally {
+                setMounted(true);
+            }
+        };
+
+        verifyAuth();
     }, [router]);
 
     if (!mounted || !isAuth) {
@@ -35,10 +57,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
         { href: "/dashboard/history", icon: Activity, label: "Analytics Hub" },
         { href: "/dashboard/discovery", icon: Compass, label: "Music & Discovery" },
+        { href: "/dashboard/settings", icon: Settings, label: "Settings" },
     ];
 
+    const glassStyle = theme === 'theme-glass' 
+        ? { background: `linear-gradient(135deg, ${gradientColors.join(', ')})` }
+        : {};
+
     return (
-        <div className={`${theme} min-h-screen bg-[#0A0D14] text-theme-text transition-colors duration-500 font-sans flex overflow-hidden`}>
+        <div 
+            className={`${theme} min-h-screen bg-[#0A0D14] text-theme-text transition-colors duration-500 font-sans flex overflow-hidden`}
+            style={glassStyle}
+        >
             
             {/* Sidebar */}
             <aside className="w-72 border-r border-[#1B2332] bg-[#06080C] flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">

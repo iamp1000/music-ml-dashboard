@@ -13,7 +13,12 @@ import {
 } from "recharts";
 import { fetchWithRateLimit } from "@/utils/api";
 
-type TabType = "history" | "features" | "mood" | "neural";
+import CognitiveLoadRadar from "@/components/visualizations/CognitiveLoadRadar";
+import AttentionDecayHeatmap from "@/components/visualizations/AttentionDecayHeatmap";
+import MoodVolatilityGlobe from "@/components/visualizations/MoodVolatilityGlobe";
+
+
+type TabType = "history" | "features" | "mood" | "neural" | "deep";
 
 export default function AnalyticsHubPage() {
     const [activeTab, setActiveTab] = useState<TabType>("history");
@@ -21,6 +26,7 @@ export default function AnalyticsHubPage() {
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [deepInsights, setDeepInsights] = useState<any>(null);
 
     // Mood logger state
     const [sliderValue, setSliderValue] = useState(50);
@@ -66,6 +72,12 @@ export default function AnalyticsHubPage() {
                 const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
                 if (historyData && historyData.data) {
                     setHistory(historyData.data);
+                }
+
+                // Fetch deep insights
+                const deepData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/deep-insights");
+                if (deepData && deepData.data) {
+                    setDeepInsights(deepData.data);
                 }
             } catch (err: any) {
                 console.error("Failed to load analytics hub data", err);
@@ -293,6 +305,78 @@ export default function AnalyticsHubPage() {
                                 <div className="text-theme-text-muted text-sm flex h-full items-center justify-center">No timeline data available.</div>
                             )}
                         </div>
+                    </div>
+                </div>
+                </div>
+
+                {/* 4. Raw Database History Log */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 mt-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-theme-accent" />
+                            Raw Listening Log
+                        </h3>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-[#1B2332]">
+                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider">Time</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider">Track</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider">Artist</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider hidden md:table-cell">Valence</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider hidden lg:table-cell">Vibe</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#1B2332]/50">
+                                {history.slice(0, 100).map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-[#070A0F] transition-colors group">
+                                        <td className="py-3 px-4 text-xs text-theme-text-muted whitespace-nowrap">
+                                            {new Date(item.time).toLocaleString(undefined, {
+                                                month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                                            })}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="text-sm font-bold text-white group-hover:text-theme-accent transition-colors max-w-[200px] truncate">
+                                                {item.track_name}
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="text-xs text-theme-text-muted max-w-[150px] truncate">
+                                                {item.artist_name}
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4 hidden md:table-cell">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-16 h-1.5 bg-[#1B2332] rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-theme-accent"
+                                                        style={{ width: `${(item.valence || 0.5) * 100}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-[10px] text-theme-text-muted font-mono w-6">
+                                                    {((item.valence || 0.5) * 100).toFixed(0)}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4 hidden lg:table-cell text-xs font-mono text-theme-accent">
+                                            {item.mood_category || "Analyzing..."}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {history.length === 0 && (
+                            <div className="py-12 text-center text-sm text-theme-text-muted">
+                                No history records found. Ensure the background worker is running.
+                            </div>
+                        )}
+                        {history.length > 100 && (
+                            <div className="py-4 text-center text-xs text-theme-text-muted border-t border-[#1B2332]/50">
+                                Showing latest 100 records
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -718,12 +802,100 @@ export default function AnalyticsHubPage() {
         );
     };
 
+    // --- Sub-Render: Deep Psych Analytics ---
+    const renderDeepTab = () => {
+        if (!deepInsights) {
+            return (
+                <div className="flex h-[400px] items-center justify-center text-sm text-theme-text-muted">
+                    <Loader2 className="w-8 h-8 text-theme-accent animate-spin mr-3" />
+                    Crunching deep psychological metrics...
+                </div>
+            );
+        }
+
+        const data = deepInsights;
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* 1. Cognitive Load Radar */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[300px]">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                            <BrainCircuit className="w-5 h-5 text-purple-400" />
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Lyrical Load</h3>
+                        </div>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <CognitiveLoadRadar data={data.cognitive_load} />
+                    </div>
+                </div>
+
+                {/* 2. Attention Decay Horizon */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[300px]">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-blue-400" />
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Skip Horizon</h3>
+                        </div>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <AttentionDecayHeatmap data={data.skip_horizon} />
+                    </div>
+                </div>
+
+                {/* 3. Emotional Volatility Globe */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[300px] md:col-span-2 lg:col-span-1">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-red-400" />
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Volatility</h3>
+                        </div>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <MoodVolatilityGlobe volatility={data.emotional_volatility} />
+                    </div>
+                </div>
+                
+                {/* Context Tagging Tool */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 lg:col-span-3">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <Filter className="w-5 h-5 text-theme-accent" />
+                        Retroactive Session Tagging
+                    </h3>
+                    <p className="text-xs text-theme-text-muted mb-4">
+                        Select a context to dampen algorithmic disruption for the selected time window (e.g. "Gym", "Sleep").
+                    </p>
+                    <div className="flex gap-4">
+                        <input type="text" placeholder="e.g. Gym, Sleep, Study" className="bg-[#070A0F] border border-[#1B2332] rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-theme-accent w-64" id="tag_input" />
+                        <button 
+                            onClick={async () => {
+                                const tagVal = (document.getElementById("tag_input") as HTMLInputElement).value;
+                                if (!tagVal) return;
+                                const now = new Date();
+                                const start = new Date(now.getTime() - 2 * 60 * 60 * 1000); // Past 2 hours
+                                await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/tag", {
+                                    method: "POST",
+                                    body: JSON.stringify({ tag_name: tagVal, start_time: start.toISOString(), end_time: now.toISOString() })
+                                });
+                                alert(`Tagged last 2 hours as ${tagVal}`);
+                            }}
+                            className="bg-theme-accent/20 border border-theme-accent/40 text-theme-accent hover:bg-theme-accent hover:text-black font-bold uppercase text-xs px-6 rounded-lg transition-colors"
+                        >
+                            Tag Last 2 Hours
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     // Navigation Tab configs
     const tabsConfig = [
         { id: "history" as const, label: "History & Habits", icon: Clock },
         { id: "features" as const, label: "Audio Features", icon: Sliders },
         { id: "mood" as const, label: "Mood Explorer", icon: Smile },
         { id: "neural" as const, label: "Neural Model", icon: BrainCircuit },
+        { id: "deep" as const, label: "Deep Psych", icon: Activity },
     ];
 
     return (
@@ -772,6 +944,7 @@ export default function AnalyticsHubPage() {
                 {activeTab === "features" && renderFeaturesTab()}
                 {activeTab === "mood" && renderMoodTab()}
                 {activeTab === "neural" && renderNeuralTab()}
+                {activeTab === "deep" && renderDeepTab()}
             </div>
         </div>
     );

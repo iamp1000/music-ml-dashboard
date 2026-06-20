@@ -43,6 +43,37 @@ def handle_rate_limit(res: dict, response: Response):
         response.headers["Retry-After"] = str(retry_after)
         raise HTTPException(status_code=429, detail=f"Spotify API Rate Limited. Retry after {retry_after} seconds.")
 
+@router.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def spotify_proxy(path: str, request: Request, response: Response):
+    """
+    Universal proxy to the Spotify API.
+    Intercepts the request, injects the user's decrypted access token,
+    and forwards it to Spotify.
+    """
+    client = await get_user_spotify_client(request)
+    try:
+        url = f"https://api.spotify.com/v1/{path}"
+        query_params = str(request.query_params)
+        if query_params:
+            url += f"?{query_params}"
+            
+        # Extract body if any
+        body = None
+        if request.method in ["POST", "PUT"]:
+            try:
+                body = await request.json()
+            except Exception:
+                pass
+                
+        res = await client.request_endpoint(request.method, url, json=body)
+        handle_rate_limit(res, response)
+        
+        if res.get("status") == "success":
+            return res["data"]
+        raise HTTPException(status_code=res.get("code", 400), detail=res.get("message", "Spotify API error"))
+    finally:
+        await client.close()
+
 @router.get("/top-tracks")
 async def get_top_tracks(request: Request, response: Response, limit: int = 20):
     client = await get_user_spotify_client(request)

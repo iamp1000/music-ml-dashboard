@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import math
 import time
+from datetime import datetime, timezone
 
 from database import init_db, db
 from routers import auth, telemetry, settings, spotify
@@ -76,9 +77,17 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         print(f"WS Error (Firestore missing or error): {e}")
 
     try:
+        last_track_id = None
+        last_track_name = None
+        last_artist_name = None
+        last_duration_ms = 0
+        max_progress_ms = 0
+        started_at = None
+        
         while True:
             # Fetch real live track data
             track_name = "No track playing"
+            artist_name = "Unknown Artist"
             valence = 0.0
             arousal = 0.0
             energy = 0.0
@@ -88,13 +97,67 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
             if spotify_client:
                 try:
                     current_track = await spotify_client.get_currently_playing()
-                    if current_track and current_track.get("status") == "playing":
-                        artist_name = current_track.get('artist')
-                        track_title = current_track.get('track')
-                        track_name = f"{artist_name} - {track_title}"
-
+                    if current_track and current_track.get("item"):
+                        track_id = current_track["item"]["id"]
+                        track_name = current_track["item"]["name"]
+                        artist_name = current_track["item"]["artists"][0]["name"]
+                        progress_ms = current_track.get("progress_ms", 0)
+                        duration_ms = current_track["item"].get("duration_ms", 1)
+                        
+                        # Track changing logic
+                        if track_id != last_track_id:
+                            if last_track_id is not None:
+                                # Evaluate the previous track
+                                percent_played = max_progress_ms / max(last_duration_ms, 1)
+                                remaining_ms = last_duration_ms - max_progress_ms
+                                
+                                if remaining_ms <= 30000 or percent_played >= 0.95:
+                                    listen_type = "complete"
+                                    weight = 1.0
+                                    if last_duration_ms > 480000:
+                                        weight = 1.7
+                                        listen_type = "legendary_complete"
+                                    elif last_duration_ms > 240000:
+                                        weight = 1.5
+                                        listen_type = "epic_complete"
+                                elif max_progress_ms < 30000:
+                                    listen_type = "skip"
+                                    weight = 0.0
+                                elif percent_played < 0.5:
+                                    listen_type = "partial_skip"
+                                    weight = 0.1
+                                else:
+                                    listen_type = "semi_complete"
+                                    weight = 0.6
+                                    
+                                # Insert into Firestore
+                                doc_id = f"{user_id}_{started_at}_{last_track_id}".replace(":", "_").replace(".", "_")
+                                db.collection("listening_history").document(doc_id).set({
+                                    "time": started_at,
+                                    "tenant_id": user_id,
+                                    "track_id": last_track_id,
+                                    "track_name": last_track_name,
+                                    "artist_name": last_artist_name,
+                                    "duration_ms": last_duration_ms,
+                                    "played_ms": max_progress_ms,
+                                    "listen_type": listen_type,
+                                    "listen_weight": weight,
+                                    "ml_analyzed": False
+                                })
+                            
+                            # Initialize new track state
+                            last_track_id = track_id
+                            last_track_name = track_name
+                            last_artist_name = artist_name
+                            last_duration_ms = duration_ms
+                            max_progress_ms = progress_ms
+                            started_at = datetime.now(timezone.utc).isoformat()
+                        else:
+                            # Still same track
+                            max_progress_ms = max(max_progress_ms, progress_ms)
+                        
                         # Try to fetch real audio features for live inference
-                        feat_resp = await spotify_client.get_audio_features([current_track["id"]])
+                        feat_resp = await spotify_client.get_audio_features([current_track["item"]["id"]])
                         if feat_resp.get("status") == "success" and feat_resp.get("data"):
                             feat = feat_resp["data"][0]
                             if feat:
@@ -103,7 +166,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                                 arousal = energy
                                 
                         # Try to fetch lyrics
-                        lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_title, artist_name)
+                        lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
                         if lyr_val is not None:
                             lyrical_valence = lyr_val
                         else:
@@ -117,13 +180,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
 
             data = {
                 "track": track_name,
+                "artist": artist_name,
                 "metrics": {
                     "valence": valence,
                     "arousal": arousal,
                     "energy": energy
                 },
                 "telemetry": {
-                    "hr": 70, # Core placeholder until Phase 3 Hardware Integration
+                    "hr": 70, 
                     "reward": 50
                 },
                 "dissonance": {
@@ -133,7 +197,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                 }
             }
             await websocket.send_json(data)
-            await asyncio.sleep(5.0) # Poll every 5 seconds
+            await asyncio.sleep(5.0) 
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
     finally:

@@ -11,14 +11,15 @@ import {
     PolarAngleAxis, PolarRadiusAxis, Radar 
 } from "recharts";
 import { fetchWithRateLimit } from "@/utils/api";
+import UserProfilePanel from "@/components/UserProfilePanel";
 
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
-    const [realTopTracks, setRealTopTracks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeTab, setTimeTab] = useState<"D" | "W" | "M">("D");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [showProfilePanel, setShowProfilePanel] = useState(false);
 
     useEffect(() => {
         const loadDashboardData = async () => {
@@ -51,34 +52,28 @@ export default function DashboardOverviewPage() {
                     return false;
                 };
 
-                const fetchHistoryAndTopTracks = async () => {
+                const fetchHistoryData = async () => {
                     try {
                         // Fetch history telemetry
                         const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
                         if (historyData && historyData.data) {
                             setHistory(historyData.data);
                         }
-
-                        // Fetch real Spotify top tracks via our backend proxy
-                        const topTracksData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/spotify/top-tracks?limit=5");
-                        if (topTracksData && topTracksData.items) {
-                            setRealTopTracks(topTracksData.items);
-                        }
                     } catch (e: any) {
-                        console.error("Failed to load history or top tracks", e);
+                        console.error("Failed to load history", e);
                         setErrorMsg(e.message);
                     }
                 };
 
                 const success = await fetchProfileOnce();
                 if (success) {
-                    await fetchHistoryAndTopTracks();
+                    await fetchHistoryData();
                     setLoading(false);
                 } else {
                     // Poll if backend data isn't synced yet
                     const interval = setInterval(async () => {
                         if (await fetchProfileOnce()) {
-                            await fetchHistoryAndTopTracks();
+                            await fetchHistoryData();
                             setLoading(false);
                             clearInterval(interval);
                         }
@@ -117,18 +112,20 @@ export default function DashboardOverviewPage() {
         );
     }
 
-    // Dynamic metrics calculated from actual database history and profile
+    // Dynamic metrics calculated from actual database history
     const tracksPlayedCount = history.length;
-    const totalListeningTime = Math.round(tracksPlayedCount * 3.4); // 3.4 mins avg per track
+    const totalListeningTime = Math.round(history.reduce((sum, item) => sum + ((item.duration_ms || 204000) / 60000), 0));
     
     // Extract unique artists in history
     const uniqueArtists = new Set(history.map(item => item.artist_name));
-    const artistsDiscoveredCount = uniqueArtists.size || (profile.top_artists ? profile.top_artists.length : 0);
+    const artistsDiscoveredCount = uniqueArtists.size;
 
-    // Extract unique genres in top artists
-    const genreSet = new Set<string>();
-    profile.top_artists?.forEach((a: any) => a.genres?.forEach((g: string) => genreSet.add(g)));
-    const genresExploredCount = genreSet.size;
+    // Extract unique ML moods as "Vibes Explored"
+    const moodSet = new Set<string>();
+    history.forEach(item => {
+        if (item.mood_category) moodSet.add(item.mood_category);
+    });
+    const vibesExploredCount = moodSet.size;
 
     // 1. Listening Volume Over Time Data
     // Group history by date (last 10 days)
@@ -148,37 +145,26 @@ export default function DashboardOverviewPage() {
 
     const hasHistory = history.length > 0;
 
-    // 2. Render Top Tracks from Spotify API (or fallback to history occurrences if list empty)
-    let displayTracks = [];
-    if (realTopTracks.length > 0) {
-        displayTracks = realTopTracks.map((t: any, idx: number) => ({
+    // 2. Render Top Tracks from History
+    const trackCounts: Record<string, { name: string; artist: string; count: number }> = {};
+    history.forEach(item => {
+        const key = `${item.track_name} - ${item.artist_name}`;
+        if (!trackCounts[key]) {
+            trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0 };
+        }
+        trackCounts[key].count += 1;
+    });
+
+    const displayTracks = Object.values(trackCounts)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+        .map((t, idx) => ({
             rank: idx + 1,
             name: t.name,
-            artist: t.artists[0].name,
-            plays: t.popularity, // Use popularity index
-            score: t.popularity
+            artist: t.artist,
+            plays: t.count,
+            score: Math.min(100, Math.round((t.count / (history.length || 1)) * 400 + 40))
         }));
-    } else {
-        const trackCounts: Record<string, { name: string; artist: string; count: number; id: string }> = {};
-        history.forEach(item => {
-            const key = `${item.track_name} - ${item.artist_name}`;
-            if (!trackCounts[key]) {
-                trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0, id: item.track_id };
-            }
-            trackCounts[key].count += 1;
-        });
-
-        displayTracks = Object.values(trackCounts)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5)
-            .map((t, idx) => ({
-                rank: idx + 1,
-                name: t.name,
-                artist: t.artist,
-                plays: t.count,
-                score: Math.min(100, Math.round((t.count / (history.length || 1)) * 400 + 40))
-            }));
-    }
 
     // 3. Mood Timeline Stacked Data from actual history valence/energy
     const moodTimelineData = history.slice(0, 12).map((item, idx) => {
@@ -257,10 +243,17 @@ export default function DashboardOverviewPage() {
                         <span>May 12 - Jun 10, 2024</span>
                     </div>
 
-                    {/* Shield Status Button */}
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-theme-accent/10 border border-theme-accent/30 text-theme-accent cursor-pointer hover:bg-theme-accent/20 transition-all duration-300">
-                        <Shield className="w-4.5 h-4.5" />
-                    </div>
+                    {/* Profile Status Button */}
+                    <button 
+                        onClick={() => setShowProfilePanel(true)}
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-theme-accent/10 border border-theme-accent/30 text-theme-accent cursor-pointer hover:bg-theme-accent/20 transition-all duration-300 overflow-hidden"
+                    >
+                        {profile?.images?.[0]?.url ? (
+                            <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <Users className="w-4.5 h-4.5" />
+                        )}
+                    </button>
 
                     {/* Settings Button */}
                     <Link href="/dashboard/settings" className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#0D111A] border border-[#1B2332] text-theme-text-muted cursor-pointer hover:border-white/20 hover:text-white transition-all duration-300">
@@ -358,12 +351,12 @@ export default function DashboardOverviewPage() {
                     </div>
                 </div>
 
-                {/* Card 4: Genres Explored */}
+                {/* Card 4: Vibes Explored */}
                 <div className="relative overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Genres Explored</span>
-                            <h3 className="text-2xl font-black text-white mt-2 font-mono">{genresExploredCount}</h3>
+                            <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Vibes Explored</span>
+                            <h3 className="text-2xl font-black text-white mt-2 font-mono">{vibesExploredCount}</h3>
                             <span className="inline-flex items-center text-[10px] font-semibold text-theme-accent mt-1">
                                 <span className="mr-1">↑</span> 7% vs last month
                             </span>
@@ -470,7 +463,7 @@ export default function DashboardOverviewPage() {
                                         <span className="text-[10px] text-theme-text-muted truncate block mt-0.5">{track.artist}</span>
                                     </div>
                                     <div className="flex flex-col items-end shrink-0 pl-2">
-                                        <span className="text-xs font-bold text-white font-mono">{track.plays} {realTopTracks.length > 0 ? 'pop' : 'plays'}</span>
+                                        <span className="text-xs font-bold text-white font-mono">{track.plays} plays</span>
                                         {/* Little custom block indicators */}
                                         <div className="flex gap-0.5 mt-1">
                                             {Array.from({ length: 10 }).map((_, i) => {
@@ -622,6 +615,12 @@ export default function DashboardOverviewPage() {
                 </div>
 
             </div>
+
+            <UserProfilePanel 
+                isOpen={showProfilePanel} 
+                onClose={() => setShowProfilePanel(false)} 
+                profile={profile} 
+            />
         </div>
     );
 }
