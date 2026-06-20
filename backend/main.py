@@ -736,12 +736,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             }
                         }
                         await websocket.send_json(data)
-                        await asyncio.sleep(10.0)
+                        await asyncio.sleep(20.0)
                         continue
 
                     elif current_track and current_track.get("status") == "rate_limited":
                         print(f"Rate limited on Live Stream, backing off: {current_track.get('retry_after')}")
-                        await asyncio.sleep(current_track.get("retry_after", 10))
+                        await asyncio.sleep(current_track.get("retry_after", 30))
                         continue
                         
                 except Exception as e:
@@ -753,7 +753,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
 
             # Fallback if no track or error
             await websocket.send_json({"status": "inactive"})
-            await asyncio.sleep(10.0) 
+            await asyncio.sleep(20.0) 
 
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
