@@ -566,12 +566,9 @@ async def save_track_to_db(user_id, state, client):
     except Exception as e:
         print(f"Failed to fetch features for background save: {e}")
 
-    lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
-    if lyr_val is not None:
-        lyrical_valence = lyr_val
-    else:
-        lyrical_valence = 1.0 - valence if valence else 0.5
-
+    # Determine Lyrical Valence (Simulated since user asked DeepSeek to infer)
+    lyrical_valence = 1.0 - valence if valence else 0.5
+    
     # Retrieve user's current context
     user_doc = db.collection("users").document(user_id).get()
     current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
