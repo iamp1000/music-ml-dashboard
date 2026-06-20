@@ -93,11 +93,8 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
             "refresh_token_nonce": refresh_nonce,
         }, merge=True)
         
-        # Trigger Celery background task to immediately pull recent listening history and profile data
-        from celery_worker import fetch_recent_history_for_user, sync_user_profile_data
-        fetch_recent_history_for_user.delay(spotify_id, refresh_cipher, refresh_nonce)
-        sync_user_profile_data.delay(spotify_id, refresh_cipher, refresh_nonce)
-        print(f"Triggered history and profile sync for {spotify_id}")
+        # Skipping background sync since Celery was removed to improve performance
+        print(f"Successfully authenticated {spotify_id}")
     except Exception as e:
         print(f"Warning: Could not save to Firestore (has it been created?): {e}")
 
