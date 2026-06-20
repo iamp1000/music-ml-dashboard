@@ -438,6 +438,9 @@ async def sync_recently_played_loop():
                                 "sync_source": "recently_played_api"
                             })
                             
+                            # Add a 2-second delay to avoid DeepSeek Rate Limits
+                            await asyncio.sleep(2)
+                            
                 except Exception as e:
                     print(f"Error in recently-played sync for {user_id}: {e}")
                     
@@ -453,34 +456,41 @@ async def run_deepseek_analysis(track_name, artist_name, valence, energy, curren
     
     deepseek_key = os.getenv("DEEPSEEK_API_KEY")
     if deepseek_key:
-        try:
-            client_ai = openai.AsyncOpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
-            prompt = f"""
-            Analyze this song: "{track_name}" by {artist_name}.
-            Audio Features: Valence={valence}, Energy={energy}.
-            User's current activity context: {current_context}.
-            
-            Provide a JSON response with exactly these keys:
-            - "ai_mood": A highly specific, nuanced mood (e.g., "Late Night Nostalgia", "Aggressive Workout", "Melancholy Reflection"). Max 4 words.
-            - "ai_analysis": One sentence explaining why this song fits this mood and context.
-            - "time_of_day_fit": Best time of day to listen to this (e.g., "Late Night", "Morning", "Afternoon").
-            """
-            
-            response = await client_ai.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
-                    {"role": "system", "content": "You are a music mood analyzer. Output ONLY valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                response_format={"type": "json_object"}
-            )
-            
-            result = json.loads(response.choices[0].message.content)
-            ai_mood = result.get("ai_mood", ai_mood)
-            ai_analysis = result.get("ai_analysis", ai_analysis)
-            time_of_day_fit = result.get("time_of_day_fit", time_of_day_fit)
-        except Exception as e:
-            print(f"DeepSeek AI Error: {e}")
+        for attempt in range(3):
+            try:
+                client_ai = openai.AsyncOpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
+                prompt = f"""
+                Analyze this song: "{track_name}" by {artist_name}.
+                Audio Features: Valence={valence}, Energy={energy}.
+                User's current activity context: {current_context}.
+                
+                Provide a JSON response with exactly these keys:
+                - "ai_mood": A highly specific, nuanced mood (e.g., "Late Night Nostalgia", "Aggressive Workout", "Melancholy Reflection"). Max 4 words.
+                - "ai_analysis": One sentence explaining why this song fits this mood and context.
+                - "time_of_day_fit": Best time of day to listen to this (e.g., "Late Night", "Morning", "Afternoon").
+                """
+                
+                response = await client_ai.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": "You are a music mood analyzer. Output ONLY valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"},
+                    timeout=15.0
+                )
+                
+                result = json.loads(response.choices[0].message.content)
+                ai_mood = result.get("ai_mood", ai_mood)
+                ai_analysis = result.get("ai_analysis", ai_analysis)
+                time_of_day_fit = result.get("time_of_day_fit", time_of_day_fit)
+                break # Success, exit retry loop
+            except Exception as e:
+                print(f"DeepSeek AI Error (Attempt {attempt+1}): {e}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt) # Exponential backoff
+                else:
+                    ai_analysis = f"AI Error: {str(e)}" # Store error in DB for debugging
 
     # Heuristic fallback mood
     mood = ai_mood if ai_mood != "Unknown" else "Unknown"
