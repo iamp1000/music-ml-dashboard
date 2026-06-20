@@ -55,11 +55,55 @@ class SessionContextUpdate(BaseModel):
     document_ids: List[str]
     context: str
 
+@app.get("/api/context")
+async def get_context(token: str):
+    user_data = verify_access_token(token)
+    user_id = user_data.get("sub")
+    doc = db.collection("users").document(user_id).get()
+    current = doc.to_dict().get("current_context", "None") if doc.exists else "None"
+    return {"status": "success", "context": current}
+
+from fastapi import BackgroundTasks
+
+async def retroactive_session_update(user_id: str, new_context: str):
+    docs = db.collection("listening_history")\
+             .where("tenant_id", "==", user_id)\
+             .order_by("time", direction="DESCENDING")\
+             .limit(30)\
+             .stream()
+    
+    docs_list = list(docs)
+    if not docs_list:
+        return
+        
+    session_docs = [docs_list[0]]
+    for i in range(1, len(docs_list)):
+        try:
+            prev_time_str = docs_list[i-1].to_dict().get("time", "").replace("Z", "+00:00")
+            curr_time_str = docs_list[i].to_dict().get("time", "").replace("Z", "+00:00")
+            from datetime import datetime
+            prev_time = datetime.fromisoformat(prev_time_str)
+            curr_time = datetime.fromisoformat(curr_time_str)
+            
+            if (prev_time - curr_time).total_seconds() > 30 * 60:
+                break
+            session_docs.append(docs_list[i])
+        except Exception as e:
+            print(f"Time parsing error in grouping: {e}")
+            break
+            
+    for doc in session_docs:
+        try:
+            db.collection("listening_history").document(doc.id).update({"context": new_context})
+        except Exception:
+            pass
+
 @app.put("/api/context")
-async def update_context(request: ContextUpdate, token: str):
+async def update_context(request: ContextUpdate, token: str, background_tasks: BackgroundTasks):
     user_data = verify_access_token(token)
     user_id = user_data.get("sub")
     db.collection("users").document(user_id).set({"current_context": request.context}, merge=True)
+    background_tasks.add_task(retroactive_session_update, user_id, request.context)
     return {"status": "success"}
 
 @app.put("/api/history/session/context")
