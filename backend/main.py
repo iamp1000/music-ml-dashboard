@@ -348,6 +348,7 @@ async def sync_recently_played_loop():
                         continue
                         
                 try:
+                    tracks_to_process = []
                     res = await client.get_recently_played(limit=50)
                     if res.get("status") == "success" and res.get("data"):
                         recent_tracks = res["data"]
