@@ -307,7 +307,6 @@ export default function AnalyticsHubPage() {
                         </div>
                     </div>
                 </div>
-                </div>
 
                 {/* 4. Raw Database History Log */}
                 <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 mt-6">

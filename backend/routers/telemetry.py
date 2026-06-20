@@ -178,47 +178,22 @@ async def get_deep_insights(authorization: str = Header(None)):
                  
         history = [doc.to_dict() for doc in docs]
         
-        # --- Deep Algorithmic Math ---
+        # --- Proxy to Google Cloud ML Server ---
+        ml_url = os.getenv("ML_SERVER_URL", "http://localhost:8001")
         
-        # 1. Skip Horizon (Attention Decay Index)
-        # Assuming we have progress_ms and duration_ms. If not, simulate based on listen_weight
-        skip_horizon = {
-            "morning": 0, "afternoon": 0, "evening": 0, "night": 0
-        }
-        
-        # 2. Emotional Volatility (Std Dev of Valence/Energy)
-        valence_vals = [h.get("valence", 0.5) for h in history]
-        energy_vals = [h.get("energy", 0.5) for h in history]
-        
-        def calc_std(arr):
-            if not arr: return 0
-            mean = sum(arr) / len(arr)
-            variance = sum([((x - mean) ** 2) for x in arr]) / len(arr)
-            return variance ** 0.5
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{ml_url}/analyze_history",
+                json={"history": history},
+                timeout=30.0
+            )
             
-        volatility = {
-            "valence_std": calc_std(valence_vals),
-            "energy_std": calc_std(energy_vals),
-            "chaos_score": calc_std(valence_vals) + calc_std(energy_vals)
-        }
-        
-        # 3. Lyrical Cognitive Load & Overload
-        # Based on emotional complexity
-        complexity_vals = [h.get("emotional_complexity", 0.5) for h in history]
-        avg_cognitive_load = sum(complexity_vals) / len(complexity_vals) if complexity_vals else 0
-        
-        return {
-            "status": "success",
-            "data": {
-                "skip_horizon": skip_horizon,
-                "emotional_volatility": volatility,
-                "cognitive_load": {
-                    "average_complexity": avg_cognitive_load,
-                    "overload_risk": avg_cognitive_load > 0.7
-                },
-                "total_analyzed": len(history)
-            }
-        }
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise HTTPException(status_code=500, detail="ML Server failed to process deep insights.")
+                
     except Exception as e:
         print(f"Error in deep insights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
