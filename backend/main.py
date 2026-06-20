@@ -225,28 +225,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         print(f"=== [WS] Error initializing Spotify client: {e} ===")
 
     try:
-        last_track_id = None
-        last_track_name = None
-        last_artist_name = None
-        last_duration_ms = 0
-        max_progress_ms = 0
-        started_at = None
-        last_valence = 0.5
-        last_energy = 0.5
-        last_lyrical_valence = 0.5
-        last_mood = "Unknown"
-        
         while True:
-            print("=== [WS] Loop Iteration Start ===")
             # Fetch real live track data
-            track_name = "No track playing"
-            artist_name = "Unknown Artist"
-            valence = 0.0
-            arousal = 0.0
-            energy = 0.0
-            lyrics_text = None
-            lyrical_valence = 0.0
-
             if spotify_client:
                 try:
                     current_track = await spotify_client.get_currently_playing()
@@ -256,100 +236,21 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         artist_name = current_track["artist"]
                         progress_ms = current_track.get("progress_ms", 0)
                         duration_ms = current_track.get("duration_ms", 1)
+                        album_art = current_track.get("album_art")
                         
-                        # Track changing logic
-                        if track_id != last_track_id:
-                            if last_track_id is not None:
-                                # Evaluate the previous track
-                                percent_played = max_progress_ms / max(last_duration_ms, 1)
-                                remaining_ms = last_duration_ms - max_progress_ms
-                                
-                                if remaining_ms <= 30000 or percent_played >= 0.95:
-                                    listen_type = "complete"
-                                    weight = 1.0
-                                    if last_duration_ms > 480000:
-                                        weight = 1.7
-                                        listen_type = "legendary_complete"
-                                    elif last_duration_ms > 240000:
-                                        weight = 1.5
-                                        listen_type = "epic_complete"
-                                elif max_progress_ms < 30000:
-                                    listen_type = "skip"
-                                    weight = 0.0
-                                elif percent_played < 0.5:
-                                    listen_type = "partial_skip"
-                                    weight = 0.1
-                                else:
-                                    listen_type = "semi_complete"
-                                    weight = 0.6
-                                    
-                                # Insert into Firestore
-                                doc_id = f"{user_id}_{started_at}_{last_track_id}".replace(":", "_").replace(".", "_")
-                                db.collection("listening_history").document(doc_id).set({
-                                    "time": started_at,
-                                    "tenant_id": user_id,
-                                    "track_id": last_track_id,
-                                    "track_name": last_track_name,
-                                    "artist_name": last_artist_name,
-                                    "duration_ms": last_duration_ms,
-                                    "played_ms": max_progress_ms,
-                                    "listen_type": listen_type,
-                                    "listen_weight": weight,
-                                    "valence": last_valence,
-                                    "energy": last_energy,
-                                    "mood_category": last_mood,
-                                    "acoustic_valence": last_valence,
-                                    "lyrical_valence": last_lyrical_valence,
-                                    "dissonance_score": abs(last_valence - last_lyrical_valence),
-                                    "ml_analyzed": True
-                                })
-                            
-                            # Initialize new track state
-                            last_track_id = track_id
-                            last_track_name = track_name
-                            last_artist_name = artist_name
-                            last_duration_ms = duration_ms
-                            max_progress_ms = progress_ms
-                            last_valence = valence
-                            last_energy = energy
-                            
-                            # Try to fetch real audio features for live inference
-                            feat_resp = await spotify_client.get_audio_features([track_id])
-                            if feat_resp.get("status") == "success" and feat_resp.get("data"):
-                                feat = feat_resp["data"][0]
-                                if feat:
-                                    last_valence = feat.get("valence", 0.0)
-                                    last_energy = feat.get("energy", 0.0)
+                        valence = 0.5
+                        energy = 0.5
+                        arousal = 0.5
+                        lyrical_valence = 0.5
+                        lyrics_text = None
 
-                            # Fetch lyrics for the new track
-                            lyrics_text, lyr_val = await get_lyrics_and_sentiment(track_name, artist_name)
-                            if lyr_val is not None:
-                                last_lyrical_valence = lyr_val
-                            else:
-                                last_lyrical_valence = 1.0 - last_valence if last_valence else 0.0
-                            
-                            # Calculate mood heuristically
-                            if last_valence > 0.5 and last_energy > 0.5:
-                                last_mood = "Euphoric"
-                            elif last_valence < 0.5 and last_energy > 0.5:
-                                last_mood = "Aggressive"
-                            elif last_valence < 0.5 and last_energy < 0.5:
-                                last_mood = "Depressive Spiral"
-                            else:
-                                last_mood = "Deep Focus"
-                                
-                            started_at = datetime.now(timezone.utc).isoformat()
-                        else:
-                            # Still same track
-                            max_progress_ms = max(max_progress_ms, progress_ms)
-                        
                         # Try to fetch real audio features for live inference
                         feat_resp = await spotify_client.get_audio_features([track_id])
                         if feat_resp.get("status") == "success" and feat_resp.get("data"):
                             feat = feat_resp["data"][0]
                             if feat:
-                                valence = feat.get("valence", 0.0)
-                                energy = feat.get("energy", 0.0)
+                                valence = feat.get("valence", 0.5)
+                                energy = feat.get("energy", 0.5)
                                 arousal = energy
                                 
                         # Try to fetch lyrics
@@ -357,34 +258,47 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         if lyr_val is not None:
                             lyrical_valence = lyr_val
                         else:
-                            lyrical_valence = 1.0 - valence if valence else 0.0
+                            lyrical_valence = 1.0 - valence if valence else 0.5
+
+                        data = {
+                            "status": "playing",
+                            "track": track_name,
+                            "artist": artist_name,
+                            "id": track_id,
+                            "progress_ms": progress_ms,
+                            "duration_ms": duration_ms,
+                            "album_art": album_art,
+                            "metrics": {
+                                "valence": valence,
+                                "arousal": arousal,
+                                "energy": energy
+                            },
+                            "telemetry": {
+                                "hr": 70, 
+                                "reward": 50
+                            },
+                            "dissonance": {
+                                "acoustic_valence": valence,
+                                "lyrical_valence": lyrical_valence,
+                                "lyrics": lyrics_text[:100] + "..." if lyrics_text else "No lyrics found for live track."
+                            }
+                        }
+                        await websocket.send_json(data)
+                        await asyncio.sleep(5.0)
+                        continue
 
                     elif current_track and current_track.get("status") == "rate_limited":
                         print(f"Rate limited on Live Stream, backing off: {current_track.get('retry_after')}")
                         await asyncio.sleep(current_track.get("retry_after", 5))
+                        continue
+                        
                 except Exception as e:
                     print(f"Spotify API Error: {e}")
 
-            data = {
-                "track": track_name,
-                "artist": artist_name,
-                "metrics": {
-                    "valence": valence,
-                    "arousal": arousal,
-                    "energy": energy
-                },
-                "telemetry": {
-                    "hr": 70, 
-                    "reward": 50
-                },
-                "dissonance": {
-                    "acoustic_valence": valence,
-                    "lyrical_valence": lyrical_valence,
-                    "lyrics": lyrics_text[:100] + "..." if lyrics_text else "No lyrics found for live track."
-                }
-            }
-            await websocket.send_json(data)
+            # Fallback if no track or error
+            await websocket.send_json({"status": "inactive"})
             await asyncio.sleep(5.0) 
+
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
     finally:

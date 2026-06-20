@@ -80,6 +80,7 @@ class SpotifyClient:
                 "id": data["item"]["id"],
                 "progress_ms": data.get("progress_ms"),
                 "duration_ms": data["item"]["duration_ms"],
+                "album_art": data["item"]["album"]["images"][0]["url"] if data["item"].get("album") and data["item"]["album"].get("images") else None,
                 "is_playing": data.get("is_playing", False)
             }
         

@@ -55,14 +55,26 @@ export default function LiveSyncPlayer() {
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data && data.track && data.track !== "No track playing") {
+                    if (data && data.status === "playing") {
                         setTrackName(data.track);
                         setArtistName(data.artist || "Unknown Artist");
                         setIsActive(true);
-                    } else if (data && data.track === "No track playing") {
+                        
+                        if (data.duration_ms) setDurationMs(data.duration_ms);
+                        if (data.progress_ms) setProgressMs(data.progress_ms);
+                        if (data.id) checkLikedStatus(data.id);
+                        
+                        setCurrentTrack((prev: any) => ({
+                            ...prev,
+                            id: data.id,
+                            name: data.track,
+                            album: { images: [{ url: data.album_art }] }
+                        }));
+                    } else if (data && data.status === "inactive") {
                         setTrackName("No track playing");
                         setArtistName("");
                         setIsActive(false);
+                        setCurrentTrack(null);
                     }
                 } catch (e) {
                     console.error("WS parse error", e);
