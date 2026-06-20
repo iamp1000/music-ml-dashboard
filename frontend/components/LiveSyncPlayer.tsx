@@ -41,16 +41,14 @@ export default function LiveSyncPlayer() {
                 if (data && data.data?.access_token) {
                     setSpotifyToken(data.data.access_token);
                     initializePlayer(data.data.access_token);
-                    if (data.data.id) {
-                        initializeWebsocket(data.data.id);
-                    }
+                    initializeWebsocket();
                 }
             } catch (err) {
                 console.error("Failed to fetch token for player", err);
             }
         };
 
-        const initializeWebsocket = (userId: string) => {
+        const initializeWebsocket = () => {
             const ws = new WebSocket(`wss://music-ml-dashboard.onrender.com/ws/stream/live?token=${token}`);
             ws.onmessage = (event) => {
                 try {
@@ -69,7 +67,7 @@ export default function LiveSyncPlayer() {
                 }
             };
             ws.onclose = () => {
-                setTimeout(() => initializeWebsocket(userId), 5000);
+                setTimeout(() => initializeWebsocket(), 5000);
             };
         };
 
@@ -169,91 +167,6 @@ export default function LiveSyncPlayer() {
         } catch (err) {
             console.error("Failed to check like status", err);
         }
-    };
-
-    // Toggle track like state via backend proxy
-    const handleLikeToggle = async () => {
-        if (!currentTrack || rateLimitSeconds > 0) return;
-        const trackId = currentTrack.id;
-        const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/like?track_id=${trackId}`;
-        try {
-            await fetchWithRateLimit(url, { method: isLiked ? "DELETE" : "PUT" });
-            setIsLiked(!isLiked);
-        } catch (err) {
-            console.error("Failed to toggle like", err);
-        }
-    };
-
-    // Toggle shuffle mode via backend proxy
-    const handleShuffleToggle = async () => {
-        if (rateLimitSeconds > 0) return;
-        const newShuffle = !isShuffle;
-        const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/shuffle?state=${newShuffle}${deviceId ? `&device_id=${deviceId}` : ""}`;
-        try {
-            await fetchWithRateLimit(url, { method: "PUT" });
-            setIsShuffle(newShuffle);
-        } catch (err) {
-            console.error("Failed to toggle shuffle", err);
-        }
-    };
-
-    // Toggle repeat mode via backend proxy
-    const handleRepeatToggle = async () => {
-        if (rateLimitSeconds > 0) return;
-        const nextMode = repeatMode === "off" ? "track" : repeatMode === "track" ? "context" : "off";
-        const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/repeat?state=${nextMode}${deviceId ? `&device_id=${deviceId}` : ""}`;
-        try {
-            await fetchWithRateLimit(url, { method: "PUT" });
-            setRepeatMode(nextMode);
-        } catch (err) {
-            console.error("Failed to toggle repeat", err);
-        }
-    };
-
-    // Control volume via both backend proxy and local SDK
-    const handleVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseFloat(e.target.value);
-        setVolume(val);
-        if (player) {
-            await player.setVolume(val);
-        }
-        if (rateLimitSeconds === 0) {
-            const volPercent = Math.round(val * 100);
-            const url = `https://music-ml-dashboard.onrender.com/api/spotify/player/volume?volume_percent=${volPercent}${deviceId ? `&device_id=${deviceId}` : ""}`;
-            try {
-                await fetchWithRateLimit(url, { method: "PUT" });
-            } catch (err) {
-                console.error("Failed to set volume on Spotify API", err);
-            }
-        }
-    };
-
-    // Handle progress bar seek click
-    const handleSeek = async (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!player || durationMs === 0) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percentage = clickX / rect.width;
-        const seekPosition = Math.round(percentage * durationMs);
-        await player.seek(seekPosition);
-        setProgressMs(seekPosition);
-    };
-
-    const formatTime = (ms: number) => {
-        if (!ms || isNaN(ms)) return "0:00";
-        const totalSeconds = Math.floor(ms / 1000);
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    // Web Playback controls wrapper
-    const handlePrev = () => player && player.previousTrack();
-    const handlePlayPause = () => player && player.togglePlay();
-    const handleNext = () => player && player.nextTrack();
-
-    const isButtonsDisabled = !isActive || rateLimitSeconds > 0;
-
     return (
         <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-4 text-[#8293B4] w-full flex flex-col space-y-4 relative">
             
@@ -307,68 +220,6 @@ export default function LiveSyncPlayer() {
                     <span>{formatTime(progressMs)}</span>
                     <span>{formatTime(durationMs)}</span>
                 </div>
-            </div>
-
-            {/* Web Playback Controls Row */}
-            <div className="flex items-center justify-between px-1">
-                {/* Shuffle Button */}
-                <button 
-                    onClick={handleShuffleToggle}
-                    disabled={isButtonsDisabled}
-                    className={`p-1 hover:text-white transition-colors disabled:opacity-30 ${isShuffle ? 'text-theme-accent' : 'text-theme-text-muted'}`}
-                >
-                    <Shuffle className="w-3.5 h-3.5" />
-                </button>
-
-                {/* Previous Button */}
-                <button 
-                    onClick={handlePrev}
-                    className="p-1.5 hover:text-white transition-colors disabled:opacity-30"
-                    disabled={isButtonsDisabled}
-                >
-                    <SkipBack className="w-4 h-4" />
-                </button>
-
-                {/* Play / Pause Circular Button */}
-                <button 
-                    onClick={handlePlayPause}
-                    className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-md shrink-0 disabled:opacity-50"
-                    disabled={isButtonsDisabled}
-                >
-                    {isPaused ? <Play className="w-3.5 h-3.5 fill-black ml-0.5" /> : <Pause className="w-3.5 h-3.5 fill-black" />}
-                </button>
-
-                {/* Next Button */}
-                <button 
-                    onClick={handleNext}
-                    className="p-1.5 hover:text-white transition-colors disabled:opacity-30"
-                    disabled={isButtonsDisabled}
-                >
-                    <SkipForward className="w-4 h-4" />
-                </button>
-
-                {/* Repeat Button */}
-                <button 
-                    onClick={handleRepeatToggle}
-                    disabled={isButtonsDisabled}
-                    className={`p-1 hover:text-white transition-colors disabled:opacity-30 ${repeatMode !== 'off' ? 'text-theme-accent' : 'text-theme-text-muted'}`}
-                >
-                    <Repeat className="w-3.5 h-3.5" />
-                </button>
-            </div>
-
-            {/* Volume Control Overlay */}
-            <div className="flex items-center gap-2 border-t border-[#1B2332]/50 pt-3">
-                <Volume2 className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
-                <input 
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="w-full h-1 bg-[#1B2332] rounded-full appearance-none cursor-pointer accent-theme-accent"
-                />
             </div>
 
             {/* Sync connection status at the very bottom */}

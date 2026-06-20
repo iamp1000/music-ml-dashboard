@@ -6,10 +6,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function SettingsPage() {
-    const [apiKey, setApiKey] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -26,16 +23,7 @@ export default function SettingsPage() {
                 if (res.ok) {
                     const data = await res.json();
                     if (data && data.data && data.data.id) {
-                        const uid = data.data.id;
-                        setUserId(uid);
-                        
-                        // Fetch existing settings
-                        const docRef = doc(db, "users", uid, "settings", "ml_config");
-                        const docSnap = await getDoc(docRef);
-                        
-                        if (docSnap.exists() && docSnap.data().deepseek_api_key) {
-                            setApiKey(docSnap.data().deepseek_api_key);
-                        }
+                        setUserId(data.data.id);
                     }
                 }
             } catch (err) {
@@ -48,26 +36,9 @@ export default function SettingsPage() {
         fetchUserData();
     }, []);
 
+    // DeepSeek API configuration is now handled automatically by the server-side environment.
     const handleSave = async () => {
-        if (!userId) return;
-        
-        setIsSaving(true);
-        setSaveSuccess(false);
-        try {
-            const docRef = doc(db, "users", userId, "settings", "ml_config");
-            await setDoc(docRef, {
-                deepseek_api_key: apiKey,
-                updated_at: new Date().toISOString()
-            }, { merge: true });
-            
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
-        } catch (err) {
-            console.error("Error saving API key:", err);
-            alert("Failed to save API key. Make sure you are authenticated.");
-        } finally {
-            setIsSaving(false);
-        }
+        // No-op for now
     };
 
     return (
@@ -85,48 +56,9 @@ export default function SettingsPage() {
                         Machine Learning Pipeline
                     </h3>
                     <p className="text-xs text-theme-text-muted mt-2">
-                        To compute advanced psychological telemetry (valence, energy, lyrical analysis, and mood), the system processes your listening history in batches through an LLM. You must provide your own API key.
+                        Advanced psychological telemetry (valence, energy, lyrical analysis, and mood) is now processed automatically by our server-side secure ML pipeline. You no longer need to provide your own API key.
                     </p>
                 </div>
-                
-                <div className="p-6 space-y-6">
-                    <div>
-                        <label className="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <Key className="w-3.5 h-3.5 text-theme-text-muted" />
-                            DeepSeek API Key
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="password"
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                                placeholder="sk-..."
-                                disabled={isLoading}
-                                className="w-full bg-[#070A0F] border border-[#1B2332] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-theme-accent transition-colors placeholder:text-gray-700 disabled:opacity-50"
-                            />
-                        </div>
-                        <p className="text-[10px] text-theme-text-muted mt-2">
-                            Used exclusively for processing track lyrics in batches of 10-20 songs. Keys are saved securely to your personal Firebase document.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3 pt-2">
-                        <button
-                            onClick={handleSave}
-                            disabled={isLoading || isSaving}
-                            className="bg-theme-accent text-black font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-                        >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            Save Configuration
-                        </button>
-                        
-                        {saveSuccess && (
-                            <span className="text-green-500 text-xs flex items-center gap-1 animate-in fade-in">
-                                <CheckCircle2 className="w-4 h-4" />
-                                Saved successfully
-                            </span>
-                        )}
-                    </div>
                 </div>
             </div>
 
