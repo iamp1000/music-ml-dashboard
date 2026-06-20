@@ -105,14 +105,7 @@ export default function DashboardOverviewPage() {
                 <Shield className="w-16 h-16 text-theme-text-muted mb-4 opacity-50" />
                 <h2 className="text-xl font-bold mb-2">No Active Session</h2>
                 <p className="text-theme-text-muted max-w-sm mb-6 text-sm">Please log in to your Spotify account to view your telemetry dashboard.</p>
-                <a 
-                    href="#"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        window.location.href = `https://music-ml-dashboard.onrender.com/auth/login?source=${encodeURIComponent(window.location.origin)}`;
-                    }}
-                    className="px-6 py-3 rounded-full bg-theme-accent text-black font-bold uppercase text-xs tracking-widest hover:scale-105 transition-transform"
-                >
+                <a href="https://music-ml-dashboard.onrender.com/auth/login" className="px-6 py-3 rounded-full bg-theme-accent text-black font-bold uppercase text-xs tracking-widest hover:scale-105 transition-transform">
                     Connect Spotify
                 </a>
             </div>
