@@ -190,31 +190,39 @@ async def save_track_to_db(user_id, state, client):
 @app.websocket("/ws/stream/live")
 async def websocket_endpoint(websocket: WebSocket, token: str = None):
     await websocket.accept()
+    print("=== [WS] Connection accepted ===")
 
     if not token:
+        print("=== [WS] Missing token ===")
         await websocket.close(code=1008, reason="Missing token")
         return
 
     # Verify JWT
     user_data = verify_access_token(token)
     if not user_data:
+        print("=== [WS] Invalid token ===")
         await websocket.close(code=1008, reason="Invalid token")
         return
 
     user_id = user_data.get("sub")
+    print(f"=== [WS] User authenticated: {user_id} ===")
 
     # Get user's refresh token from Firestore
     spotify_client = None
     try:
-        SPOTIFY_SCOPES = "user-read-recently-played user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-top-read user-follow-read playlist-read-private user-library-read"
         user_ref = db.collection("users").document(user_id).get()
         if user_ref.exists:
             row = user_ref.to_dict()
             if row.get("refresh_token_cipher"):
                 refresh_token = encryptor.decrypt(row["refresh_token_cipher"], row["refresh_token_nonce"])
                 spotify_client = SpotifyClient(refresh_token=refresh_token)
+                print("=== [WS] Spotify Client instantiated successfully ===")
+            else:
+                print("=== [WS] No refresh_token_cipher in Firestore ===")
+        else:
+            print("=== [WS] User document does not exist in Firestore ===")
     except Exception as e:
-        print(f"WS Error (Firestore missing or error): {e}")
+        print(f"=== [WS] Error initializing Spotify client: {e} ===")
 
     try:
         last_track_id = None
@@ -229,6 +237,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         last_mood = "Unknown"
         
         while True:
+            print("=== [WS] Loop Iteration Start ===")
             # Fetch real live track data
             track_name = "No track playing"
             artist_name = "Unknown Artist"
