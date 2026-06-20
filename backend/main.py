@@ -124,6 +124,83 @@ from lyric_analyzer import get_lyrics_and_sentiment
 # Global state for background polling
 user_spotify_clients = {}
 user_playback_state = {}
+user_ml_sessions = {}
+
+def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, energy):
+    """
+    Calculates the multi-dimensional ML score and normalizes it 0-100.
+    Maintains a rolling state machine per user for Rage Quits, Repeats, and Recoveries.
+    """
+    percentage = played_ms / duration_ms if duration_ms > 0 else 0
+    engagement_score = round(percentage, 2)
+    skip_penalty = 1.0 - percentage if percentage < 0.2 else 0.0
+    
+    if user_id not in user_ml_sessions:
+        user_ml_sessions[user_id] = {"recent_tracks": [], "rapid_skip_count": 0}
+        
+    session = user_ml_sessions[user_id]
+    rage_quit_penalty = 0.0
+    recovery_bonus = 0.0
+    
+    # Rage Quit & Recovery Logic
+    if percentage < 0.1 or played_ms < 15000:
+        session["rapid_skip_count"] += 1
+    else:
+        if session["rapid_skip_count"] >= 3 and percentage >= 0.9:
+            recovery_bonus = 0.5
+        session["rapid_skip_count"] = 0
+        
+    if session["rapid_skip_count"] >= 3:
+        rage_quit_penalty = 1.0
+        
+    # Repeat Bonus
+    repeat_count = sum(1 for t in session["recent_tracks"] if t["track_id"] == track_id)
+    repeat_bonus = 0.2 * repeat_count
+        
+    # Mood Affinity Bonus (Cosine Similarity Proxy)
+    mood_affinity_bonus = 0.0
+    if session["recent_tracks"]:
+        avg_valence = sum(t["valence"] for t in session["recent_tracks"]) / len(session["recent_tracks"])
+        avg_energy = sum(t["energy"] for t in session["recent_tracks"]) / len(session["recent_tracks"])
+        dist = ((valence - avg_valence)**2 + (energy - avg_energy)**2)**0.5
+        similarity = max(0, 1.0 - dist)
+        mood_affinity_bonus = similarity * 0.3
+        
+    context_bonus = 0.2 if percentage >= 0.2 else 0.0
+    mood_transition_bonus = 0.0
+    
+    raw_score = (
+        engagement_score 
+        + mood_affinity_bonus 
+        + mood_transition_bonus 
+        + repeat_bonus 
+        + context_bonus 
+        + recovery_bonus
+        - skip_penalty 
+        - rage_quit_penalty
+    )
+    
+    # Normalize approx -1.0 to 2.0 -> 0 to 100
+    clamped = max(-1.0, min(2.0, raw_score))
+    ml_score = int(((clamped + 1.0) / 3.0) * 100)
+    
+    session["recent_tracks"].append({
+        "track_id": track_id,
+        "valence": valence,
+        "energy": energy
+    })
+    if len(session["recent_tracks"]) > 10:
+        session["recent_tracks"].pop(0)
+        
+    listen_type = "complete"
+    if percentage < 0.1 or played_ms < 15000:
+        listen_type = "quick_skip"
+    elif percentage < 0.5:
+        listen_type = "partial_skip"
+    elif percentage < 0.9:
+        listen_type = "long_listen"
+        
+    return ml_score, listen_type
 
 async def background_polling_loop():
     """
@@ -272,9 +349,6 @@ async def sync_recently_played_loop():
                             duration_ms = track.get("duration_ms", 1)
                             artist_name = ", ".join([a.get("name") for a in track.get("artists", [])])
                             
-                            listen_weight = 1.0
-                            listen_type = "complete"
-                            
                             valence, energy = 0.5, 0.5
                             try:
                                 feat_resp = await client.get_audio_features([track_id])
@@ -285,6 +359,9 @@ async def sync_recently_played_loop():
                                         energy = feat.get("energy", 0.5)
                             except Exception:
                                 pass
+                                
+                            ml_score, listen_type = calculate_ml_weight(user_id, track_id, duration_ms, duration_ms, valence, energy)
+                            listen_weight = ml_score
                                 
                             lyrics_text, lyr_val = await get_lyrics_and_sentiment(track.get("name"), artist_name)
                             lyrical_valence = lyr_val if lyr_val is not None else (1.0 - valence if valence else 0.5)
@@ -407,20 +484,9 @@ async def save_track_to_db(user_id, state, client):
 
     played_ms = state.get("max_progress_ms", 0)
     duration_ms = state.get("duration_ms", 1)
-    percentage = played_ms / duration_ms if duration_ms > 0 else 0
-
-    if percentage < 0.1 or played_ms < 15000:
-        listen_type = "quick_skip"
-        listen_weight = 0.0
-    elif percentage < 0.5:
-        listen_type = "partial_skip"
-        listen_weight = round(percentage, 2)
-    elif percentage < 0.9:
-        listen_type = "long_listen"
-        listen_weight = round(percentage, 2)
-    else:
-        listen_type = "complete"
-        listen_weight = 1.0
+    
+    ml_score, listen_type = calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, energy)
+    listen_weight = ml_score # Store normalized score in listen_weight key
     
     try:
         db.collection("listening_history").add({
