@@ -31,6 +31,7 @@ async def startup_event():
         
     # Start the background poller
     asyncio.create_task(background_polling_loop())
+    asyncio.create_task(sync_recently_played_loop())
 
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
@@ -197,6 +198,133 @@ async def background_polling_loop():
             
         await asyncio.sleep(20)
 
+async def sync_recently_played_loop():
+    """
+    Runs every 30 minutes to fetch /recently-played and backfill any missing tracks.
+    Includes Time-Windowed Matcher to prevent duplicates.
+    """
+    print("Recently played sync loop started.")
+    await asyncio.sleep(60) # Wait slightly on startup
+    
+    while True:
+        try:
+            users_ref = db.collection("users").stream()
+            for user_doc in users_ref:
+                user_id = user_doc.id
+                row = user_doc.to_dict()
+                
+                if user_id in user_spotify_clients:
+                    client = user_spotify_clients[user_id]
+                else:
+                    if not row.get("refresh_token_cipher"):
+                        continue
+                    try:
+                        refresh_token = encryptor.decrypt(row["refresh_token_cipher"], row["refresh_token_nonce"])
+                        client = SpotifyClient(refresh_token=refresh_token)
+                        user_spotify_clients[user_id] = client
+                    except Exception as e:
+                        print(f"Failed to decrypt token for sync {user_id}: {e}")
+                        continue
+                        
+                try:
+                    res = await client.get_recently_played(limit=50)
+                    if res.get("status") == "success" and res.get("data"):
+                        recent_tracks = res["data"]
+                        now = datetime.now(timezone.utc)
+                        
+                        for item in recent_tracks:
+                            track = item.get("track")
+                            played_at_str = item.get("played_at")
+                            if not track or not played_at_str:
+                                continue
+                                
+                            track_id = track.get("id")
+                            try:
+                                played_at = datetime.fromisoformat(played_at_str.replace("Z", "+00:00"))
+                            except ValueError:
+                                continue
+                                
+                            # Skip if played more than 24 hours ago
+                            if (now - played_at).total_seconds() > 86400:
+                                continue
+                                
+                            # Time-Windowed Matcher: Search for exact track_id within +/- 5 minutes
+                            docs = db.collection("listening_history").where("tenant_id", "==", user_id).where("track_id", "==", track_id).stream()
+                                     
+                            is_duplicate = False
+                            for doc in docs:
+                                d_time_str = doc.to_dict().get("time")
+                                if d_time_str:
+                                    try:
+                                        d_time = datetime.fromisoformat(d_time_str.replace("Z", "+00:00"))
+                                        diff = abs((d_time - played_at).total_seconds())
+                                        if diff < 300: # 5 minutes window
+                                            is_duplicate = True
+                                            break
+                                    except ValueError:
+                                        pass
+                                        
+                            if is_duplicate:
+                                continue
+                                
+                            print(f"Syncing missing track for {user_id}: {track.get('name')}")
+                            
+                            duration_ms = track.get("duration_ms", 1)
+                            artist_name = ", ".join([a.get("name") for a in track.get("artists", [])])
+                            
+                            listen_weight = 1.0
+                            listen_type = "complete"
+                            
+                            valence, energy = 0.5, 0.5
+                            try:
+                                feat_resp = await client.get_audio_features([track_id])
+                                if feat_resp.get("status") == "success" and feat_resp.get("data"):
+                                    feat = feat_resp["data"][0]
+                                    if feat:
+                                        valence = feat.get("valence", 0.5)
+                                        energy = feat.get("energy", 0.5)
+                            except Exception:
+                                pass
+                                
+                            lyrics_text, lyr_val = await get_lyrics_and_sentiment(track.get("name"), artist_name)
+                            lyrical_valence = lyr_val if lyr_val is not None else (1.0 - valence if valence else 0.5)
+                            
+                            current_context = row.get("current_context", "None")
+                            mood, ai_analysis, time_of_day_fit = await run_deepseek_analysis(
+                                track.get("name"), artist_name, valence, energy, current_context
+                            )
+                            
+                            db.collection("listening_history").add({
+                                "time": played_at_str,
+                                "tenant_id": user_id,
+                                "track_id": track_id,
+                                "track_name": track.get("name"),
+                                "artist_name": artist_name,
+                                "duration_ms": duration_ms,
+                                "played_ms": duration_ms,
+                                "listen_type": listen_type,
+                                "listen_weight": listen_weight,
+                                "valence": valence,
+                                "energy": energy,
+                                "mood_category": mood,
+                                "acoustic_valence": valence,
+                                "lyrical_valence": lyrical_valence,
+                                "dissonance_score": abs(valence - lyrical_valence),
+                                "ml_analyzed": True,
+                                "context": current_context,
+                                "ai_analysis": ai_analysis,
+                                "time_of_day_fit": time_of_day_fit,
+                                "sync_source": "recently_played_api"
+                            })
+                            
+                except Exception as e:
+                    print(f"Error in recently-played sync for {user_id}: {e}")
+                    
+        except Exception as e:
+            print(f"Sync loop outer error: {e}")
+            
+        await asyncio.sleep(1800) # 30 minutes
+
 async def run_deepseek_analysis(track_name, artist_name, valence, energy, current_context):
     ai_mood = "Unknown"
     ai_analysis = "AI analysis unavailable."
@@ -277,8 +405,22 @@ async def save_track_to_db(user_id, state, client):
     # Run DeepSeek AI Integration
     mood, ai_analysis, time_of_day_fit = await run_deepseek_analysis(track_name, artist_name, valence, energy, current_context)
 
-    listen_weight = 1.0 if (state["max_progress_ms"] >= state["duration_ms"] * 0.95 or state["duration_ms"] - state["max_progress_ms"] < 30000) else 0.0
-    listen_type = "complete" if listen_weight > 0 else "skip"
+    played_ms = state.get("max_progress_ms", 0)
+    duration_ms = state.get("duration_ms", 1)
+    percentage = played_ms / duration_ms if duration_ms > 0 else 0
+
+    if percentage < 0.1 or played_ms < 15000:
+        listen_type = "quick_skip"
+        listen_weight = 0.0
+    elif percentage < 0.5:
+        listen_type = "partial_skip"
+        listen_weight = round(percentage, 2)
+    elif percentage < 0.9:
+        listen_type = "long_listen"
+        listen_weight = round(percentage, 2)
+    else:
+        listen_type = "complete"
+        listen_weight = 1.0
     
     try:
         db.collection("listening_history").add({
