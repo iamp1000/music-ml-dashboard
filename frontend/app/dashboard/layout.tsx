@@ -19,6 +19,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         const verifyAuth = async () => {
+            // Check URL for token first (from backend redirect)
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            if (urlToken) {
+                localStorage.setItem("jwt", urlToken);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
             const token = localStorage.getItem("jwt");
             if (!token) {
                 router.replace("/");
