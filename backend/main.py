@@ -389,7 +389,14 @@ async def sync_recently_played_loop():
                                 continue
                                 
                             print(f"Syncing missing track for {user_id}: {track.get('name')}")
-                            
+                            tracks_to_process.append((track, track_id, played_at_str))
+
+                    # Batch processing in chunks of 10
+                    for i in range(0, len(tracks_to_process), 10):
+                        batch = tracks_to_process[i:i+10]
+                        batch_payload = []
+                        
+                        for track, track_id, p_str in batch:
                             duration_ms = track.get("duration_ms", 1)
                             artist_name = ", ".join([a.get("name") for a in track.get("artists", [])])
                             
@@ -405,41 +412,54 @@ async def sync_recently_played_loop():
                                 pass
                                 
                             ml_score, listen_type = calculate_ml_weight(user_id, track_id, duration_ms, duration_ms, valence, energy)
-                            listen_weight = ml_score
-                                
-                            lyrics_text, lyr_val = await get_lyrics_and_sentiment(track.get("name"), artist_name)
-                            lyrical_valence = lyr_val if lyr_val is not None else (1.0 - valence if valence else 0.5)
                             
-                            current_context = row.get("current_context", "None")
-                            mood, ai_analysis, time_of_day_fit = await run_deepseek_analysis(
-                                track.get("name"), artist_name, valence, energy, current_context
-                            )
-                            
-                            db.collection("listening_history").add({
-                                "time": played_at_str,
-                                "tenant_id": user_id,
+                            batch_payload.append({
                                 "track_id": track_id,
                                 "track_name": track.get("name"),
                                 "artist_name": artist_name,
-                                "duration_ms": duration_ms,
-                                "played_ms": duration_ms,
-                                "listen_type": listen_type,
-                                "listen_weight": listen_weight,
                                 "valence": valence,
                                 "energy": energy,
-                                "mood_category": mood,
-                                "acoustic_valence": valence,
-                                "lyrical_valence": lyrical_valence,
-                                "dissonance_score": abs(valence - lyrical_valence),
-                                "ml_analyzed": True,
-                                "context": current_context,
-                                "ai_analysis": ai_analysis,
-                                "time_of_day_fit": time_of_day_fit,
-                                "sync_source": "recently_played_api"
+                                "base_weight": ml_score,
+                                "listen_type": listen_type,
+                                "played_at_str": p_str,
+                                "duration_ms": duration_ms
                             })
                             
-                            # Add a 2-second delay to avoid DeepSeek Rate Limits
-                            await asyncio.sleep(2)
+                        current_context = row.get("current_context", "None")
+                        batch_results = await run_deepseek_batch_analysis(batch_payload, current_context)
+                        
+                        # Process and save batch results
+                        for t_data in batch_payload:
+                            ai_res = batch_results.get(t_data["track_id"], {})
+                            
+                            # Combine base weight and incremental weight into a single final variable
+                            incremental = ai_res.get("incremental_weight", 0.0)
+                            final_weight = min(100, max(0, int(t_data["base_weight"] + incremental)))
+                            
+                            db.collection("listening_history").add({
+                                "time": t_data["played_at_str"],
+                                "tenant_id": user_id,
+                                "track_id": t_data["track_id"],
+                                "track_name": t_data["track_name"],
+                                "artist_name": t_data["artist_name"],
+                                "duration_ms": t_data["duration_ms"],
+                                "played_ms": t_data["duration_ms"],
+                                "listen_type": t_data["listen_type"],
+                                "listen_weight": final_weight,
+                                "valence": t_data["valence"],
+                                "energy": t_data["energy"],
+                                "context": current_context,
+                                "ml_features": {
+                                    "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
+                                    "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
+                                    "exclusion_flags": ai_res.get("exclusion_flags", []),
+                                    "telemetry_summary": ai_res.get("telemetry_summary", "AI Analysis Unavailable")
+                                },
+                                "sync_source": "recently_played_batch"
+                            })
+                            
+                        # Add a 2-second delay between batches to avoid Rate Limits
+                        await asyncio.sleep(2)
                             
                 except Exception as e:
                     print(f"Error in recently-played sync for {user_id}: {e}")
@@ -449,62 +469,77 @@ async def sync_recently_played_loop():
             
         await asyncio.sleep(1800) # 30 minutes
 
-async def run_deepseek_analysis(track_name, artist_name, valence, energy, current_context):
-    ai_mood = "Unknown"
-    ai_analysis = "AI analysis unavailable."
-    time_of_day_fit = "Anytime"
-    
+async def run_deepseek_batch_analysis(batch_payload, current_context):
     deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-    if deepseek_key:
-        for attempt in range(3):
-            try:
-                client_ai = openai.AsyncOpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
-                prompt = f"""
-                Analyze this song: "{track_name}" by {artist_name}.
-                Audio Features: Valence={valence}, Energy={energy}.
-                User's current activity context: {current_context}.
-                
-                Provide a JSON response with exactly these keys:
-                - "ai_mood": A highly specific, nuanced mood (e.g., "Late Night Nostalgia", "Aggressive Workout", "Melancholy Reflection"). Max 4 words.
-                - "ai_analysis": One sentence explaining why this song fits this mood and context.
-                - "time_of_day_fit": Best time of day to listen to this (e.g., "Late Night", "Morning", "Afternoon").
-                """
-                
-                response = await client_ai.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[
-                        {"role": "system", "content": "You are a music mood analyzer. Output ONLY valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    response_format={"type": "json_object"},
-                    timeout=15.0
-                )
-                
-                result = json.loads(response.choices[0].message.content)
-                ai_mood = result.get("ai_mood", ai_mood)
-                ai_analysis = result.get("ai_analysis", ai_analysis)
-                time_of_day_fit = result.get("time_of_day_fit", time_of_day_fit)
-                break # Success, exit retry loop
-            except Exception as e:
-                print(f"DeepSeek AI Error (Attempt {attempt+1}): {e}")
-                if attempt < 2:
-                    await asyncio.sleep(2 ** attempt) # Exponential backoff
-                else:
-                    ai_analysis = f"AI Error: {str(e)}" # Store error in DB for debugging
+    result_dict = {}
+    if not deepseek_key or not batch_payload:
+        return result_dict
+        
+    prompt_items = []
+    for item in batch_payload:
+        prompt_items.append(f"""
+- Track ID: {item['track_id']}
+- Song: "{item['track_name']}" by {item['artist_name']}
+- Base Recommendation Weight: {item['base_weight']} (Derived purely from playback duration/engagement, scaled 0-100)
+- Acoustic Anchors: Valence={item['valence']}, Energy={item['energy']}
+""")
 
-    # Heuristic fallback mood
-    mood = ai_mood if ai_mood != "Unknown" else "Unknown"
-    if mood == "Unknown":
-        if valence > 0.5 and energy > 0.5:
-            mood = "Euphoric"
-        elif valence < 0.5 and energy > 0.5:
-            mood = "Aggressive"
-        elif valence < 0.5 and energy < 0.5:
-            mood = "Depressive Spiral"
-        else:
-            mood = "Deep Focus"
+    prompt_body = "".join(prompt_items)
+
+    prompt = f"""
+You are a high-performance audio telemetry feature engineering engine. Your task is to ingest a massive payload of raw audio features, evaluate lyrics internally, and output a highly optimized JSON object for a machine learning pipeline.
+
+### ACTIVE USER PROFILE CONTEXT: {current_context}
+
+### COGNITIVE INSTRUCTIONS:
+1. Internally evaluate all 50 raw acoustic features (danceability, acousticness, tempo, instrumentalness, mode, etc.) alongside the lyric themes to determine how the track behaves emotionally, rhythmically, and structurally. Do NOT query external APIs, use your vast training data to estimate these features.
+2. Calculate an absolute "mood_vector" representing the spatial position of this song on a 3-dimensional coordinate grid: [Positivity, Intensity, Cognitive Load]. Scale each float from 0.0 to 1.0.
+3. Compare the song's profile against the Active User Profile Context. Determine if it enhances the state, conflicts with it, or is completely isolated to it.
+4. Compute an "incremental_weight" modifier between -20.0 and +20.0 based on how perfectly it snaps into the active user context profile.
+
+### INPUT DATA TO EVALUATE:
+{prompt_body}
+
+### OUTPUT SPECIFICATION:
+Return EXACTLY a JSON object with a single key "results" containing an array. Each object in the array MUST contain these exact keys and NO conversational fluff:
+{{
+  "results": [
+    {{
+      "track_id": "string",
+      "mood_vector": [float, float, float],
+      "context_fit_status": "MATCH" | "MISMATCH" | "OUTLIER" | "UNACCEPTABLY_BAD",
+      "incremental_weight": float,
+      "exclusion_flags": ["string", "string"],
+      "telemetry_summary": "One sentence technical justification combining lyric sentiment and core acoustic traits against user state."
+    }}
+  ]
+}}
+"""
+    for attempt in range(3):
+        try:
+            client_ai = openai.AsyncOpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
+            response = await client_ai.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": "You are a music machine learning API. Output strictly valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"},
+                timeout=30.0
+            )
             
-    return mood, ai_analysis, time_of_day_fit
+            result_json = json.loads(response.choices[0].message.content)
+            results_array = result_json.get("results", [])
+            for r in results_array:
+                if "track_id" in r:
+                    result_dict[r["track_id"]] = r
+            break # Success, exit retry loop
+        except Exception as e:
+            print(f"DeepSeek Batch AI Error (Attempt {attempt+1}): {e}")
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+
+    return result_dict
 
 async def save_track_to_db(user_id, state, client):
     """Helper to analyze and save a track when it's done playing."""
