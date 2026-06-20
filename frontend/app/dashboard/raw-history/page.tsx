@@ -11,10 +11,11 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-    const fetchHistory = async () => {
+    const fetchHistory = async (isBackground = false) => {
         const token = localStorage.getItem("jwt");
         if (!token) return;
 
+        if (!isBackground) setLoading(true);
         try {
             const data = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history?token=${token}&limit=100`);
             if (data && data.data) {
@@ -29,6 +30,20 @@ export default function HistoryPage() {
 
     useEffect(() => {
         fetchHistory();
+
+        // Background polling every 30 seconds to avoid aggressive loops
+        const intervalId = setInterval(() => {
+            fetchHistory(true);
+        }, 30000);
+
+        // Fetch immediately when window regains focus
+        const onFocus = () => fetchHistory(true);
+        window.addEventListener("focus", onFocus);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("focus", onFocus);
+        };
     }, []);
 
     const groupIntoSessions = (historyData: any[]) => {

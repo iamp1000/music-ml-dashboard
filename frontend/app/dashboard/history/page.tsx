@@ -60,8 +60,9 @@ export default function AnalyticsHubPage() {
     };
 
     useEffect(() => {
-        const fetchAnalyticsData = async () => {
+        const fetchAnalyticsData = async (isBackground = false) => {
             try {
+                if (!isBackground) setLoading(true);
                 // Fetch profile first
                 const profileData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
                 if (profileData && profileData.data) {
@@ -86,7 +87,22 @@ export default function AnalyticsHubPage() {
                 setLoading(false);
             }
         };
+
         fetchAnalyticsData();
+
+        // Background polling every 30 seconds
+        const intervalId = setInterval(() => {
+            fetchAnalyticsData(true);
+        }, 30000);
+
+        // Fetch on window focus
+        const onFocus = () => fetchAnalyticsData(true);
+        window.addEventListener("focus", onFocus);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("focus", onFocus);
+        };
     }, []);
 
     // Sandbox API call when sliders change
