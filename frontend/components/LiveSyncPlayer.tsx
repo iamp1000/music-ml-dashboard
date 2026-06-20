@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Play, Pause, SkipBack, SkipForward, Heart, Shuffle, Repeat, Volume2, AlertTriangle, Music } from "lucide-react";
 import { fetchWithRateLimit } from "@/utils/api";
 
@@ -28,6 +28,7 @@ export default function LiveSyncPlayer() {
 
     // Rate limiting tracking state
     const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+    const lastCheckedTrackIdRef = useRef<string | null>(null);
 
     // Fetch Spotify Token and initialize Player
     useEffect(() => {
@@ -132,9 +133,15 @@ export default function LiveSyncPlayer() {
                     setDurationMs(state.duration);
                     
                     if (state.track_window.current_track) {
+                        const newTrackId = state.track_window.current_track.id;
                         setTrackName(state.track_window.current_track.name);
                         setArtistName(state.track_window.current_track.artists[0].name);
-                        checkLikedStatus(state.track_window.current_track.id);
+                        
+                        // Prevent hammering Spotify API on every play/pause/volume change
+                        if (lastCheckedTrackIdRef.current !== newTrackId) {
+                            lastCheckedTrackIdRef.current = newTrackId;
+                            checkLikedStatus(newTrackId);
+                        }
                     }
 
                     setIsActive(true);
