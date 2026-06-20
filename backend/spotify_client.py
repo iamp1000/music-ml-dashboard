@@ -49,7 +49,15 @@ class SpotifyClient:
             "Authorization": f"Bearer {self.access_token}"
         }
 
-        response = await self.client.get("https://api.spotify.com/v1/me/player/currently-playing", headers=headers)
+        print("=== [SPOTIFY API] REQUEST: GET /v1/me/player/currently-playing ===")
+        try:
+            response = await self.client.get("https://api.spotify.com/v1/me/player/currently-playing", headers=headers)
+            print(f"=== [SPOTIFY API] RESPONSE: {response.status_code} ===")
+            if response.status_code == 200:
+                print(f"=== [SPOTIFY API] PAYLOAD: {response.text[:200]}... ===")
+        except Exception as e:
+            print(f"=== [SPOTIFY API] EXCEPTION: {e} ===")
+            raise e
         
         # Handle Rate Limiting (429 Too Many Requests)
         if response.status_code == 429:
