@@ -97,7 +97,18 @@ export default function LiveSyncPlayer() {
             (window as any).onSpotifyWebPlaybackSDKReady = () => {
                 const player = new (window as any).Spotify.Player({
                     name: "SonicLens Web Player",
-                    getOAuthToken: (cb: any) => { cb(spotifyToken); },
+                    getOAuthToken: async (cb: any) => { 
+                        try {
+                            const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
+                            if (data && data.data?.access_token) {
+                                cb(data.data.access_token);
+                            } else {
+                                cb(spotifyToken);
+                            }
+                        } catch (e) {
+                            cb(spotifyToken);
+                        }
+                    },
                     volume: 0.5
                 });
 

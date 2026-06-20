@@ -122,20 +122,38 @@ async def get_user_profile(request: Request):
         
     user_id = user_data.get("sub")
     
-    # Decrypt access token from the root user document
+    # Decrypt access token and refresh token
     user_doc = db.collection("users").document(user_id).get()
     access_token = None
     display_name = None
     if user_doc.exists:
         u_dict = user_doc.to_dict()
         display_name = u_dict.get("display_name")
-        cipher = u_dict.get("access_token_cipher")
-        nonce = u_dict.get("access_token_nonce")
-        if cipher and nonce:
+        
+        # Always try to refresh the token to ensure the Web Playback SDK gets a valid one
+        ref_cipher = u_dict.get("refresh_token_cipher")
+        ref_nonce = u_dict.get("refresh_token_nonce")
+        if ref_cipher and ref_nonce:
             try:
-                access_token = encryptor.decrypt(cipher, nonce)
+                from spotify_client import SpotifyClient
+                refresh_token = encryptor.decrypt(ref_cipher, ref_nonce)
+                client = SpotifyClient(refresh_token=refresh_token)
+                new_access = await client.get_access_token()
+                
+                # Save new access token
+                cipher, nonce = encryptor.encrypt(new_access)
+                db.collection("users").document(user_id).update({
+                    "access_token_cipher": cipher,
+                    "access_token_nonce": nonce
+                })
+                access_token = new_access
             except Exception as e:
-                print(f"Decryption error in profile load: {e}")
+                print(f"Failed to refresh token in profile load: {e}")
+                # Fallback to decrypting old one
+                cipher = u_dict.get("access_token_cipher")
+                nonce = u_dict.get("access_token_nonce")
+                if cipher and nonce:
+                    access_token = encryptor.decrypt(cipher, nonce)
 
     stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
     if not stats_doc.exists:
