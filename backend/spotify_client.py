@@ -115,34 +115,6 @@ class SpotifyClient:
             
         return {"status": "error", "message": f"HTTP {response.status_code}"}
 
-    async def get_audio_features(self, track_ids: list):
-        """Fetch audio features for up to 100 tracks at once"""
-        if not track_ids:
-            return {"status": "success", "data": []}
-
-        if not self.access_token and self.refresh_token:
-            await self.get_access_token()
-
-        headers = {
-            "Authorization": f"Bearer {self.access_token}"
-        }
-        
-        ids_string = ",".join(track_ids)
-        response = await self.client.get(f"https://api.spotify.com/v1/audio-features?ids={ids_string}", headers=headers)
-
-        if response.status_code == 429:
-            retry_after = int(response.headers.get("Retry-After", 1))
-            return {"status": "rate_limited", "retry_after": retry_after}
-
-        if response.status_code == 401 and self.refresh_token:
-            await self.get_access_token()
-            return await self.get_audio_features(track_ids)
-
-        if response.status_code == 200:
-            return {"status": "success", "data": response.json().get("audio_features", [])}
-            
-        return {"status": "error", "message": f"HTTP {response.status_code}"}
-
     async def _fetch_endpoint(self, url):
         """Generic endpoint fetcher with token refresh and rate limit handling"""
         if not self.access_token and self.refresh_token:

@@ -108,14 +108,7 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
 
             missing_tracks = [t for t in new_tracks if t[1] not in offline_features]
             
-            # Fallback for missing tracks: Spotify API
-            if missing_tracks:
-                missing_ids = [t[1] for t in missing_tracks]
-                features_resp = await client.get_audio_features(missing_ids)
-                if features_resp["status"] == "success":
-                    for feature in features_resp["data"]:
-                        if feature:
-                            offline_features[feature["id"]] = feature
+            # Audio features completely removed - handled entirely by DeepSeek later
 
             # Insert into Firestore
             for played_at, track_id, track_name, artist_name, duration_ms, doc_ref in new_tracks:

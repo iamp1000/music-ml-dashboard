@@ -397,17 +397,9 @@ async def sync_recently_played_loop():
                         batch = tracks_to_process[i:i+10]
                         batch_payload = []
                         
-                        # Fetch audio features in a SINGLE batch API call for all 10 tracks!
-                        batch_track_ids = [t[1] for t in batch]
-                        audio_features_dict = {}
-                        try:
-                            feat_resp = await client.get_audio_features(batch_track_ids)
-                            if feat_resp.get("status") == "success" and feat_resp.get("data"):
-                                for feat in feat_resp["data"]:
-                                    if feat and "id" in feat:
-                                        audio_features_dict[feat["id"]] = feat
-                        except Exception as e:
-                            print(f"Failed to batch fetch audio features: {e}")
+                        # Audio features completely removed. DeepSeek infers everything.
+                        valence = 0.5
+                        energy = 0.5
                         
                         for track, track_id, p_str in batch:
                             duration_ms = track.get("duration_ms", 1)
@@ -556,16 +548,8 @@ async def save_track_to_db(user_id, state, client):
     track_name = state["track_name"]
     artist_name = state["artist_name"]
     
+    # Removed get_audio_features - DeepSeek will infer everything internally
     valence, energy = 0.5, 0.5
-    try:
-        feat_resp = await client.get_audio_features([track_id])
-        if feat_resp.get("status") == "success" and feat_resp.get("data"):
-            feat = feat_resp["data"][0]
-            if feat:
-                valence = feat.get("valence", 0.5)
-                energy = feat.get("energy", 0.5)
-    except Exception as e:
-        print(f"Failed to fetch features for background save: {e}")
 
     # Determine Lyrical Valence (Simulated since user asked DeepSeek to infer)
     lyrical_valence = 1.0 - valence if valence else 0.5
@@ -693,15 +677,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             ws_cache["last_track_id"] = track_id
                             
                             # Fetch real audio features
-                            feat_resp = await spotify_client.get_audio_features([track_id])
-                            if feat_resp.get("status") == "success" and feat_resp.get("data"):
-                                feat = feat_resp["data"][0]
-                                if feat:
-                                    ws_cache["valence"] = feat.get("valence", 0.5)
-                                    ws_cache["energy"] = feat.get("energy", 0.5)
-                                    valence = ws_cache["valence"]
-                                    energy = ws_cache["energy"]
-                                    
+                            ws_cache["valence"] = 0.5
+                            ws_cache["energy"] = 0.5
+                            valence = 0.5
+                            energy = 0.5
                             # Determine Lyrical Valence (Simulated since user asked DeepSeek to infer)
                             ws_cache["lyrical_valence"] = 1.0 - valence if valence else 0.5
                             ws_cache["lyrics_text"] = "Analyzed dynamically by DeepSeek"
