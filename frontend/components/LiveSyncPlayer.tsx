@@ -26,6 +26,10 @@ export default function LiveSyncPlayer() {
     const [progressMs, setProgressMs] = useState(0);
     const [durationMs, setDurationMs] = useState(0);
 
+    // Rate limiting tracking state
+    const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+    const lastCheckedTrackIdRef = useRef<string | null>(null);
+
     // Rate limit countdown
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -44,10 +48,6 @@ export default function LiveSyncPlayer() {
         }
         return () => clearInterval(interval);
     }, [rateLimitSeconds]);
-
-    // Rate limiting tracking state
-    const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
-    const lastCheckedTrackIdRef = useRef<string | null>(null);
 
     // Fetch Spotify Token and initialize Player
     useEffect(() => {
