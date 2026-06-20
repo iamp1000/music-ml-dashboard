@@ -51,7 +51,7 @@ export default function LiveSyncPlayer() {
         };
 
         const initializeWebsocket = (userId: string) => {
-            const ws = new WebSocket(`wss://music-ml-dashboard.onrender.com/telemetry/stream?user_id=${userId}`);
+            const ws = new WebSocket(`wss://music-ml-dashboard.onrender.com/ws/stream/live?token=${token}`);
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
