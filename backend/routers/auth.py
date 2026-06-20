@@ -15,17 +15,22 @@ SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 @router.get("/login")
-def login_spotify():
+def login_spotify(source: Optional[str] = None):
     """
     Initiates the Spotify OAuth 2.0 flow.
     """
-    scope = "user-read-currently-playing user-read-playback-state user-read-recently-played user-read-private user-read-email user-top-read user-follow-read playlist-read-private user-library-read"
+    scope = "user-read-currently-playing user-read-playback-state user-modify-playback-state user-read-recently-played user-read-private user-read-email user-top-read user-follow-read playlist-read-private user-library-read streaming"
+    
+    # Store the source URL in the state parameter
+    state = source if source else "default"
+    
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
         "response_type": "code",
         "redirect_uri": SPOTIFY_REDIRECT_URI,
         "scope": scope,
-        "show_dialog": "true"
+        "show_dialog": "true",
+        "state": state
     }
     url = f"https://accounts.spotify.com/authorize?{urllib.parse.urlencode(params)}"
     return RedirectResponse(url)
@@ -33,17 +38,24 @@ def login_spotify():
 from typing import Optional
 
 @router.get("/callback")
-async def spotify_callback(code: Optional[str] = None, error: Optional[str] = None):
+async def spotify_callback(code: Optional[str] = None, error: Optional[str] = None, state: Optional[str] = None):
     """
     Handles the Spotify OAuth callback.
     Exchanges the code for tokens, fetches user ID, stores in DB, and redirects with JWT.
     """
+    # Determine where to redirect based on the state passed from login
+    target_frontend_url = FRONTEND_URL
+    if state and state == "localhost":
+        target_frontend_url = "http://localhost:3000"
+    elif state and state.startswith("http"):
+        target_frontend_url = state
+
     if error:
         # Redirect back to frontend with the error so the user isn't stuck on a blank JSON screen
-        return RedirectResponse(f"{FRONTEND_URL}?error={error}")
+        return RedirectResponse(f"{target_frontend_url}?error={error}")
     
     if not code:
-        return RedirectResponse(f"{FRONTEND_URL}?error=missing_code")
+        return RedirectResponse(f"{target_frontend_url}?error=missing_code")
     auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
     auth_bytes = auth_string.encode("utf-8")
     auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
@@ -62,7 +74,7 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         # 1. Get Tokens
         response = await client.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
         if response.status_code != 200:
-            return RedirectResponse(f"{FRONTEND_URL}/?error=token_failed")
+            return RedirectResponse(f"{target_frontend_url}/?error=token_failed")
             
         token_data = response.json()
         access_token = token_data.get("access_token")
@@ -72,7 +84,7 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         me_headers = {"Authorization": f"Bearer {access_token}"}
         me_response = await client.get("https://api.spotify.com/v1/me", headers=me_headers)
         if me_response.status_code != 200:
-            return RedirectResponse(f"{FRONTEND_URL}/?error=profile_failed")
+            return RedirectResponse(f"{target_frontend_url}/?error=profile_failed")
             
         me_data = me_response.json()
         spotify_id = me_data.get("id")
@@ -99,11 +111,11 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         print(f"Warning: Could not save to Firestore (has it been created?): {e}")
 
     # 5. Create JWT for Frontend Session
-    jwt_token = create_access_token({"sub": spotify_id, "name": display_name})
+    jwt_token = create_access_token({"sub": spotify_id})
 
-    # Redirect back to the React dashboard with the token in the URL hash
-    # (GitHub pages static export works well with URL hashes for passing tokens)
-    return RedirectResponse(f"{FRONTEND_URL}/callback#token={jwt_token}")
+    # 6. Redirect back to frontend with token
+    redirect_url = f"{target_frontend_url}/dashboard?token={jwt_token}"
+    return RedirectResponse(redirect_url)
 
 from fastapi import HTTPException
 from security import verify_access_token
