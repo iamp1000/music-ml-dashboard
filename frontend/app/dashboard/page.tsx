@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { fetchWithRateLimit } from "@/utils/api";
 import UserProfilePanel from "@/components/UserProfilePanel";
+import VibeSelector from "@/components/VibeSelector";
 
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
@@ -233,7 +234,8 @@ export default function DashboardOverviewPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-theme-accent shadow-[0_0_8px_var(--theme-accent)] animate-ping"></span>
                         </div>
                     </div>
-                    <p className="text-sm text-theme-text-muted mt-1">Let's explore your sound.</p>
+                    <p className="text-sm text-theme-text-muted mt-1 mb-4">Let's explore your sound.</p>
+                    <VibeSelector />
                 </div>
 
                 <div className="flex items-center gap-3">

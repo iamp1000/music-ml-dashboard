@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import LiveSyncPlayer from "@/components/LiveSyncPlayer";
 import { ThemeSettings } from "@/components/ThemeSettings";
 import { 
-    LayoutDashboard, Activity, Compass, Settings
+    LayoutDashboard, Activity, Compass, Settings, Clock
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const navItems = [
         { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
+        { href: "/dashboard/raw-history", icon: Clock, label: "Raw Log & AI" },
         { href: "/dashboard/history", icon: Activity, label: "Analytics Hub" },
         { href: "/dashboard/discovery", icon: Compass, label: "Music & Discovery" },
         { href: "/dashboard/settings", icon: Settings, label: "Settings" },

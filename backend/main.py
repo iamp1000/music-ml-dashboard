@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 
 from database import init_db, db
 from routers import auth, telemetry, settings, spotify
+import openai
+from pydantic import BaseModel
 
 # Load environment variables
 load_dotenv()
@@ -43,6 +45,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class ContextUpdate(BaseModel):
+    context: str
+
+@app.put("/api/context")
+async def update_context(request: ContextUpdate, token: str):
+    user_data = verify_access_token(token)
+    user_id = user_data.get("sub")
+    db.collection("users").document(user_id).set({"current_context": request.context}, merge=True)
+    return {"status": "success"}
+
+@app.get("/api/history")
+async def get_history(token: str, limit: int = 50):
+    user_data = verify_access_token(token)
+    user_id = user_data.get("sub")
+    
+    docs = db.collection("listening_history")\
+             .where("tenant_id", "==", user_id)\
+             .order_by("time", direction="DESCENDING")\
+             .limit(limit)\
+             .stream()
+             
+    history = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["id"] = doc.id
+        history.append(data)
+        
+    return {"status": "success", "data": history}
 
 from state import global_tokens
 from spotify_client import SpotifyClient
@@ -148,18 +179,59 @@ async def save_track_to_db(user_id, state, client):
     if lyr_val is not None:
         lyrical_valence = lyr_val
     else:
-        lyrical_valence = 1.0 - valence if valence else 0.0
+        lyrical_valence = 1.0 - valence if valence else 0.5
 
-    # Heuristic mood
-    mood = "Unknown"
-    if valence > 0.5 and energy > 0.5:
-        mood = "Euphoric"
-    elif valence < 0.5 and energy > 0.5:
-        mood = "Aggressive"
-    elif valence < 0.5 and energy < 0.5:
-        mood = "Depressive Spiral"
-    else:
-        mood = "Deep Focus"
+    # Retrieve user's current context
+    user_doc = db.collection("users").document(user_id).get()
+    current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
+
+    # DeepSeek AI Integration
+    ai_mood = "Unknown"
+    ai_analysis = "AI analysis unavailable."
+    time_of_day_fit = "Anytime"
+    
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    if deepseek_key:
+        try:
+            client_ai = openai.AsyncOpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
+            prompt = f"""
+            Analyze this song: "{track_name}" by {artist_name}.
+            Audio Features: Valence={valence}, Energy={energy}.
+            User's current activity context: {current_context}.
+            
+            Provide a JSON response with exactly these keys:
+            - "ai_mood": A highly specific, nuanced mood (e.g., "Late Night Nostalgia", "Aggressive Workout", "Melancholy Reflection"). Max 4 words.
+            - "ai_analysis": One sentence explaining why this song fits this mood and context.
+            - "time_of_day_fit": Best time of day to listen to this (e.g., "Late Night", "Morning", "Afternoon").
+            """
+            
+            response = await client_ai.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": "You are a music mood analyzer. Output ONLY valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            ai_mood = result.get("ai_mood", ai_mood)
+            ai_analysis = result.get("ai_analysis", ai_analysis)
+            time_of_day_fit = result.get("time_of_day_fit", time_of_day_fit)
+        except Exception as e:
+            print(f"DeepSeek AI Error: {e}")
+
+    # Heuristic fallback mood
+    mood = ai_mood if ai_mood != "Unknown" else "Unknown"
+    if mood == "Unknown":
+        if valence > 0.5 and energy > 0.5:
+            mood = "Euphoric"
+        elif valence < 0.5 and energy > 0.5:
+            mood = "Aggressive"
+        elif valence < 0.5 and energy < 0.5:
+            mood = "Depressive Spiral"
+        else:
+            mood = "Deep Focus"
 
     listen_weight = 1.0 if (state["max_progress_ms"] >= state["duration_ms"] * 0.95 or state["duration_ms"] - state["max_progress_ms"] < 30000) else 0.0
     listen_type = "complete" if listen_weight > 0 else "skip"
@@ -181,9 +253,12 @@ async def save_track_to_db(user_id, state, client):
             "acoustic_valence": valence,
             "lyrical_valence": lyrical_valence,
             "dissonance_score": abs(valence - lyrical_valence),
-            "ml_analyzed": True
+            "ml_analyzed": True,
+            "context": current_context,
+            "ai_analysis": ai_analysis,
+            "time_of_day_fit": time_of_day_fit
         })
-        print(f"Background recorded track for {user_id}: {track_name}")
+        print(f"Background recorded track for {user_id}: {track_name} (Context: {current_context}, AI Mood: {ai_mood})")
     except Exception as e:
         print(f"Failed to save background track to DB: {e}")
 
