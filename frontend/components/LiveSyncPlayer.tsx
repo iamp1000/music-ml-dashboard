@@ -26,6 +26,25 @@ export default function LiveSyncPlayer() {
     const [progressMs, setProgressMs] = useState(0);
     const [durationMs, setDurationMs] = useState(0);
 
+    // Rate limit countdown
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (rateLimitSeconds > 0) {
+            interval = setInterval(() => {
+                setRateLimitSeconds((prev) => {
+                    if (prev <= 1) {
+                        setTrackName("Waiting for Spotify...");
+                        setArtistName("");
+                        return 0;
+                    }
+                    setArtistName(`Please wait for ${prev - 1} seconds`);
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [rateLimitSeconds]);
+
     // Rate limiting tracking state
     const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
     const lastCheckedTrackIdRef = useRef<string | null>(null);
@@ -74,6 +93,12 @@ export default function LiveSyncPlayer() {
                     } else if (data && data.status === "inactive") {
                         setTrackName("No track playing");
                         setArtistName("");
+                        setIsActive(false);
+                        setCurrentTrack(null);
+                    } else if (data && data.status === "rate_limited") {
+                        setRateLimitSeconds(data.retry_after || 30);
+                        setTrackName(`Spotify Rate Limit Cooldown...`);
+                        setArtistName(`Please wait for ${data.retry_after || 30} seconds`);
                         setIsActive(false);
                         setCurrentTrack(null);
                     }
@@ -162,15 +187,6 @@ export default function LiveSyncPlayer() {
         window.addEventListener("spotify-rate-limit", handleRateLimit);
         return () => window.removeEventListener("spotify-rate-limit", handleRateLimit);
     }, []);
-
-    // Rate-limiting cooldown timer
-    useEffect(() => {
-        if (rateLimitSeconds <= 0) return;
-        const interval = setInterval(() => {
-            setRateLimitSeconds(prev => prev - 1);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [rateLimitSeconds]);
 
     // Progress bar ticking timer
     useEffect(() => {
@@ -299,15 +315,23 @@ export default function LiveSyncPlayer() {
             <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-[#06080C] border border-[#1B2332] shrink-0 overflow-hidden relative flex items-center justify-center text-theme-accent">
                     {currentTrack && currentTrack.album?.images[0]?.url ? (
-                        <img src={currentTrack.album.images[0].url} alt={trackName} className="w-full h-full object-cover" />
+                        <img 
+                            src={currentTrack?.album?.images[0]?.url || "/placeholder.jpg"} 
+                            alt="Album" 
+                            className={`w-14 h-14 rounded-md object-cover shadow-sm ${rateLimitSeconds > 0 ? 'opacity-50 grayscale' : ''}`}
+                        />
                     ) : (
                         <Music className="w-5 h-5 text-theme-accent" />
                     )}
                 </div>
 
-                <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-white truncate">{trackName}</h4>
-                    <p className="text-[10px] text-theme-text-muted truncate mt-0.5">{artistName || "No artist active"}</p>
+                <div className="flex flex-col max-w-[200px]">
+                    <span className={`text-sm font-semibold truncate ${rateLimitSeconds > 0 ? 'text-red-400' : 'text-white'}`}>
+                        {trackName}
+                    </span>
+                    <span className="text-xs text-gray-400 truncate">
+                        {artistName}
+                    </span>
                 </div>
 
                 {/* Like / Heart Icon */}

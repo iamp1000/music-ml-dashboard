@@ -740,8 +740,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         continue
 
                     elif current_track and current_track.get("status") == "rate_limited":
-                        print(f"Rate limited on Live Stream, backing off: {current_track.get('retry_after')}")
-                        await asyncio.sleep(current_track.get("retry_after", 30))
+                        retry_after = current_track.get('retry_after', 30)
+                        print(f"Rate limited on Live Stream, backing off: {retry_after}s")
+                        await websocket.send_json({"status": "rate_limited", "retry_after": retry_after})
+                        await asyncio.sleep(retry_after)
                         continue
                         
                 except Exception as e:

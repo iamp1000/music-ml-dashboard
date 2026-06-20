@@ -63,7 +63,8 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         # 1. Get Tokens
         response = await client.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
         if response.status_code != 200:
-            print(f"Spotify /api/token failed: {response.status_code} - {response.text}")
+            retry_after = response.headers.get("Retry-After", "unknown")
+            print(f"Spotify /api/token failed: {response.status_code} (Retry-After: {retry_after}s) - {response.text}")
             return RedirectResponse(f"{FRONTEND_URL}/?error=token_failed_{response.status_code}")
             
         token_data = response.json()
@@ -74,8 +75,9 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         me_headers = {"Authorization": f"Bearer {access_token}"}
         me_response = await client.get("https://api.spotify.com/v1/me", headers=me_headers)
         if me_response.status_code != 200:
-            print(f"Spotify /v1/me failed: {me_response.status_code} - {me_response.text}")
-            return RedirectResponse(f"{FRONTEND_URL}/?error=profile_failed_{me_response.status_code}")
+            retry_after = me_response.headers.get("Retry-After", "unknown")
+            print(f"Spotify /v1/me failed: {me_response.status_code} (Retry-After: {retry_after}s) - {me_response.text}")
+            return RedirectResponse(f"{FRONTEND_URL}/?error=profile_failed_{me_response.status_code}_retry_{retry_after}")
             
         me_data = me_response.json()
         spotify_id = me_data.get("id")
