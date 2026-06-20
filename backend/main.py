@@ -568,38 +568,53 @@ async def save_track_to_db(user_id, state, client):
     user_doc = db.collection("users").document(user_id).get()
     current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
 
-    # Run DeepSeek AI Integration
-    mood, ai_analysis, time_of_day_fit = await run_deepseek_analysis(track_name, artist_name, valence, energy, current_context)
-
+    # Run DeepSeek AI Integration using the batch processor with 1 item
     played_ms = state.get("max_progress_ms", 0)
     duration_ms = state.get("duration_ms", 1)
-    
     ml_score, listen_type = calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, energy)
-    listen_weight = ml_score # Store normalized score in listen_weight key
+    
+    batch_payload = [{
+        "track_id": track_id,
+        "track_name": track_name,
+        "artist_name": artist_name,
+        "valence": valence,
+        "energy": energy,
+        "base_weight": ml_score,
+        "listen_type": listen_type,
+        "played_at_str": datetime.now(timezone.utc).isoformat(),
+        "duration_ms": duration_ms
+    }]
+    
+    batch_results = await run_deepseek_batch_analysis(batch_payload, current_context)
+    ai_res = batch_results.get(track_id, {})
+    
+    # Combine base weight and incremental weight into a single final variable
+    incremental = ai_res.get("incremental_weight", 0.0)
+    final_weight = min(100, max(0, int(ml_score + incremental)))
     
     try:
         db.collection("listening_history").add({
-            "time": datetime.now(timezone.utc).isoformat(),
+            "time": batch_payload[0]["played_at_str"],
             "tenant_id": user_id,
             "track_id": track_id,
             "track_name": track_name,
             "artist_name": artist_name,
-            "duration_ms": state["duration_ms"],
-            "played_ms": state["max_progress_ms"],
+            "duration_ms": duration_ms,
+            "played_ms": played_ms,
             "listen_type": listen_type,
-            "listen_weight": listen_weight,
+            "listen_weight": final_weight,
             "valence": valence,
             "energy": energy,
-            "mood_category": mood,
-            "acoustic_valence": valence,
-            "lyrical_valence": lyrical_valence,
-            "dissonance_score": abs(valence - lyrical_valence),
-            "ml_analyzed": True,
             "context": current_context,
-            "ai_analysis": ai_analysis,
-            "time_of_day_fit": time_of_day_fit
+            "ml_features": {
+                "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
+                "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
+                "exclusion_flags": ai_res.get("exclusion_flags", []),
+                "telemetry_summary": ai_res.get("telemetry_summary", "AI Analysis Unavailable")
+            },
+            "sync_source": "websocket_live_tracking"
         })
-        print(f"Background recorded track for {user_id}: {track_name} (Context: {current_context}, AI Mood: {ai_mood})")
+        print(f"Background recorded track for {user_id}: {track_name} (Context: {current_context})")
     except Exception as e:
         print(f"Failed to save background track to DB: {e}")
 
@@ -700,20 +715,24 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             }
                         }
                         await websocket.send_json(data)
-                        await asyncio.sleep(5.0)
+                        await asyncio.sleep(10.0)
                         continue
 
                     elif current_track and current_track.get("status") == "rate_limited":
                         print(f"Rate limited on Live Stream, backing off: {current_track.get('retry_after')}")
-                        await asyncio.sleep(current_track.get("retry_after", 5))
+                        await asyncio.sleep(current_track.get("retry_after", 10))
                         continue
                         
                 except Exception as e:
-                    print(f"Spotify API Error: {e}")
+                    if "429" in str(e):
+                        print("Spotify 429 Too Many Requests in WS. Backing off for 30s.")
+                        await asyncio.sleep(30.0)
+                    else:
+                        print(f"Spotify API Error: {e}")
 
             # Fallback if no track or error
             await websocket.send_json({"status": "inactive"})
-            await asyncio.sleep(5.0) 
+            await asyncio.sleep(10.0) 
 
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
