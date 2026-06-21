@@ -14,7 +14,7 @@ export default function Home() {
         </p>
 
         <button 
-          onClick={() => window.location.href = 'http://localhost:8000/auth/login'}
+          onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-server.onrender.com'}/auth/login`}
           className="flex items-center justify-center w-full gap-3 px-8 py-4 rounded-full bg-[#1DB954] text-white font-bold tracking-wide hover:bg-[#1ed760] transition-colors shadow-lg"
         >
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
