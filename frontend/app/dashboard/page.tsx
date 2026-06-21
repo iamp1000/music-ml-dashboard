@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, Loader2, AlertCircle
+    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, Loader2, AlertCircle, X
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -21,6 +21,7 @@ export default function DashboardOverviewPage() {
     const [timeTab, setTimeTab] = useState<"D" | "W" | "M">("D");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [showProfilePanel, setShowProfilePanel] = useState(false);
+    const [expandedMetric, setExpandedMetric] = useState<"time" | "tracks" | "artists" | "vibes" | null>(null);
 
     useEffect(() => {
         const loadDashboardData = async () => {
@@ -276,7 +277,7 @@ export default function DashboardOverviewPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Card 1: Total Listening Time */}
-                <div className="relative overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
+                <div onClick={() => setExpandedMetric("time")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
                             <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Total Listening Time</span>
@@ -306,7 +307,7 @@ export default function DashboardOverviewPage() {
                 </div>
 
                 {/* Card 2: Tracks Played */}
-                <div className="relative overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
+                <div onClick={() => setExpandedMetric("tracks")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
                             <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Tracks Played</span>
@@ -330,7 +331,7 @@ export default function DashboardOverviewPage() {
                 </div>
 
                 {/* Card 3: Artists Discovered */}
-                <div className="relative overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
+                <div onClick={() => setExpandedMetric("artists")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
                             <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Artists Discovered</span>
@@ -354,7 +355,7 @@ export default function DashboardOverviewPage() {
                 </div>
 
                 {/* Card 4: Vibes Explored */}
-                <div className="relative overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
+                <div onClick={() => setExpandedMetric("vibes")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
                     <div className="flex justify-between items-start">
                         <div>
                             <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Vibes Explored</span>
@@ -623,6 +624,74 @@ export default function DashboardOverviewPage() {
                 onClose={() => setShowProfilePanel(false)} 
                 profile={profile} 
             />
+
+            {/* Modal for Expanded Metrics */}
+            {expandedMetric && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setExpandedMetric(null)}>
+                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-6 border-b border-[#1B2332]">
+                            <h2 className="text-xl font-bold text-white uppercase tracking-wider">
+                                {expandedMetric === "time" && "Listening Time Details"}
+                                {expandedMetric === "tracks" && "Tracks Played Details"}
+                                {expandedMetric === "artists" && "Artists Discovered Details"}
+                                {expandedMetric === "vibes" && "Vibes Explored Details"}
+                            </h2>
+                            <button onClick={() => setExpandedMetric(null)} className="p-2 rounded-full hover:bg-white/10 text-theme-text-muted hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            {expandedMetric === "time" && (
+                                <div className="space-y-3">
+                                    {Object.entries(dateCounts).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime()).map(([date, count]) => (
+                                        <div key={date} className="flex justify-between items-center p-3 rounded-xl bg-[#1B2332]/30 border border-[#1B2332]">
+                                            <span className="font-bold text-theme-text-muted">{date}</span>
+                                            <span className="text-theme-accent font-mono">{Math.round(count * 3.4)} mins</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {expandedMetric === "tracks" && (
+                                <div className="space-y-3">
+                                    {Object.values(trackCounts).sort((a,b) => b.count - a.count).map((t, idx) => (
+                                        <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-[#1B2332]/30 border border-[#1B2332]">
+                                            <div>
+                                                <div className="font-bold text-white">{t.name}</div>
+                                                <div className="text-xs text-theme-text-muted">{t.artist}</div>
+                                            </div>
+                                            <span className="text-theme-accent font-mono bg-theme-accent/10 px-3 py-1 rounded-lg">{t.count} plays</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {expandedMetric === "artists" && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {Array.from(uniqueArtists).map((artist, idx) => (
+                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-[#1B2332]/30 border border-[#1B2332]">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                                                <Users className="w-4 h-4" />
+                                            </div>
+                                            <span className="font-bold text-white text-sm truncate">{artist as string}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {expandedMetric === "vibes" && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {Array.from(moodSet).map((mood, idx) => (
+                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-[#1B2332]/30 border border-[#1B2332]">
+                                            <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">
+                                                <Disc className="w-4 h-4" />
+                                            </div>
+                                            <span className="font-bold text-white text-sm truncate">{mood as string}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
