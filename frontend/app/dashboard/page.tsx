@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, Loader2, AlertCircle, X
+    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, Loader2, AlertCircle, X, MoreVertical, Plus
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -14,11 +14,28 @@ import { fetchWithRateLimit } from "@/utils/api";
 import UserProfilePanel from "@/components/UserProfilePanel";
 import VibeSelector from "@/components/VibeSelector";
 
+// Custom Capsule shape for the Bar Chart
+const CapsuleBar = (props: any) => {
+    const { fill, x, y, width, height } = props;
+    if (height <= 0) return null;
+    const radius = width / 2;
+    return (
+        <g>
+            {/* Background pill (full height approximation) */}
+            <rect x={x} y={y - 10} width={width} height={height + 20} fill="#1B2332" rx={radius} ry={radius} opacity={0.3} />
+            {/* The actual filled bar */}
+            <rect x={x} y={y} width={width} height={height} fill={fill} rx={radius} ry={radius} />
+            {/* The inner dot at the top */}
+            {height > 10 && <circle cx={x + radius} cy={y + radius + 1} r={radius * 0.4} fill="#0A0D14" />}
+        </g>
+    );
+};
+
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [timeTab, setTimeTab] = useState<"D" | "W" | "M">("D");
+    const [timeTab, setTimeTab] = useState<string>("Overview");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [showProfilePanel, setShowProfilePanel] = useState(false);
     const [expandedMetric, setExpandedMetric] = useState<"time" | "tracks" | "artists" | "vibes" | null>(null);
@@ -103,7 +120,7 @@ export default function DashboardOverviewPage() {
 
     if (!profile) {
         return (
-            <div className="flex flex-col min-h-[80vh] items-center justify-center text-center p-8 border border-[#1B2332] rounded-3xl bg-[#0D111A]">
+            <div className="flex flex-col min-h-[80vh] items-center justify-center text-center p-8 border border-[#1B2332] rounded-3xl bg-[#0A0D14]">
                 <Shield className="w-16 h-16 text-theme-text-muted mb-4 opacity-50" />
                 <h2 className="text-xl font-bold mb-2">No Active Session</h2>
                 <p className="text-theme-text-muted max-w-sm mb-6 text-sm">Please log in to your Spotify account to view your telemetry dashboard.</p>
@@ -218,405 +235,289 @@ export default function DashboardOverviewPage() {
         { subject: 'Instrumentalness', A: Math.round((1 - avgVal) * 50) },
     ];
 
-    // Sparks data for mini charts
-    const timeSpark = history.slice(0, 10).map((h) => ({ val: (h.energy || 0.5) + (h.valence || 0.5) }));
-    const tracksSpark = history.slice(0, 10).map((h, i) => ({ val: i + 1 }));
-    const artistsSpark = history.slice(0, 10).map((h) => ({ val: Math.round((h.valence || 0.5) * 50) }));
-    const genresSpark = history.slice(0, 10).map((h) => ({ val: Math.round((h.energy || 0.5) * 40) }));
-
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            {/* Header section */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-2 text-2xl md:text-3xl font-black tracking-tight text-white">
-                        <span>Good evening, {profile.display_name || "Alex"}.</span>
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-theme-accent/10 border border-theme-accent/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-theme-accent shadow-[0_0_8px_var(--theme-accent)] animate-ping"></span>
-                        </div>
-                    </div>
-                    <p className="text-sm text-theme-text-muted mt-1 mb-4">Let's explore your sound.</p>
-                    <VibeSelector />
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {/* Date Picker */}
-                    <div className="flex items-center gap-2 bg-[#0D111A] border border-[#1B2332] rounded-xl px-4 py-2.5 text-xs font-semibold text-theme-text-muted hover:border-theme-accent/30 cursor-pointer transition-colors">
-                        <Calendar className="w-4 h-4 text-theme-text-muted" />
-                        <span>May 12 - Jun 10, 2024</span>
-                    </div>
-
-                    {/* Profile Status Button */}
-                    <button 
-                        onClick={() => setShowProfilePanel(true)}
-                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-theme-accent/10 border border-theme-accent/30 text-theme-accent cursor-pointer hover:bg-theme-accent/20 transition-all duration-300 overflow-hidden"
-                    >
-                        {profile?.images?.[0]?.url ? (
-                            <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                            <Users className="w-4.5 h-4.5" />
-                        )}
-                    </button>
-
-                    {/* Settings Button */}
-                    <Link href="/dashboard/settings" className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#0D111A] border border-[#1B2332] text-theme-text-muted cursor-pointer hover:border-white/20 hover:text-white transition-all duration-300">
-                        <Settings className="w-4.5 h-4.5" />
-                    </Link>
-                </div>
-            </div>
-
-            {/* Error notifications banner */}
-            {errorMsg && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-500 text-xs py-3 px-4 rounded-xl flex items-center gap-2">
-                    <AlertCircle className="w-4.5 h-4.5 text-red-500" />
-                    <span>{errorMsg}</span>
-                </div>
-            )}
-
-            {/* Stat Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 flex flex-col xl:flex-row gap-6">
+            
+            {/* LEFT COLUMN: Main Dash */}
+            <div className="flex-1 flex flex-col gap-6 min-w-0">
                 
-                {/* Card 1: Total Listening Time */}
-                <div onClick={() => setExpandedMetric("time")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Total Listening Time</span>
-                            <h3 className="text-2xl font-black text-white mt-2 font-mono">{totalListeningTime.toLocaleString()} <span className="text-xs font-normal text-theme-text-muted">min</span></h3>
-                            <span className="inline-flex items-center text-[10px] font-semibold text-theme-accent mt-1">
-                                <span className="mr-1">↑</span> 18% vs last month
-                            </span>
+                {/* Header Row */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 border border-white/10 shrink-0">
+                            <span className="w-4 h-4 rounded-full bg-theme-accent shadow-[0_0_12px_var(--theme-accent)] animate-pulse"></span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-theme-accent/10 border border-theme-accent/20 flex items-center justify-center text-theme-accent">
-                            <Clock className="w-5 h-5" />
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-none">
+                                SonicLens <span className="text-theme-text-muted font-light">Analytics</span>
+                            </h1>
+                            <p className="text-sm text-theme-text-muted mt-2 tracking-wide">
+                                Managing Your <span className="text-theme-accent font-bold">Sound</span> and <span className="text-[#D1F26D] font-bold">Discovery</span>
+                            </p>
                         </div>
                     </div>
-                    {/* Sparkline mini chart */}
-                    <div className="h-10 mt-4 -mx-5 -mb-5 opacity-40 group-hover:opacity-60 transition-opacity">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={timeSpark.length ? timeSpark : [{val:2},{val:3},{val:1},{val:4},{val:2},{val:5}]} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="spark1" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="var(--theme-accent)" stopOpacity={0.2}/>
-                                        <stop offset="95%" stopColor="var(--theme-accent)" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <Area type="monotone" dataKey="val" stroke="var(--theme-accent)" strokeWidth={1.5} fillOpacity={1} fill="url(#spark1)" dot={false} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <Link href="/dashboard/settings" className="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#0D111A] border border-[#1B2332] text-theme-text-muted cursor-pointer hover:border-white/20 hover:text-white transition-all duration-300">
+                            <Settings className="w-5 h-5" />
+                        </Link>
+                        <button className="flex items-center gap-2 bg-[#1B2332] text-white px-5 py-3 rounded-2xl text-sm font-bold hover:bg-[#D1F26D] hover:text-black transition-colors">
+                            <Plus className="w-4 h-4" /> Expand Taste
+                        </button>
                     </div>
                 </div>
 
-                {/* Card 2: Tracks Played */}
-                <div onClick={() => setExpandedMetric("tracks")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Tracks Played</span>
-                            <h3 className="text-2xl font-black text-white mt-2 font-mono">{tracksPlayedCount.toLocaleString()}</h3>
-                            <span className="inline-flex items-center text-[10px] font-semibold text-theme-accent mt-1">
-                                <span className="mr-1">↑</span> 12% vs last month
-                            </span>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                            <Music className="w-5 h-5" />
-                        </div>
-                    </div>
-                    {/* Sparkline mini chart */}
-                    <div className="h-10 mt-4 -mx-5 -mb-5 opacity-40 group-hover:opacity-60 transition-opacity">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={tracksSpark.length ? tracksSpark : [{val:2},{val:4},{val:3},{val:6},{val:2},{val:5}]} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                <Bar dataKey="val" fill="#8B5CF6" radius={[2, 2, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                {/* Sub-Navigation Pills */}
+                <div className="flex flex-wrap gap-2 bg-[#0D111A] border border-[#1B2332] rounded-2xl p-1.5 self-start mb-2">
+                    {["Overview", "Listening", "Artists", "Moods", "Variables"].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setTimeTab(tab)}
+                            className={`px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                                timeTab === tab 
+                                    ? "bg-[#1B2332] text-white shadow-sm" 
+                                    : "text-theme-text-muted hover:text-white"
+                            }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Card 3: Artists Discovered */}
-                <div onClick={() => setExpandedMetric("artists")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Artists Discovered</span>
-                            <h3 className="text-2xl font-black text-white mt-2 font-mono">{artistsDiscoveredCount}</h3>
-                            <span className="inline-flex items-center text-[10px] font-semibold text-theme-accent mt-1">
-                                <span className="mr-1">↑</span> 22% vs last month
-                            </span>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                            <Users className="w-5 h-5" />
-                        </div>
+                {/* Error notifications banner */}
+                {errorMsg && (
+                    <div className="bg-red-500/10 border border-red-500/30 text-red-500 text-xs py-3 px-4 rounded-xl flex items-center gap-2">
+                        <AlertCircle className="w-4.5 h-4.5 text-red-500" />
+                        <span>{errorMsg}</span>
                     </div>
-                    {/* Sparkline mini chart */}
-                    <div className="h-10 mt-4 -mx-5 -mb-5 opacity-40 group-hover:opacity-60 transition-opacity">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={artistsSpark.length ? artistsSpark : [{val:3},{val:1},{val:4},{val:2},{val:5},{val:3}]} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                <Line type="monotone" dataKey="val" stroke="#3B82F6" strokeWidth={1.5} dot={{ r: 2, fill: '#3B82F6' }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+                )}
 
-                {/* Card 4: Vibes Explored */}
-                <div onClick={() => setExpandedMetric("vibes")} className="relative cursor-pointer overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 hover:border-[#1B2332]/80 transition-all duration-300 group">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-theme-text-muted">Vibes Explored</span>
-                            <h3 className="text-2xl font-black text-white mt-2 font-mono">{vibesExploredCount}</h3>
-                            <span className="inline-flex items-center text-[10px] font-semibold text-theme-accent mt-1">
-                                <span className="mr-1">↑</span> 7% vs last month
-                            </span>
+                {/* Stat Cards Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Card 1: Time (Bright Accent like the Yellow 'Data Transfer' card) */}
+                    <div onClick={() => setExpandedMetric("time")} className="cursor-pointer relative overflow-hidden bg-[#D1F26D] rounded-3xl p-6 text-black hover:scale-[1.02] transition-transform shadow-[0_0_40px_rgba(209,242,109,0.1)]">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-center gap-2 text-black/60 font-bold text-sm">
+                                <Clock className="w-4 h-4" /> Listening Time
+                            </div>
+                            <MoreVertical className="w-5 h-5 text-black/40" />
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400">
-                            <Disc className="w-5 h-5" />
+                        <div className="flex items-baseline gap-2 mb-6">
+                            <span className="text-5xl lg:text-6xl font-black tracking-tighter">{totalListeningTime}</span>
+                            <span className="text-xs font-bold text-black/40 uppercase tracking-widest">/ mins</span>
                         </div>
-                    </div>
-                    {/* Sparkline mini chart */}
-                    <div className="h-10 mt-4 -mx-5 -mb-5 opacity-40 group-hover:opacity-60 transition-opacity">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={genresSpark.length ? genresSpark : [{val:1},{val:3},{val:2},{val:4},{val:1},{val:3}]} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="spark4" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2}/>
-                                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <Area type="monotone" dataKey="val" stroke="#F59E0B" strokeWidth={1.5} fillOpacity={1} fill="url(#spark4)" dot={false} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-            </div>
-
-            {/* Middle row: Listening Over Time & Top Tracks */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Listening Over Time Card (2/3 width) */}
-                <div className="lg:col-span-2 bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[400px]">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Listening Over Time</h4>
-                            <Info className="w-4 h-4 text-theme-text-muted/60 cursor-help" />
-                        </div>
-                        <div className="flex bg-[#070A0F] border border-[#1B2332] rounded-xl p-0.5">
-                            {["D", "W", "M"].map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setTimeTab(tab as any)}
-                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                                        timeTab === tab 
-                                            ? "bg-theme-accent/10 border border-theme-accent/20 text-theme-accent" 
-                                            : "text-theme-text-muted hover:text-white border border-transparent"
-                                    }`}
-                                >
-                                    {tab}
-                                </button>
+                        {/* Segmented Pill Indicators */}
+                        <div className="flex gap-1.5 h-6">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                                <div key={i} className={`flex-1 rounded-full ${i < 5 ? 'bg-black' : 'border border-black/20 bg-transparent'}`}></div>
                             ))}
                         </div>
                     </div>
 
+                    {/* Card 2: Tracks (White/Off-white Card like 'Operations') */}
+                    <div onClick={() => setExpandedMetric("tracks")} className="cursor-pointer relative overflow-hidden bg-white rounded-3xl p-6 text-black hover:scale-[1.02] transition-transform">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-center gap-2 text-black/60 font-bold text-sm">
+                                <Music className="w-4 h-4" /> Tracks Played
+                            </div>
+                            <MoreVertical className="w-5 h-5 text-black/40" />
+                        </div>
+                        <div className="flex items-baseline gap-2 mb-6">
+                            <span className="text-5xl lg:text-6xl font-black tracking-tighter">{tracksPlayedCount}</span>
+                            <span className="text-xs font-bold text-black/40 uppercase tracking-widest">/ total</span>
+                        </div>
+                        {/* Segmented Pill Indicators */}
+                        <div className="flex gap-1.5 h-6">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                                <div key={i} className={`flex-1 rounded-full ${i < 6 ? 'bg-black' : 'border border-black/20 bg-transparent'}`}></div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Card 3: Vibes (Dark Card like 'Take You Automation...') */}
+                    <div onClick={() => setExpandedMetric("vibes")} className="cursor-pointer relative overflow-hidden bg-[#0D111A] border border-[#1B2332] rounded-3xl p-6 text-white hover:border-white/20 transition-all flex flex-col justify-between group shadow-xl">
+                        {/* Background subtle gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#D1F26D]/5 to-transparent opacity-50"></div>
+                        <div className="relative z-10">
+                            <h3 className="text-2xl xl:text-3xl font-bold leading-tight mb-2">Take Your <span className="text-[#D1F26D] flex items-center gap-1 inline-flex">Sound <ChevronRight className="w-5 h-5 xl:w-6 xl:h-6" /></span><br/>to the Next Level</h3>
+                            <p className="text-xs text-theme-text-muted">Explored {vibesExploredCount} unique vibes</p>
+                        </div>
+                        <button className="relative z-10 w-full mt-6 bg-white text-black py-3 rounded-xl font-bold flex justify-between items-center px-5 group-hover:bg-[#D1F26D] transition-colors">
+                            <span>Vibe Check</span>
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Statistics Chart (Income Tracker / Operations style) */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-3xl p-6 sm:p-8 flex flex-col h-[400px] shadow-lg">
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-[#1B2332] flex items-center justify-center">
+                                <AreaChart className="w-4 h-4 text-theme-text-muted" />
+                            </div>
+                            <h4 className="text-lg sm:text-xl font-bold text-white">Statistics</h4>
+                            <div className="hidden sm:flex items-center gap-4 ml-6 text-xs font-bold">
+                                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-white"></span> Listening</div>
+                                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#D1F26D]"></span> Artists</div>
+                            </div>
+                        </div>
+                        <div className="bg-[#1B2332] rounded-xl px-4 py-2 text-xs font-bold cursor-pointer hover:bg-white/10 transition-colors">
+                            2024 <ChevronRight className="w-3 h-3 inline ml-1 rotate-90" />
+                        </div>
+                    </div>
+                    
                     <div className="flex-1 w-full min-h-0">
                         {hasHistory ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={listeningOverTimeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="listeningGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--theme-accent)" stopOpacity={0.25}/>
-                                            <stop offset="95%" stopColor="var(--theme-accent)" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="name" tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <BarChart data={listeningOverTimeData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }} barSize={16}>
+                                    <XAxis dataKey="name" tick={{ fill: '#8293B4', fontSize: 11, fontWeight: 'bold' }} axisLine={false} tickLine={false} dy={10} />
                                     <Tooltip 
-                                        cursor={{ stroke: 'rgba(34, 197, 94, 0.2)', strokeWidth: 1 }}
-                                        contentStyle={{ backgroundColor: '#0D111A', borderColor: '#1B2332', borderRadius: '12px' }}
-                                        labelStyle={{ color: 'white', fontWeight: 'bold', fontSize: '12px' }}
-                                        itemStyle={{ color: 'var(--theme-accent)', fontSize: '12px' }}
-                                        formatter={(value) => [`${value} min`, 'Listening Time']}
+                                        cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                                        contentStyle={{ backgroundColor: '#1B2332', borderColor: '#2A364D', borderRadius: '12px' }}
+                                        labelStyle={{ color: 'white', fontWeight: 'bold' }}
+                                        itemStyle={{ color: '#D1F26D' }}
                                     />
-                                    <Area type="monotone" dataKey="min" stroke="var(--theme-accent)" strokeWidth={2.5} fillOpacity={1} fill="url(#listeningGrad)" />
-                                </AreaChart>
+                                    <Bar dataKey="min" fill="white" shape={<CapsuleBar />} />
+                                </BarChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-theme-text-muted">
-                                No history records logged. Play music on Spotify to populate timeline.
-                            </div>
+                            <div className="flex h-full items-center justify-center text-sm text-theme-text-muted">No data available</div>
                         )}
                     </div>
                 </div>
 
-                {/* Top Tracks Card (1/3 width) */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[400px]">
-                    <div className="flex justify-between items-center mb-5">
-                        <h4 className="text-sm font-bold text-white uppercase tracking-wider">Top Tracks</h4>
-                        <div className="text-[10px] text-theme-accent bg-theme-accent/10 border border-theme-accent/20 px-2.5 py-1 rounded-lg font-bold">
-                            by Plays
+                {/* Mood Timeline & Premium Block */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Proposal Progress style Mood Timeline */}
+                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-3xl p-6 sm:p-8 shadow-lg">
+                        <div className="flex justify-between items-center mb-8">
+                            <h4 className="text-lg font-bold text-white">Mood Timeline</h4>
+                            <div className="text-xs text-theme-text-muted flex items-center gap-2 border border-[#1B2332] px-3 py-1.5 rounded-lg">
+                                <Calendar className="w-4 h-4" /> Last 12 tracks
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end mb-6">
+                            <div>
+                                <div className="text-xs font-bold text-theme-text-muted mb-1">Happy</div>
+                                <div className="text-3xl sm:text-4xl font-black">{happyPercent}%</div>
+                            </div>
+                            <div className="w-px h-12 bg-[#1B2332]"></div>
+                            <div>
+                                <div className="text-xs font-bold text-theme-text-muted mb-1">Chill</div>
+                                <div className="text-3xl sm:text-4xl font-black">{calmPercent}%</div>
+                            </div>
+                            <div className="w-px h-12 bg-[#1B2332]"></div>
+                            <div>
+                                <div className="text-xs font-bold text-theme-text-muted mb-1">Energy</div>
+                                <div className="text-3xl sm:text-4xl font-black">{energeticPercent}%</div>
+                            </div>
+                        </div>
+                        {/* Segmented Timeline Graphic */}
+                        <div className="flex items-end gap-1 h-16">
+                            {moodTimelineData.map((d, i) => (
+                                <div key={i} className="flex-1 flex flex-col justify-end gap-1 group">
+                                    <div className="w-full bg-[#1B2332] rounded-full transition-all group-hover:bg-[#2A364D]" style={{ height: `${d.Happy}%` }}></div>
+                                    <div className="w-full bg-[#D1F26D] rounded-full transition-all shadow-[0_0_8px_rgba(209,242,109,0)] group-hover:shadow-[0_0_8px_rgba(209,242,109,0.5)]" style={{ height: `${d.Calm}%` }}></div>
+                                    <div className="w-full bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ height: '4px' }}></div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-                        {displayTracks.length > 0 ? (
-                            displayTracks.map((track) => (
-                                <div key={track.rank} className="flex items-center gap-3">
-                                    <span className="text-xs font-mono text-theme-text-muted w-4">{track.rank}</span>
-                                    <div className="w-10 h-10 rounded-lg bg-[#070A0F] border border-[#1B2332] flex items-center justify-center text-theme-accent shrink-0 font-bold relative overflow-hidden shadow-md">
-                                        <Music className="w-4 h-4 text-theme-accent" />
-                                        <div className="absolute inset-0 bg-theme-accent/5"></div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h5 className="text-xs font-bold text-white truncate leading-tight">{track.name}</h5>
-                                        <span className="text-[10px] text-theme-text-muted truncate block mt-0.5">{track.artist}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end shrink-0 pl-2">
-                                        <span className="text-xs font-bold text-white font-mono">{track.plays} plays</span>
-                                        {/* Little custom block indicators */}
-                                        <div className="flex gap-0.5 mt-1">
-                                            {Array.from({ length: 10 }).map((_, i) => {
-                                                const filled = (track.score / 10) > i;
-                                                return (
-                                                    <span 
-                                                        key={i} 
-                                                        className={`w-1 h-1.5 rounded-sm ${filled ? 'bg-theme-accent shadow-[0_0_4px_var(--theme-accent)]' : 'bg-[#1B2332]'}`}
-                                                    ></span>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-theme-text-muted text-center py-10">
-                                No plays recorded. Play some tracks on Spotify!
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="border-t border-[#1B2332]/60 pt-4 mt-4">
-                        <Link href="/dashboard/discovery" className="flex items-center justify-between text-xs text-theme-text-muted hover:text-white transition-colors group">
-                            <span>View all tracks</span>
-                            <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                        </Link>
+                    {/* Premium Upgrade Card */}
+                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-3xl p-8 relative overflow-hidden flex flex-col justify-center items-center text-center shadow-lg">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#D1F26D]/10 via-transparent to-transparent opacity-60"></div>
+                        <h4 className="text-xl font-bold text-white mb-3 relative z-10">Unlock Premium ML</h4>
+                        <p className="text-sm text-theme-text-muted mb-8 relative z-10 max-w-[200px]">Get exclusive access to neural embeddings & discovery stats.</p>
+                        <button className="bg-white text-black px-8 py-3.5 rounded-xl font-bold relative z-10 flex items-center gap-2 hover:bg-[#D1F26D] transition-colors shadow-lg">
+                            Upgrade now <ChevronRight className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
 
             </div>
 
-            {/* Bottom row: Mood Timeline & Audio Features */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Mood Timeline (2/3 width) */}
-                <div className="lg:col-span-2 bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[400px]">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Mood Timeline</h4>
-                            <Info className="w-4 h-4 text-theme-text-muted/60 cursor-help" />
-                        </div>
-                        {/* Fake weather/mood selectors matching the screenshot */}
-                        <div className="flex bg-[#070A0F] border border-[#1B2332] rounded-xl p-0.5 text-[10px] uppercase font-bold text-theme-text-muted">
-                            <span className="px-2.5 py-1 cursor-pointer hover:text-white transition-colors">Melancholic</span>
-                            <span className="px-2.5 py-1 cursor-pointer hover:text-white transition-colors">Chill</span>
-                            <span className="px-2.5 py-1 cursor-pointer hover:text-white transition-colors">Energetic</span>
-                            <span className="px-2.5 py-1 rounded-lg bg-theme-accent/15 border border-theme-accent/25 text-theme-accent cursor-pointer">Intense</span>
-                        </div>
+            {/* RIGHT COLUMN: Sidebar Stack (Your Recent Projects style) */}
+            <div className="w-full xl:w-96 flex flex-col gap-6 shrink-0">
+                {/* Profile Widget */}
+                <div 
+                    onClick={() => setShowProfilePanel(true)}
+                    className="bg-[#0D111A] border border-[#1B2332] rounded-3xl p-5 flex items-center gap-4 cursor-pointer hover:border-white/20 transition-colors shadow-lg"
+                >
+                    <div className="w-14 h-14 rounded-2xl bg-theme-accent/10 border border-theme-accent/30 overflow-hidden flex items-center justify-center text-theme-accent shrink-0">
+                        {profile?.images?.[0]?.url ? (
+                            <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <Users className="w-6 h-6" />
+                        )}
                     </div>
-
-                    <div className="flex-1 w-full min-h-0 flex gap-4">
-                        {/* Stacked area chart */}
-                        <div className="flex-1 min-w-0">
-                            {hasHistory ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={moodTimelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                        <XAxis dataKey="name" tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <Tooltip 
-                                            contentStyle={{ backgroundColor: '#0D111A', borderColor: '#1B2332', borderRadius: '12px' }}
-                                            labelStyle={{ color: 'white', fontWeight: 'bold' }}
-                                        />
-                                        <Area type="monotone" dataKey="Happy" stackId="1" stroke="var(--theme-accent)" fill="var(--theme-accent)" fillOpacity={0.15} />
-                                        <Area type="monotone" dataKey="Calm" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.15} />
-                                        <Area type="monotone" dataKey="Energetic" stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.15} />
-                                        <Area type="monotone" dataKey="Melancholic" stackId="1" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.15} />
-                                        <Area type="monotone" dataKey="Focused" stackId="1" stroke="#06B6D4" fill="#06B6D4" fillOpacity={0.15} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-sm text-theme-text-muted">
-                                    No history logged. Play music to analyze emotional timeline.
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Legend on the right side of chart */}
-                        <div className="flex flex-col justify-center space-y-3 shrink-0 pr-2">
-                            <div className="flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-sm bg-theme-accent"></span>
-                                    <span className="text-xs text-theme-text">Happy</span>
-                                </div>
-                                <span className="text-xs font-bold text-white font-mono">{happyPercent}%</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-sm bg-blue-500"></span>
-                                    <span className="text-xs text-theme-text">Calm</span>
-                                </div>
-                                <span className="text-xs font-bold text-white font-mono">{calmPercent}%</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-sm bg-yellow-500"></span>
-                                    <span className="text-xs text-theme-text">Energetic</span>
-                                </div>
-                                <span className="text-xs font-bold text-white font-mono">{energeticPercent}%</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span>
-                                    <span className="text-xs text-theme-text">Melancholic</span>
-                                </div>
-                                <span className="text-xs font-bold text-white font-mono">{melancholicPercent}%</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-sm bg-cyan-500"></span>
-                                    <span className="text-xs text-theme-text">Focused</span>
-                                </div>
-                                <span className="text-xs font-bold text-white font-mono">{focusedPercent}%</span>
-                            </div>
-                        </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-white truncate">{profile?.display_name || "Alex"}</div>
+                        <div className="text-xs text-theme-text-muted truncate">Premium Account</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-[#1B2332] flex items-center justify-center text-theme-text-muted">
+                        <ChevronRight className="w-4 h-4" />
                     </div>
                 </div>
 
-                {/* Audio Features Radar (1/3 width) */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[400px]">
-                    <div className="flex items-center gap-2 mb-4">
-                        <h4 className="text-sm font-bold text-white uppercase tracking-wider">Audio Features</h4>
-                        <Info className="w-4 h-4 text-theme-text-muted/60 cursor-help" />
+                {/* Top Tracks (Recent Projects style) */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-3xl p-6 flex-1 flex flex-col min-h-[400px] shadow-lg">
+                    <div className="flex justify-between items-end mb-6">
+                        <h4 className="text-lg font-bold text-white">Your Top Tracks</h4>
+                        <span className="text-xs font-bold text-theme-text-muted hover:text-white cursor-pointer transition-colors border-b border-transparent hover:border-white">See all</span>
                     </div>
 
-                    <div className="flex-1 w-full min-h-0">
+                    <div className="flex-1 space-y-3">
+                        {displayTracks.length > 0 ? displayTracks.map((track) => (
+                            <div key={track.rank} className="bg-[#0A0D14] border border-[#1B2332] rounded-2xl p-4 hover:border-white/20 transition-all cursor-pointer group">
+                                <div className="flex items-center gap-4 mb-3">
+                                    <div className="w-10 h-10 rounded-xl bg-[#D1F26D] text-black flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                                        <Music className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h5 className="text-sm font-bold text-white truncate">{track.name}</h5>
+                                        </div>
+                                        <div className="text-xs text-theme-text-muted truncate mt-0.5">{track.artist}</div>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-[#1B2332] flex items-center justify-center text-theme-text-muted group-hover:bg-white group-hover:text-black transition-colors shrink-0">
+                                        <ChevronRight className="w-4 h-4" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold bg-[#1B2332] text-theme-text-muted px-2.5 py-1 rounded-full uppercase tracking-wider">{track.plays} plays</span>
+                                    <span className="text-[10px] font-bold bg-[#1B2332] text-[#D1F26D] px-2.5 py-1 rounded-full uppercase tracking-wider">Top Tier</span>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="text-center text-sm text-theme-text-muted py-10">No top tracks yet.</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Radar Chart Card */}
+                <div className="bg-[#0D111A] border border-[#1B2332] rounded-3xl p-6 shadow-lg">
+                    <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-lg font-bold text-white">Audio Features</h4>
+                        <div className="w-8 h-8 rounded-full bg-[#1B2332] flex items-center justify-center">
+                            <Info className="w-4 h-4 text-theme-text-muted" />
+                        </div>
+                    </div>
+                    <p className="text-xs text-theme-text-muted mb-4">Detailed sonic breakdown.</p>
+                    <div className="h-48 w-full bg-[#0A0D14] rounded-2xl relative border border-[#1B2332]">
                         {hasHistory ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
                                     <PolarGrid stroke="#1B2332" />
-                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#8293B4', fontSize: 10 }} />
-                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                    <Radar name="Averages" dataKey="A" stroke="var(--theme-accent)" strokeWidth={2} fill="var(--theme-accent)" fillOpacity={0.15} />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#8293B4', fontSize: 9 }} />
+                                    <Radar name="Averages" dataKey="A" stroke="#D1F26D" strokeWidth={2} fill="#D1F26D" fillOpacity={0.2} />
                                 </RadarChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-theme-text-muted text-center py-10">
-                                No metrics calculated. Listening to music will activate features mapping.
-                            </div>
+                            <div className="flex h-full items-center justify-center text-xs text-theme-text-muted">No data available.</div>
                         )}
                     </div>
-
-                    <div className="border-t border-[#1B2332]/60 pt-4 mt-2">
-                        <Link href="/dashboard/history" className="flex items-center justify-between text-xs text-theme-text-muted hover:text-white transition-colors group">
-                            <span>Explore all audio features</span>
-                            <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                    </div>
                 </div>
-
             </div>
 
             <UserProfilePanel 
@@ -646,7 +547,7 @@ export default function DashboardOverviewPage() {
                                     {Object.entries(dateCounts).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime()).map(([date, count]) => (
                                         <div key={date} className="flex justify-between items-center p-3 rounded-xl bg-[#1B2332]/30 border border-[#1B2332]">
                                             <span className="font-bold text-theme-text-muted">{date}</span>
-                                            <span className="text-theme-accent font-mono">{Math.round(count * 3.4)} mins</span>
+                                            <span className="text-[#D1F26D] font-mono">{Math.round(count * 3.4)} mins</span>
                                         </div>
                                     ))}
                                 </div>
@@ -659,7 +560,7 @@ export default function DashboardOverviewPage() {
                                                 <div className="font-bold text-white">{t.name}</div>
                                                 <div className="text-xs text-theme-text-muted">{t.artist}</div>
                                             </div>
-                                            <span className="text-theme-accent font-mono bg-theme-accent/10 px-3 py-1 rounded-lg">{t.count} plays</span>
+                                            <span className="text-[#D1F26D] font-mono bg-[#D1F26D]/10 px-3 py-1 rounded-lg">{t.count} plays</span>
                                         </div>
                                     ))}
                                 </div>
