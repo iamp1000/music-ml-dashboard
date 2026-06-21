@@ -6,8 +6,8 @@ import CustomCursor from '../components/CustomCursor'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Affective Music SaaS Platform',
-  description: 'Music Emotion Recognition and Biofeedback',
+  title: 'Luna Vector Space — Audio Visualizer',
+  description: 'Connect your Spotify. Watch your sound come alive in real-time 3D.',
 }
 
 export default function RootLayout({

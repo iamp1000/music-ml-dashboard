@@ -734,8 +734,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
             await websocket.send_json({"status": "inactive"})
             await asyncio.sleep(20.0) 
 
-    except WebSocketDisconnect:
-        print(f"Client {user_id} disconnected")
+    except (WebSocketDisconnect, RuntimeError) as e:
+        print(f"Client {user_id} disconnected or closed: {e}")
     finally:
         if spotify_client:
             await spotify_client.close()

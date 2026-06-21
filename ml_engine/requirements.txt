@@ -1,3 +1,9 @@
 torch
 torchaudio
 pinecone-client
+madmom
+librosa
+scikit-learn
+yt-dlp
+httpx
+python-dotenv
