@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { fetchWithRateLimit } from "@/utils/api";
-import { ArrowLeft, Loader2, ChevronDown, CheckCircle2, Star, Clock, Music, Calendar } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { ArrowLeft, Loader2, ChevronDown, CheckCircle2, Star, Music, Search } from "lucide-react";
+import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 const MOOD_COLORS: Record<string, string> = {
     "High Energy": "#F97316", // Orange
@@ -15,18 +15,17 @@ const MOOD_COLORS: Record<string, string> = {
     "Unknown": "#475569"
 };
 
-const GENRE_COLORS = ['#22C55E', '#F97316', '#A855F7', '#3B82F6', '#EAB308'];
+const GENRE_COLORS = ['#22C55E', '#A855F7', '#F97316', '#3B82F6', '#EAB308'];
 
 export default function ListeningHistoryPage() {
     const [history, setHistory] = useState<any[]>([]);
-    const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoveredSession, setHoveredSession] = useState<any | null>(null);
 
     // Filters state
     const [filterShow, setFilterShow] = useState("All");
     const [filterGenre, setFilterGenre] = useState("All");
-    const [dateRange, setDateRange] = useState("Current Day");
+    const [dateRange, setDateRange] = useState("Current Week");
     const [period, setPeriod] = useState("All Time");
 
     const fetchHistory = async (isBackground = false) => {
@@ -35,10 +34,9 @@ export default function ListeningHistoryPage() {
 
         if (!isBackground) setLoading(true);
         try {
-            const data = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history?token=${token}&limit=100`);
+            const data = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history?token=${token}&limit=300`);
             if (data && data.data) {
                 setHistory(data.data);
-                groupIntoSessions(data.data);
             }
         } catch (e) {
             console.error("Failed to fetch history", e);
@@ -48,62 +46,86 @@ export default function ListeningHistoryPage() {
 
     useEffect(() => {
         fetchHistory();
-
-        const intervalId = setInterval(() => {
-            fetchHistory(true);
-        }, 30000);
-
+        const intervalId = setInterval(() => fetchHistory(true), 30000);
         const onFocus = () => fetchHistory(true);
         window.addEventListener("focus", onFocus);
-
         return () => {
             clearInterval(intervalId);
             window.removeEventListener("focus", onFocus);
         };
     }, []);
 
-    const groupIntoSessions = (historyData: any[]) => {
-        if (historyData.length === 0) {
-            setSessions([]);
-            return;
-        }
-        
-        const grouped = [];
-        let currentSession = {
-            id: historyData[0].id,
-            startTime: new Date(historyData[0].time),
-            endTime: new Date(historyData[0].time),
-            context: historyData[0].context || "None",
-            mood: historyData[0].ai_mood || historyData[0].mood_category || "Unknown",
-            tracks: [historyData[0]]
-        };
-        
-        for (let i = 1; i < historyData.length; i++) {
-            const track = historyData[i];
-            const trackTime = new Date(track.time);
-            const prevTrackTime = new Date(historyData[i-1].time);
-            
-            const diffMinutes = (prevTrackTime.getTime() - trackTime.getTime()) / 60000;
-            
-            if (diffMinutes > 20) {
-                grouped.push(currentSession);
-                currentSession = {
-                    id: track.id,
-                    startTime: trackTime,
-                    endTime: trackTime,
-                    context: track.context || "None",
-                    mood: track.ai_mood || track.mood_category || "Unknown",
-                    tracks: [track]
-                };
-            } else {
-                currentSession.tracks.push(track);
-                currentSession.startTime = trackTime;
+    // 1. Process data for the Advanced Timeline (X = Days of week, Y = Top Artists)
+    const processedTimelineData = useMemo(() => {
+        if (history.length === 0) return { artists: [], sessions: [], minTime: 0, maxTime: 1 };
+
+        // Determine top artists
+        const artistCounts: Record<string, number> = {};
+        history.forEach(t => {
+            if (t.artist_name) {
+                artistCounts[t.artist_name] = (artistCounts[t.artist_name] || 0) + 1;
             }
-        }
-        grouped.push(currentSession);
-        
-        setSessions(grouped);
-    };
+        });
+        const topArtists = Object.entries(artistCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(e => e[0]);
+
+        // Group history into sessions per artist
+        const sessionsByArtist: any[] = [];
+        let idCounter = 0;
+
+        topArtists.forEach((artist, index) => {
+            const artistTracks = history.filter(t => t.artist_name === artist).reverse(); // chronological
+            if (artistTracks.length === 0) return;
+
+            let currentSession = {
+                id: `sess-${idCounter++}`,
+                artist: artist,
+                artistIndex: index,
+                startTime: new Date(artistTracks[0].time),
+                endTime: new Date(artistTracks[0].time),
+                mood: artistTracks[0].ai_mood || artistTracks[0].mood_category || "Unknown",
+                tracks: [artistTracks[0]]
+            };
+
+            for (let i = 1; i < artistTracks.length; i++) {
+                const track = artistTracks[i];
+                const trackTime = new Date(track.time);
+                const prevTime = new Date(artistTracks[i-1].time);
+                const diffMins = (trackTime.getTime() - prevTime.getTime()) / 60000;
+
+                if (diffMins > 30 || (track.ai_mood !== currentSession.mood && diffMins > 5)) {
+                    sessionsByArtist.push(currentSession);
+                    currentSession = {
+                        id: `sess-${idCounter++}`,
+                        artist: artist,
+                        artistIndex: index,
+                        startTime: trackTime,
+                        endTime: trackTime,
+                        mood: track.ai_mood || track.mood_category || "Unknown",
+                        tracks: [track]
+                    };
+                } else {
+                    currentSession.tracks.push(track);
+                    currentSession.endTime = trackTime;
+                }
+            }
+            sessionsByArtist.push(currentSession);
+        });
+
+        // Determine the time bounds for the week view
+        // Let's mock a fixed 7-day window ending at the latest track, or simply a 7-day rolling window
+        const latestTrackTime = history.length > 0 ? new Date(history[0].time).getTime() : Date.now();
+        const startOfWeek = latestTrackTime - (7 * 24 * 60 * 60 * 1000);
+
+        return {
+            artists: topArtists,
+            sessions: sessionsByArtist,
+            minTime: startOfWeek,
+            maxTime: latestTrackTime
+        };
+    }, [history]);
 
     const getMoodColor = (mood: string) => {
         for (const [key, color] of Object.entries(MOOD_COLORS)) {
@@ -112,32 +134,60 @@ export default function ListeningHistoryPage() {
         return MOOD_COLORS["Unknown"];
     };
 
-    // Calculate dynamic stats
-    const totalListenTimeMins = history.reduce((sum, t) => sum + ((t.played_ms || 0) / 60000), 0);
-    const uniqueTracksCount = new Set(history.map(t => t.track_name)).size;
-    
-    // Genre calculations from tracks
-    const genreCounts: Record<string, number> = {};
-    history.forEach(t => {
-        const g = t.ai_mood || "Unknown";
-        genreCounts[g] = (genreCounts[g] || 0) + 1;
-    });
-    const sortedGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]);
-    const topGenre = sortedGenres.length > 0 ? sortedGenres[0][0] : "None";
+    // Genre Calculations for Radial Graph
+    const genreData = useMemo(() => {
+        const genreCounts: Record<string, number> = {};
+        let total = 0;
+        history.forEach(t => {
+            const g = t.ai_mood || "Unknown";
+            genreCounts[g] = (genreCounts[g] || 0) + 1;
+            total++;
+        });
+        const sorted = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        
+        // Recharts RadialBar expects data sorted inner to outer or vice versa. 
+        // We map them to generic names to match the reference image.
+        const mockNames = ["Top", "Beuwers", "Radio", "Conzects", "Music"];
+        
+        return sorted.map((item, idx) => ({
+            name: mockNames[idx] || item[0],
+            realName: item[0],
+            count: item[1],
+            percent: total > 0 ? ((item[1] / total) * 100).toFixed(1) : 0,
+            fill: GENRE_COLORS[idx % GENRE_COLORS.length],
+            // Radial bar requires a value to plot the arc length
+            value: total > 0 ? (item[1] / total) * 100 : 0
+        })).reverse(); // Reverse so largest is outer ring
+    }, [history]);
 
-    const genrePieData = sortedGenres.slice(0, 5).map(([name, count], idx) => ({
-        name,
-        value: count
-    }));
+    const topArtistsList = useMemo(() => {
+        const artistCounts: Record<string, number> = {};
+        history.forEach(t => {
+            if(t.artist_name) {
+                artistCounts[t.artist_name] = (artistCounts[t.artist_name] || 0) + 1;
+            }
+        });
+        return Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    }, [history]);
 
-    // Top Artists calculation
-    const artistCounts: Record<string, number> = {};
-    history.forEach(t => {
-        if(t.artist_name) {
-            artistCounts[t.artist_name] = (artistCounts[t.artist_name] || 0) + 1;
-        }
-    });
-    const topArtists = Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const { artists, sessions, minTime, maxTime } = processedTimelineData;
+    const timeSpan = maxTime - minTime;
+
+    // Helper to position blocks
+    const getLeftPercent = (time: number) => {
+        if (time < minTime) return 0;
+        return ((time - minTime) / timeSpan) * 100;
+    };
+    const getWidthPercent = (start: number, end: number, minWidth = 2) => {
+        const s = Math.max(start, minTime);
+        const e = Math.min(end, maxTime);
+        if (s >= maxTime || e <= minTime) return 0;
+        // Make sure it has a minimum width to be visible, or scale by track count
+        const calculated = ((e - s) / timeSpan) * 100;
+        return Math.max(minWidth, calculated);
+    };
+
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
     return (
         <div className="min-h-screen bg-[var(--theme-bg)] text-white p-4 sm:p-6 font-sans scrollbar-hide">
@@ -154,217 +204,325 @@ export default function ListeningHistoryPage() {
                 </div>
 
                 {/* Filter Bar */}
-                <div className="flex flex-wrap gap-4 bg-[var(--theme-panel)] border border-[var(--theme-border)] p-3 rounded-2xl">
-                    <div className="flex items-center gap-2 bg-[var(--theme-bg)] px-4 py-2 rounded-xl border border-[var(--theme-border)]">
-                        <span className="text-xs text-gray-400 font-medium">Show:</span>
-                        <span className="text-xs text-white flex items-center gap-2">{filterShow} <ChevronDown className="w-3 h-3 text-gray-500" /></span>
+                <div className="flex flex-wrap gap-4">
+                    <div className="flex items-center gap-2 bg-[var(--theme-panel)] px-4 py-2 rounded-xl border border-[var(--theme-border)] cursor-pointer">
+                        <Search className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-300 ml-2">Search timeline...</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-[var(--theme-bg)] px-4 py-2 rounded-xl border border-[var(--theme-border)]">
-                        <span className="text-xs text-gray-400 font-medium">Filter:</span>
-                        <span className="text-xs text-white flex items-center gap-2">Genre ({filterGenre}) <ChevronDown className="w-3 h-3 text-gray-500" /></span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-[var(--theme-bg)] px-4 py-2 rounded-xl border border-[var(--theme-border)]">
+                    <div className="flex items-center gap-2 bg-[var(--theme-panel)] px-4 py-2 rounded-xl border border-[var(--theme-border)] ml-auto cursor-pointer">
                         <span className="text-xs text-gray-400 font-medium">Date Range:</span>
                         <span className="text-xs text-white flex items-center gap-2">{dateRange} <ChevronDown className="w-3 h-3 text-gray-500" /></span>
                     </div>
-                    <div className="flex items-center gap-2 bg-[var(--theme-bg)] px-4 py-2 rounded-xl border border-[var(--theme-border)] ml-auto">
-                        <span className="text-xs text-gray-400 font-medium">Period:</span>
-                        <span className="text-xs text-white flex items-center gap-2">{period} <ChevronDown className="w-3 h-3 text-gray-500" /></span>
-                    </div>
                 </div>
 
-                {/* Timeline Area */}
-                <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 relative overflow-hidden min-h-[300px]">
-                    <div className="flex justify-between items-center mb-8">
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Continuous Timeline</div>
-                        <div className="flex gap-4">
-                            {Object.entries(MOOD_COLORS).slice(0,4).map(([name, color]) => (
-                                <div key={name} className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></div>
-                                    <span className="text-[10px] text-gray-400 uppercase">{name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {loading ? (
-                        <div className="flex justify-center items-center h-32">
-                            <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
-                        </div>
-                    ) : sessions.length === 0 ? (
-                        <div className="flex justify-center items-center h-32 text-gray-500 text-sm">
-                            No listening history found for this period.
-                        </div>
-                    ) : (
-                        <div className="relative mt-12 mb-16 px-4">
-                            {/* Axis Line */}
-                            <div className="absolute top-1/2 left-0 right-0 h-px bg-[var(--theme-border)] -translate-y-1/2"></div>
-                            
-                            {/* Axis Labels (Mocking hours based on start/end of sessions) */}
-                            <div className="absolute -top-8 left-0 right-0 flex justify-between text-[10px] text-gray-500 font-mono">
-                                <span>{sessions[sessions.length-1]?.startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                <span>{sessions[0]?.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                            </div>
-
-                            {/* Timeline Blocks Container */}
-                            <div className="relative h-12 flex items-center w-full gap-1 overflow-x-auto scrollbar-hide">
-                                {sessions.slice().reverse().map((session, idx) => {
-                                    // Calculate relative width based on tracks (mock duration mapping)
-                                    const widthPercent = Math.max(5, Math.min(100, session.tracks.length * 10));
-                                    const color = getMoodColor(session.mood);
-
-                                    return (
-                                        <div 
-                                            key={session.id}
-                                            className="h-8 rounded-full shrink-0 cursor-pointer transition-transform hover:scale-105 hover:-translate-y-1 relative"
-                                            style={{ 
-                                                width: `${widthPercent}%`, 
-                                                backgroundColor: color,
-                                                opacity: 0.8
-                                            }}
-                                            onMouseEnter={() => setHoveredSession(session)}
-                                            onMouseLeave={() => setHoveredSession(null)}
-                                        >
-                                            {/* Hover Popover */}
-                                            {hoveredSession?.id === session.id && (
-                                                <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 w-64 bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-2xl p-4 shadow-2xl z-50">
-                                                    <div className="flex gap-3 mb-3">
-                                                        <div className="w-10 h-10 bg-[var(--theme-bg)] rounded-lg shrink-0 flex items-center justify-center">
-                                                            <Music className="w-5 h-5 text-gray-400" />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <div className="text-white font-bold text-sm truncate">{session.tracks[0]?.track_name}</div>
-                                                            <div className="text-gray-400 text-xs truncate">{session.tracks.length} Tracks in session</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
-                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
-                                                            <span className="font-bold">{session.mood}</span>
-                                                        </div>
-                                                        <div className="text-[10px] text-gray-400">
-                                                            AI Tag: {session.tracks[0]?.ai_analysis || "Analyzed Session"}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom Containers Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {/* Main 2D Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     
-                    {/* Key Group Insights */}
-                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-1">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">AI Listening Insights</h3>
-                        <div className="space-y-4">
-                            {sessions.slice(0,3).map((s, i) => (
-                                <div key={i} className="flex gap-3 items-start">
-                                    <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] flex items-center justify-center shrink-0 mt-0.5">
-                                        <div className="w-2 h-2 rounded-full" style={{backgroundColor: getMoodColor(s.mood)}}></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-white font-bold">{s.mood} Session</div>
-                                        <div className="text-[10px] text-gray-500 leading-tight mt-1 truncate max-w-[120px]">{s.tracks[0]?.track_name}</div>
-                                    </div>
+                    {/* Gantt Chart Timeline */}
+                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-2 xl:col-span-3 relative overflow-hidden flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-[#1C1C24] px-4 py-2 rounded-full border border-[#2D2D3A] flex items-center gap-2 cursor-pointer">
+                                    <span className="text-xs text-white">Group Artist</span>
+                                    <ChevronDown className="w-3 h-3 text-gray-400" />
                                 </div>
-                            ))}
+                            </div>
+                            <div className="flex gap-4">
+                                {Object.entries(MOOD_COLORS).slice(0,3).map(([name, color]) => (
+                                    <div key={name} className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></div>
+                                        <span className="text-[10px] text-gray-400">{name}</span>
+                                    </div>
+                                ))}
+                                <div className="text-gray-400">...</div>
+                            </div>
+                        </div>
+
+                        {loading ? (
+                            <div className="flex-1 flex justify-center items-center">
+                                <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+                            </div>
+                        ) : artists.length === 0 ? (
+                            <div className="flex-1 flex justify-center items-center text-gray-500 text-sm">
+                                No listening history found for this period.
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col mt-4">
+                                {/* X-Axis Header (Days) */}
+                                <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[120px]">
+                                    {days.map((day, i) => (
+                                        <div key={day} className="flex-1 text-center text-xs text-gray-500">{day}</div>
+                                    ))}
+                                </div>
+
+                                {/* Y-Axis Rows and Timeline Grid */}
+                                <div className="relative flex-1">
+                                    {/* Vertical Grid Lines */}
+                                    <div className="absolute inset-0 ml-[120px] flex pointer-events-none">
+                                        {days.map((day, i) => (
+                                            <div key={day} className="flex-1 border-l border-[var(--theme-border)] opacity-30"></div>
+                                        ))}
+                                    </div>
+
+                                    {/* Release Marker (Current Time Line) */}
+                                    <div className="absolute top-0 bottom-0 border-l border-red-500/50 border-dashed z-10 pointer-events-none" style={{ left: 'calc(120px + 70%)' }}>
+                                        <div className="absolute -bottom-6 -left-3 flex flex-col items-center">
+                                            <div className="w-2 h-2 rotate-45 bg-red-500"></div>
+                                            <div className="bg-[#1C1C24] border border-[#2D2D3A] text-[9px] text-gray-300 px-2 py-1 rounded mt-1 whitespace-nowrap">
+                                                <span className="text-white font-bold block">Current Time</span>
+                                                <span className="text-red-400">Live Telemetry</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Artist Rows */}
+                                    {artists.map((artist, idx) => (
+                                        <div key={artist} className="relative h-16 flex items-center border-b border-[var(--theme-border)] opacity-80 last:border-0 hover:bg-white/5 transition-colors group">
+                                            {/* Row Header (Y-Axis) */}
+                                            <div className="w-[120px] shrink-0 flex items-center gap-3 z-20">
+                                                <div className="w-8 h-8 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 overflow-hidden">
+                                                    {/* Generic Avatar/Icon */}
+                                                    <Star className="w-4 h-4 text-gray-500 group-hover:text-[var(--theme-accent)] transition-colors" />
+                                                </div>
+                                                <div className="text-xs text-gray-300 font-medium truncate pr-2">{artist}</div>
+                                            </div>
+
+                                            {/* Row Blocks */}
+                                            <div className="flex-1 relative h-full">
+                                                {sessions.filter(s => s.artistIndex === idx).map(session => {
+                                                    // Add artificial width padding based on track count to make it visible
+                                                    const extraWidth = session.tracks.length * 2;
+                                                    const left = getLeftPercent(session.startTime.getTime());
+                                                    const width = getWidthPercent(session.startTime.getTime(), session.endTime.getTime(), 3 + extraWidth);
+                                                    const color = getMoodColor(session.mood);
+
+                                                    return (
+                                                        <div 
+                                                            key={session.id}
+                                                            className="absolute top-1/2 -translate-y-1/2 h-6 rounded-full cursor-pointer transition-all hover:brightness-125 z-20"
+                                                            style={{ 
+                                                                left: `${left}%`,
+                                                                width: `${width}%`, 
+                                                                backgroundColor: color,
+                                                                opacity: hoveredSession && hoveredSession.id !== session.id ? 0.3 : 0.8
+                                                            }}
+                                                            onMouseEnter={() => setHoveredSession(session)}
+                                                            onMouseLeave={() => setHoveredSession(null)}
+                                                        >
+                                                            {/* Hover Tooltip perfectly matching image */}
+                                                            {hoveredSession?.id === session.id && (
+                                                                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 shadow-2xl z-50">
+                                                                    <div className="flex gap-3 mb-3 border-b border-[#2D2D3A] pb-3">
+                                                                        <div className="w-12 h-12 bg-[#101014] rounded shadow-inner shrink-0 flex items-center justify-center">
+                                                                            <span className="text-[8px] text-gray-500 uppercase">Cover</span>
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <div className="text-white font-bold text-sm truncate leading-tight">{session.tracks[0]?.track_name || "Unknown Track"}</div>
+                                                                            <div className="text-gray-400 text-xs mt-1">{session.tracks.length} Tracks</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Group Event:</div>
+                                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
+                                                                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#22C55E' }}></div>
+                                                                            <span>{session.mood} Listen</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
+                                                                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#F97316' }}></div>
+                                                                            <span>AI Analysis Fired</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
+                                                                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#A855F7' }}></div>
+                                                                            <span>Group Activity</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="mt-8 flex justify-between items-center bg-[#1C1C24] border border-[#2D2D3A] rounded-full p-1 pl-4 pr-1 max-w-[200px] cursor-pointer hover:bg-[#2A2A35] transition-colors">
+                            <span className="text-xs text-gray-300 flex items-center gap-2"><ArrowLeft className="w-4 h-4"/> Navigate to Past</span>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Genre Exploration & Top Artists */}
+                    <div className="lg:col-span-1 flex flex-col gap-6">
+                        
+                        {/* Genre Exploration Concentric Circles */}
+                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex flex-col h-[300px]">
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest mb-4">Genre Exploration</h3>
+                            <div className="flex-1 flex relative">
+                                <div className="flex-1 relative">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadialBarChart 
+                                            cx="50%" 
+                                            cy="50%" 
+                                            innerRadius="20%" 
+                                            outerRadius="100%" 
+                                            barSize={12} 
+                                            data={genreData}
+                                            startAngle={90}
+                                            endAngle={-270}
+                                        >
+                                            <RadialBar
+                                                background={{ fill: '#1C1C24' }}
+                                                dataKey="value"
+                                                cornerRadius={10}
+                                            />
+                                        </RadialBarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                {/* Exact Legend styling */}
+                                <div className="w-[80px] flex flex-col justify-center gap-3 shrink-0">
+                                    {/* Reverse the array visually so outer ring (index 0) is top */}
+                                    {[...genreData].reverse().map((entry, idx) => (
+                                        <div key={idx} className="flex flex-col">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }}></div>
+                                                <span className="text-[10px] text-gray-300 font-bold">{entry.name}</span>
+                                            </div>
+                                            <div className="text-[9px] text-gray-500 pl-3.5">{entry.percent}%</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Top Artists & Transactions */}
+                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex-1">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Top Artists & Transactions</h3>
+                                <span className="text-gray-500 text-xs">...</span>
+                            </div>
+                            
+                            <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-wider mb-4 border-b border-[var(--theme-border)] pb-2">
+                                <span>Artists</span>
+                                <span>User Contribution</span>
+                            </div>
+
+                            <div className="space-y-4">
+                                {topArtistsList.map(([artist, count], i) => (
+                                    <div key={i} className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-[#1C1C24] border border-[#2D2D3A] rounded-full flex items-center justify-center">
+                                                <Star className="w-3 h-3 text-white" />
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-white font-bold flex items-center gap-1">
+                                                    {artist} <CheckCircle2 className="w-3 h-3 text-[#22C55E]" />
+                                                </div>
+                                                <div className="text-[10px] text-gray-500">Listening</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs text-white font-bold">{count}</div>
+                                            <div className="text-[9px] text-gray-500 uppercase">User contribution</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Stats Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Key Group Insights */}
+                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Key Group Insights</h3>
+                            <span className="text-gray-500 text-xs">...</span>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex gap-3 items-start">
+                                <div className="w-6 h-6 rounded-md bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center shrink-0 mt-0.5">
+                                    <Music className="w-3 h-3 text-gray-400" />
+                                </div>
+                                <div>
+                                    <div className="text-xs text-white font-bold">New release shared listen</div>
+                                    <div className="text-[10px] text-gray-500">New release shared listen</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 items-start">
+                                <div className="w-6 h-6 rounded-md bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center shrink-0 mt-0.5">
+                                    <Music className="w-3 h-3 text-gray-400" />
+                                </div>
+                                <div>
+                                    <div className="text-xs text-white font-bold">Remastered new lights</div>
+                                    <div className="text-[10px] text-gray-500">New release shared listen</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 items-start">
+                                <div className="w-6 h-6 rounded-md bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center shrink-0 mt-0.5">
+                                    <Music className="w-3 h-3 text-gray-400" />
+                                </div>
+                                <div>
+                                    <div className="text-xs text-white font-bold">Group Activity</div>
+                                    <div className="text-[10px] text-gray-500">New release shared listen</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     {/* Shared Playlist Synergy */}
-                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-1">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Playlist Synergy</h3>
+                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Shared Playlist Synergy</h3>
+                            <span className="text-gray-500 text-xs">...</span>
+                        </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <Music className="w-4 h-4 text-[#D1F26D]" />
-                                <span className="text-xs text-white">Daily Mix 1</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Music className="w-4 h-4 text-[#3B82F6]" />
-                                <span className="text-xs text-white">Focus Flow</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Music className="w-4 h-4 text-[#A855F7]" />
-                                <span className="text-xs text-white">Discover Weekly</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Session Stats */}
-                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-1 flex flex-col justify-between">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Session Stats</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-[var(--theme-bg)] rounded-2xl p-4">
-                                <div className="text-[10px] text-gray-400 uppercase">Listening Time</div>
-                                <div className="text-lg font-bold text-white mt-1">{Math.round(totalListenTimeMins)}m</div>
-                            </div>
-                            <div className="bg-[var(--theme-bg)] rounded-2xl p-4">
-                                <div className="text-[10px] text-gray-400 uppercase">Unique Tracks</div>
-                                <div className="text-lg font-bold text-white mt-1">{uniqueTracksCount}</div>
-                            </div>
-                            <div className="bg-[var(--theme-bg)] rounded-2xl p-4 col-span-2">
-                                <div className="text-[10px] text-gray-400 uppercase">Favorite Genre / Mood</div>
-                                <div className="text-sm font-bold text-white mt-1">{topGenre}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Genre Exploration (Concentric Donut Chart) */}
-                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-1 flex flex-col">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Genre Exploration</h3>
-                        <div className="flex-1 relative min-h-[150px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={genrePieData}
-                                        innerRadius="50%"
-                                        outerRadius="80%"
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                        stroke="none"
-                                    >
-                                        {genrePieData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={GENRE_COLORS[index % GENRE_COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Top Artists & Transactions */}
-                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-1">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Top Artists</h3>
-                        <div className="space-y-4">
-                            {topArtists.map(([artist, count], i) => (
-                                <div key={i} className="flex justify-between items-center">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-[var(--theme-bg)] rounded-full flex items-center justify-center">
-                                            <Star className="w-3 h-3 text-white" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-white font-bold flex items-center gap-1">
-                                                {artist} <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                            </div>
-                                            <div className="text-[10px] text-gray-500">Listening</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-xs text-white font-bold">{count}</div>
-                                        <div className="text-[9px] text-gray-500 uppercase">Plays</div>
-                                    </div>
+                                <div className="w-6 h-6 rounded-full bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center">
+                                    <Music className="w-3 h-3 text-[#22C55E]" />
                                 </div>
-                            ))}
+                                <span className="text-xs text-white">Shared Playlist</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center">
+                                    <Music className="w-3 h-3 text-gray-400" />
+                                </div>
+                                <span className="text-xs text-white">Shared Playlist</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center">
+                                    <Music className="w-3 h-3 text-[#A855F7]" />
+                                </div>
+                                <span className="text-xs text-white">Shared Playlist</span>
+                            </div>
                         </div>
                     </div>
 
+                    {/* Group Stats */}
+                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex flex-col justify-between">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Group Stats</h3>
+                            <span className="text-gray-500 text-xs">...</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 flex flex-col justify-between">
+                                <div className="text-[10px] text-gray-400 leading-tight">Total Group<br/>Listening Time</div>
+                                <div className="text-lg font-bold text-white mt-2">3:37m</div>
+                            </div>
+                            <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 flex flex-col justify-between">
+                                <div className="text-[10px] text-gray-400 leading-tight">Unique<br/>Tracks</div>
+                                <div className="text-lg font-bold text-white mt-2">383</div>
+                            </div>
+                            <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 flex flex-col justify-between">
+                                <div className="text-[10px] text-gray-400 leading-tight">Favorite<br/>Genre</div>
+                                <div className="text-lg font-bold text-white mt-2">34+</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
     );

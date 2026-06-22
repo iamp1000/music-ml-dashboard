@@ -96,7 +96,7 @@ export default function DashboardOverviewPage() {
 
         loadDashboardData();
         return () => { isMounted = false; };
-    }, [profile]);
+    }, []);
 
     // Derived Metrics & Filters
     const filteredHistory = useMemo(() => {
