@@ -22,7 +22,7 @@ export default function CallbackPage() {
     // Fallback: If Spotify redirected here with a code, forward it to the backend
     const query = window.location.search;
     if (query.includes('code=')) {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-dashboard.onrender.com';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-server.onrender.com';
       const cleanUrl = baseUrl.replace(/\/+$/, '');
       window.location.href = `${cleanUrl}/auth/callback${query}`;
     } else {

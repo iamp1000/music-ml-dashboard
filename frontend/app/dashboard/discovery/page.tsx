@@ -19,7 +19,7 @@ export default function MusicRecommendationsHub() {
         const fetchMusicHubData = async () => {
             try {
                 // Fetch our internal database history
-                const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
+                const historyData = await fetchWithRateLimit("https://music-ml-server.onrender.com/telemetry/history");
                 if (historyData && historyData.data) {
                     setHistory(historyData.data);
                 }
