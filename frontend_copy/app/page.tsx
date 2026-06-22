@@ -18,7 +18,7 @@ export default function Home() {
     };
   }, []);
 
-  const handleLogin = (e: React.MouseEvent) => {
+  const handleLogin = (e) => {
     e.preventDefault();
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-server.onrender.com';
     const cleanUrl = baseUrl.replace(/\/+$/, '');

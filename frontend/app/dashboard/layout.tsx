@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const navItems = [
         { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
-        { href: "/dashboard/raw-history", icon: Clock, label: "Raw Log & AI" },
+        { href: "/dashboard/raw-history", icon: Clock, label: "Listening History" },
         { href: "/dashboard/history", icon: Activity, label: "Analytics Hub" },
         { href: "/dashboard/discovery", icon: Compass, label: "Music & Discovery" },
         { href: "/dashboard/settings", icon: Settings, label: "Settings" },

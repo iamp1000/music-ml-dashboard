@@ -324,76 +324,7 @@ export default function AnalyticsHubPage() {
                     </div>
                 </div>
 
-                {/* 4. Raw Database History Log */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 mt-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-theme-accent" />
-                            Raw Listening Log
-                        </h3>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-[#1B2332]">
-                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider">Time</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider">Track</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider">Artist</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider hidden md:table-cell">Valence</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-theme-text-muted uppercase tracking-wider hidden lg:table-cell">Vibe</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#1B2332]/50">
-                                {history.slice(0, 100).map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-[#070A0F] transition-colors group">
-                                        <td className="py-3 px-4 text-xs text-theme-text-muted whitespace-nowrap">
-                                            {new Date(item.time).toLocaleString(undefined, {
-                                                month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
-                                            })}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="text-sm font-bold text-white group-hover:text-theme-accent transition-colors max-w-[200px] truncate">
-                                                {item.track_name}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="text-xs text-theme-text-muted max-w-[150px] truncate">
-                                                {item.artist_name}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4 hidden md:table-cell">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-16 h-1.5 bg-[#1B2332] rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-theme-accent"
-                                                        style={{ width: `${(item.valence || 0.5) * 100}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-[10px] text-theme-text-muted font-mono w-6">
-                                                    {((item.valence || 0.5) * 100).toFixed(0)}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4 hidden lg:table-cell text-xs font-mono text-theme-accent">
-                                            {item.mood_category || "Analyzing..."}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {history.length === 0 && (
-                            <div className="py-12 text-center text-sm text-theme-text-muted">
-                                No history records found. Ensure the background worker is running.
-                            </div>
-                        )}
-                        {history.length > 100 && (
-                            <div className="py-4 text-center text-xs text-theme-text-muted border-t border-[#1B2332]/50">
-                                Showing latest 100 records
-                            </div>
-                        )}
-                    </div>
-                </div>
             </div>
         );
     };
