@@ -174,3 +174,20 @@ body {
   opacity: 0.15;
   background: radial-gradient(circle at center, #3b0764 0%, #0a0a0a 100%);
 }
+
+/* Hide scrollbar globally but preserve scrolling functionality */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.custom-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
