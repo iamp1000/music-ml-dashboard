@@ -46,8 +46,9 @@ export default function DashboardOverviewPage() {
                 const fetchProfileOnce = async () => {
                     try {
                         const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
-                        if (data && data.data && isMounted) {
-                            setProfile(data.data);
+                        if (data && isMounted) {
+                            // Support both { data: {...} } and direct object returns
+                            setProfile(data.data || data);
                             return true;
                         }
                     } catch (e: any) {
@@ -59,8 +60,8 @@ export default function DashboardOverviewPage() {
                 const fetchHistoryData = async () => {
                     try {
                         const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
-                        if (historyData && historyData.data && isMounted) {
-                            setHistory(historyData.data);
+                        if (historyData && isMounted) {
+                            setHistory(historyData.data || historyData || []);
                         }
                     } catch (e: any) {
                         console.error("Failed to load history", e);
@@ -70,8 +71,9 @@ export default function DashboardOverviewPage() {
                 const success = await fetchProfileOnce();
                 if (success) {
                     await fetchHistoryData();
-                    if(isMounted) setLoading(false);
                 }
+                
+                if (isMounted) setLoading(false);
 
                 // Polling for live updates every 10 seconds
                 const pollInterval = setInterval(async () => {
