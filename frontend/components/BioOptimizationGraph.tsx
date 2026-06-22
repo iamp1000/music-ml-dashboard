@@ -8,7 +8,7 @@ const BioOptimizationGraph: React.FC = () => {
   const [data, setData] = useState<{time: number, hr: number, reward: number}[]>([]);
 
   useEffect(() => {
-    const ws = new WebSocket("wss://music-ml-server.onrender.com/ws/stream/live");
+    const ws = new WebSocket("wss://music-ml-dashboard.onrender.com/ws/stream/live");
     let t = 0;
     ws.onmessage = (event) => {
       const parsed = JSON.parse(event.data);

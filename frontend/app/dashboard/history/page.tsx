@@ -45,7 +45,7 @@ export default function AnalyticsHubPage() {
     const runInference = async () => {
         setInferenceLoading(true);
         try {
-            const res = await fetchWithRateLimit("https://music-ml-server.onrender.com/telemetry/analyze_audio", {
+            const res = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/analyze_audio", {
                 method: "POST",
                 body: JSON.stringify({ file_path: "sample_track.wav" })
             });
@@ -64,19 +64,19 @@ export default function AnalyticsHubPage() {
             try {
                 if (!isBackground) setLoading(true);
                 // Fetch profile first
-                const profileData = await fetchWithRateLimit("https://music-ml-server.onrender.com/auth/profile");
+                const profileData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
                 if (profileData && profileData.data) {
                     setProfile(profileData.data);
                 }
 
                 // Fetch history
-                const historyData = await fetchWithRateLimit("https://music-ml-server.onrender.com/telemetry/history");
+                const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
                 if (historyData && historyData.data) {
                     setHistory(historyData.data);
                 }
 
                 // Fetch deep insights
-                const deepData = await fetchWithRateLimit("https://music-ml-server.onrender.com/telemetry/deep-insights");
+                const deepData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/deep-insights");
                 if (deepData && deepData.data) {
                     setDeepInsights(deepData.data);
                 }
@@ -109,7 +109,7 @@ export default function AnalyticsHubPage() {
     useEffect(() => {
         const fetchSandbox = async () => {
             try {
-                const res = await fetchWithRateLimit("https://music-ml-server.onrender.com/telemetry/sandbox_inference", {
+                const res = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/sandbox_inference", {
                     method: "POST",
                     body: JSON.stringify({ time_of_day: sandboxTime, energy: sandboxEnergy, valence: sandboxValence })
                 });
@@ -819,7 +819,7 @@ export default function AnalyticsHubPage() {
                                 if (!tagVal) return;
                                 const now = new Date();
                                 const start = new Date(now.getTime() - 2 * 60 * 60 * 1000); // Past 2 hours
-                                await fetchWithRateLimit("https://music-ml-server.onrender.com/telemetry/tag", {
+                                await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/tag", {
                                     method: "POST",
                                     body: JSON.stringify({ tag_name: tagVal, start_time: start.toISOString(), end_time: now.toISOString() })
                                 });

@@ -7,7 +7,7 @@ export default function LandingPage() {
   const handleLogin = (e: React.MouseEvent) => {
     e.preventDefault();
     // Using production URL or falling back gracefully if not defined
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-server.onrender.com';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-dashboard.onrender.com';
     const cleanUrl = baseUrl.replace(/\/+$/, '');
     window.location.href = `${cleanUrl}/auth/login`;
   };

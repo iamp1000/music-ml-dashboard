@@ -19,7 +19,7 @@ export default function SettingsPage() {
                 const token = localStorage.getItem("jwt");
                 if (!token) return;
                 
-                const res = await fetch("https://music-ml-server.onrender.com/auth/profile", {
+                const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 

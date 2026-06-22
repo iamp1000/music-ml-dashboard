@@ -34,7 +34,7 @@ export default function ListeningHistoryPage() {
 
         if (!isBackground) setLoading(true);
         try {
-            const data = await fetchWithRateLimit(`https://music-ml-server.onrender.com/api/history?token=${token}&limit=300`);
+            const data = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history?token=${token}&limit=300`);
             if (data && data.data) {
                 setHistory(data.data);
             }

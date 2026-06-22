@@ -31,7 +31,7 @@ const EmotionalScatterPlot: React.FC = () => {
     .catch(err => console.error("Error fetching history:", err));
 
     // Connect WebSocket for live updates
-    const ws = new WebSocket(`wss://music-ml-server.onrender.com/ws/stream/live?token=${token}`);
+    const ws = new WebSocket(`wss://music-ml-dashboard.onrender.com/ws/stream/live?token=${token}`);
     ws.onmessage = (event) => {
       const parsed = JSON.parse(event.data);
       if (parsed.metrics) {

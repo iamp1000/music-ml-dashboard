@@ -35,7 +35,7 @@ jobs:
         run: npm run build
         working-directory: frontend
         env:
-          NEXT_PUBLIC_API_URL: https://music-ml-server.onrender.com
+          NEXT_PUBLIC_API_URL: https://music-ml-dashboard.onrender.com
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
