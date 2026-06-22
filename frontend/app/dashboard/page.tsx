@@ -219,7 +219,7 @@ export default function DashboardOverviewPage() {
 
     if (loading) {
         return (
-            <div className="flex flex-col min-h-screen bg-[#0A0D14] items-center justify-center space-y-6">
+            <div className="flex flex-col min-h-screen bg-[var(--theme-bg)] items-center justify-center space-y-6">
                 <Loader2 className="w-12 h-12 text-[#D1F26D] animate-spin" />
                 <p className="text-[#8293B4] text-sm tracking-widest uppercase">Syncing Live Telemetry...</p>
             </div>
@@ -228,8 +228,8 @@ export default function DashboardOverviewPage() {
 
     if (!profile) {
         return (
-            <div className="flex flex-col min-h-screen bg-[#0A0D14] items-center justify-center text-center p-8">
-                <div className="bg-[#111319] border border-[#2A364D] rounded-[40px] p-12 flex flex-col items-center">
+            <div className="flex flex-col min-h-screen bg-[var(--theme-bg)] items-center justify-center text-center p-8">
+                <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[40px] p-12 flex flex-col items-center">
                     <Shield className="w-16 h-16 text-[#8293B4] mb-4 opacity-50" />
                     <h2 className="text-xl font-bold mb-2 text-white">No Active Session</h2>
                     <p className="text-[#8293B4] max-w-sm mb-6 text-sm">Please log in to your Spotify account to view your telemetry dashboard.</p>
@@ -244,13 +244,13 @@ export default function DashboardOverviewPage() {
     const availableYears = ["1 Year", "2024", "2023", "All Time"]; // Mock years
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 bg-[#0A0D14] min-h-screen text-white scrollbar-hide">
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 bg-[var(--theme-bg)] min-h-screen text-white scrollbar-hide">
             
             {/* Header / Top Bar */}
-            <div className="flex justify-between items-center bg-[#0A0D14] p-6 lg:px-8 border-b border-[#2A364D]/50 sticky top-0 z-40 backdrop-blur-xl">
+            <div className="flex justify-between items-center bg-[var(--theme-bg)] p-6 lg:px-8 border-b border-[var(--theme-border)]/50 sticky top-0 z-40 backdrop-blur-xl">
                 {/* Left: User Profile */}
                 <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[#2A364D] bg-[#111319] flex items-center justify-center font-bold">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-panel)] flex items-center justify-center font-bold">
                         {profile?.images?.[0]?.url ? (
                             <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
@@ -267,7 +267,7 @@ export default function DashboardOverviewPage() {
 
                 {/* Right: Expandable Fuzzy Search */}
                 <div className="flex items-center gap-4">
-                    <div className={`flex items-center bg-[#111319] border border-[#2A364D] rounded-full transition-all duration-300 overflow-hidden ${searchExpanded ? "w-64 px-4 py-2" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/5"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
+                    <div className={`flex items-center bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full transition-all duration-300 overflow-hidden ${searchExpanded ? "w-64 px-4 py-2" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/5"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
                         <Search className="w-5 h-5 text-[#8293B4] shrink-0" />
                         {searchExpanded && (
                             <input 
@@ -291,7 +291,7 @@ export default function DashboardOverviewPage() {
                 
                 {/* Fuzzy Search Results Overlay Layout */}
                 {searchQuery && (
-                    <div className="w-full bg-[#111319] border border-[#D1F26D]/50 rounded-[32px] p-6 mb-2 shadow-[0_0_30px_rgba(209,242,109,0.1)]">
+                    <div className="w-full bg-[var(--theme-panel)] border border-[#D1F26D]/50 rounded-[32px] p-6 mb-2 shadow-[0_0_30px_rgba(209,242,109,0.1)]">
                         <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Search Results: "{searchQuery}"</h3>
                         {filteredHistory.length === 0 ? (
                             <div className="text-center text-[#8293B4] py-8">No matching tracks or artists found in your history.</div>
@@ -301,7 +301,7 @@ export default function DashboardOverviewPage() {
                                 {Object.values(trackCounts)
                                     .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.artist.toLowerCase().includes(searchQuery.toLowerCase()))
                                     .map((track, idx) => (
-                                        <div key={idx} className="flex items-center gap-4 bg-[#0A0D14] p-3 rounded-[20px] border border-[#2A364D]">
+                                        <div key={idx} className="flex items-center gap-4 bg-[var(--theme-bg)] p-3 rounded-[20px] border border-[var(--theme-border)]">
                                             <div className="w-12 h-12 rounded-[14px] bg-[#2A364D] overflow-hidden flex items-center justify-center shrink-0">
                                                 {track.image ? <img src={track.image} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-[#8293B4]" />}
                                             </div>
@@ -324,12 +324,12 @@ export default function DashboardOverviewPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
                     
                     {/* Time */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "time" ? null : "time")} className={`bg-[#111319] border ${expandedMetric === "time" ? "border-[#D1F26D]" : "border-[#2A364D]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#D1F26D]/50 transition-colors h-[200px] relative overflow-hidden group`}>
+                    <div onClick={() => setExpandedMetric(expandedMetric === "time" ? null : "time")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "time" ? "border-[#D1F26D]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#D1F26D]/50 transition-colors h-[200px] relative overflow-hidden group`}>
                         <div className="flex justify-between items-start mb-2 relative z-10">
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#D1F26D]/10 text-[#D1F26D]">
                                 <Clock className="w-4 h-4" />
                             </div>
-                            <div className="rounded-full bg-[#1B2332] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[#2A364D]">
+                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
                                 {filterYear} <ChevronDown className="w-3 h-3"/>
                             </div>
                         </div>
@@ -357,12 +357,12 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     {/* Tracks */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "tracks" ? null : "tracks")} className={`bg-[#111319] border ${expandedMetric === "tracks" ? "border-[#A855F7]" : "border-[#2A364D]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#A855F7]/50 transition-colors h-[200px] relative overflow-hidden group`}>
+                    <div onClick={() => setExpandedMetric(expandedMetric === "tracks" ? null : "tracks")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "tracks" ? "border-[#A855F7]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#A855F7]/50 transition-colors h-[200px] relative overflow-hidden group`}>
                         <div className="flex justify-between items-start mb-2 relative z-10">
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#A855F7]/10 text-[#A855F7]">
                                 <Music className="w-4 h-4" />
                             </div>
-                            <div className="rounded-full bg-[#1B2332] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[#2A364D]">
+                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
                                 {filterYear} <ChevronDown className="w-3 h-3"/>
                             </div>
                         </div>
@@ -381,19 +381,19 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     {/* Artists */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`bg-[#111319] border ${expandedMetric === "artists" ? "border-[#3B82F6]" : "border-[#2A364D]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#3B82F6]/50 transition-colors h-[200px] relative overflow-hidden group items-center text-center`}>
+                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "artists" ? "border-[#3B82F6]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#3B82F6]/50 transition-colors h-[200px] relative overflow-hidden group items-center text-center`}>
                             <div className="w-full flex justify-between items-start mb-0 relative z-10">
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#3B82F6]/10 text-[#3B82F6]">
                                 <Users className="w-4 h-4" />
                             </div>
-                            <div className="rounded-full bg-[#1B2332] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[#2A364D]">
+                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
                                 {filterYear} <ChevronDown className="w-3 h-3"/>
                             </div>
                         </div>
                         <div className="relative w-20 h-20 mx-auto flex items-center justify-center mt-2">
                             <div className="absolute inset-0 rounded-full border-[6px] border-[#3B82F6] opacity-20"></div>
                             <div className="absolute inset-2 rounded-full border-[6px] border-[#3B82F6] opacity-50" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)' }}></div>
-                            <div className="absolute inset-4 bg-[#1B2332] rounded-full flex items-center justify-center flex-col shadow-inner">
+                            <div className="absolute inset-4 bg-[var(--theme-panel)] rounded-full flex items-center justify-center flex-col shadow-inner">
                                 <span className="text-xl font-bold">{artistsDiscoveredCount}</span>
                             </div>
                         </div>
@@ -401,12 +401,12 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     {/* Genres Explored */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "genres" ? null : "genres")} className={`bg-[#111319] border ${expandedMetric === "genres" ? "border-[#EAB308]" : "border-[#2A364D]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#EAB308]/50 transition-colors h-[200px] relative overflow-hidden group`}>
+                    <div onClick={() => setExpandedMetric(expandedMetric === "genres" ? null : "genres")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "genres" ? "border-[#EAB308]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#EAB308]/50 transition-colors h-[200px] relative overflow-hidden group`}>
                         <div className="flex justify-between items-start mb-0 relative z-10">
                             <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#EAB308]/10 text-[#EAB308]">
                                 <Disc className="w-4 h-4" />
                             </div>
-                            <div className="rounded-full bg-[#1B2332] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[#2A364D]">
+                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
                                 {filterYear} <ChevronDown className="w-3 h-3"/>
                             </div>
                         </div>
@@ -424,7 +424,7 @@ export default function DashboardOverviewPage() {
 
                 {/* IN-LINE EXPANDED METRICS VIEW */}
                 {expandedMetric && (
-                    <div className="w-full bg-[#111319] border border-[#2A364D] rounded-[32px] p-6 lg:p-8 flex flex-col animate-in slide-in-from-top-4 duration-500">
+                    <div className="w-full bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[32px] p-6 lg:p-8 flex flex-col animate-in slide-in-from-top-4 duration-500">
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                             <h2 className="text-xl font-bold text-white tracking-tight uppercase">
                                 {expandedMetric === "time" && "Listening Time Details"}
@@ -434,7 +434,7 @@ export default function DashboardOverviewPage() {
                             </h2>
                             <div className="flex items-center gap-3">
                                 {/* Year Filters */}
-                                <div className="flex bg-[#1B2332] border border-[#2A364D] rounded-full overflow-hidden text-xs font-medium p-1">
+                                <div className="flex bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full overflow-hidden text-xs font-medium p-1">
                                     {availableYears.map(year => (
                                         <button 
                                             key={year} 
@@ -445,7 +445,7 @@ export default function DashboardOverviewPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <button onClick={() => setExpandedMetric(null)} className="w-8 h-8 flex items-center justify-center bg-[#1B2332] rounded-full hover:bg-white/10 text-white transition-colors border border-[#2A364D]">
+                                <button onClick={() => setExpandedMetric(null)} className="w-8 h-8 flex items-center justify-center bg-[var(--theme-panel)] rounded-full hover:bg-white/10 text-white transition-colors border border-[var(--theme-border)]">
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
@@ -454,14 +454,14 @@ export default function DashboardOverviewPage() {
                         <div className="w-full max-h-[400px] overflow-y-auto scrollbar-hide">
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                                 {expandedMetric === "time" && Object.entries(trackCounts).sort((a,b) => b[1].time - a[1].time).slice(0, 30).map(([key, t], idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-[#0A0D14] border border-[#2A364D] hover:border-[#D1F26D]/50 transition-colors">
+                                    <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#D1F26D]/50 transition-colors">
                                         <div className="font-bold text-white truncate max-w-[60%]">{t.name}</div>
                                         <span className="text-[#D1F26D] font-mono font-bold bg-[#D1F26D]/10 px-3 py-1 rounded-full text-xs shrink-0">{Math.round(t.time)} mins</span>
                                     </div>
                                 ))}
 
                                 {expandedMetric === "tracks" && Object.values(trackCounts).sort((a,b) => b.count - a.count).slice(0, 30).map((t, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 rounded-[20px] bg-[#0A0D14] border border-[#2A364D] hover:border-[#A855F7]/50 transition-colors">
+                                    <div key={idx} className="flex justify-between items-center p-3 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#A855F7]/50 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-[12px] overflow-hidden shrink-0">
                                                 {t.image ? <img src={t.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#2A364D] flex items-center justify-center"><Music className="w-4 h-4 text-[#8293B4]" /></div>}
@@ -476,7 +476,7 @@ export default function DashboardOverviewPage() {
                                 ))}
 
                                 {expandedMetric === "artists" && Array.from(uniqueArtists).map((artist, idx) => (
-                                    <div key={idx} className="flex items-center gap-4 p-4 rounded-[20px] bg-[#0A0D14] border border-[#2A364D] hover:border-[#3B82F6]/50 transition-colors">
+                                    <div key={idx} className="flex items-center gap-4 p-4 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#3B82F6]/50 transition-colors">
                                         <div className="w-10 h-10 rounded-full bg-[#3B82F6]/20 flex items-center justify-center text-[#3B82F6] shrink-0 border border-[#3B82F6]/30">
                                             <Users className="w-5 h-5" />
                                         </div>
@@ -485,7 +485,7 @@ export default function DashboardOverviewPage() {
                                 ))}
 
                                 {expandedMetric === "genres" && sortedGenres.map(([genre, count], idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-4 rounded-[20px] bg-[#0A0D14] border border-[#2A364D] hover:border-[#EAB308]/50 transition-colors">
+                                    <div key={idx} className="flex justify-between items-center p-4 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#EAB308]/50 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-full bg-[#EAB308]/20 flex items-center justify-center text-[#EAB308] shrink-0 border border-[#EAB308]/30">
                                                 <Disc className="w-5 h-5" />
@@ -504,11 +504,11 @@ export default function DashboardOverviewPage() {
                 <div className="flex flex-col xl:flex-row gap-6 w-full">
                     
                     {/* Activity Manager Chart Container */}
-                    <div className="flex-1 bg-[#111319] border border-[#2A364D] rounded-[32px] p-6 lg:p-8 flex flex-col h-[400px]">
+                    <div className="flex-1 bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[32px] p-6 lg:p-8 flex flex-col h-[400px]">
                         <div className="flex justify-between items-center mb-6">
                             <h4 className="text-sm font-bold text-white tracking-wider">Activity Manager</h4>
                             <div className="flex items-center gap-2">
-                                <div className="flex bg-[#1B2332] border border-[#2A364D] rounded-full overflow-hidden text-xs font-medium p-1">
+                                <div className="flex bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full overflow-hidden text-xs font-medium p-1">
                                     <button onClick={() => setActivityFilter("7D")} className={`px-4 py-1.5 rounded-full transition-colors ${activityFilter === "7D" ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}>7 Days</button>
                                     <button onClick={() => setActivityFilter("30D")} className={`px-4 py-1.5 rounded-full transition-colors ${activityFilter === "30D" ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}>30 Days</button>
                                     <button onClick={() => setActivityFilter("All Time")} className={`px-4 py-1.5 rounded-full transition-colors ${activityFilter === "All Time" ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}>All Time</button>
@@ -518,7 +518,7 @@ export default function DashboardOverviewPage() {
 
                         {/* Chart body */}
                         <div className="flex-1 min-h-[250px] w-full mt-2 relative">
-                            <div className="absolute inset-0 bg-[#0A0D14]/50 rounded-[24px] pointer-events-none border border-white/5"></div>
+                            <div className="absolute inset-0 bg-[var(--theme-bg)]/50 rounded-[24px] pointer-events-none border border-white/5"></div>
                             
                             <div className="absolute top-4 left-4 z-10 flex gap-4 text-xs font-bold">
                                 <div className="flex items-center gap-2 text-white"><span className="w-2 h-2 rounded-full bg-[#D1F26D]"></span> Listening Time (m)</div>
@@ -560,17 +560,17 @@ export default function DashboardOverviewPage() {
                     {/* Top Tracks (Right Sidebar equivalent) */}
                     <div className="w-full xl:w-[450px] flex flex-col gap-6">
                         
-                        <div className="bg-[#111319] border border-[#2A364D] rounded-[32px] p-6 lg:p-8 flex flex-col h-[400px]">
+                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[32px] p-6 lg:p-8 flex flex-col h-[400px]">
                             <div className="flex justify-between items-center mb-6">
                                 <h4 className="text-sm font-bold text-white tracking-wider">Main Tracks<br/><span className="text-[10px] text-[#8293B4] font-normal tracking-normal">All Time Favorites</span></h4>
-                                <div className="bg-[#1B2332] border border-[#2A364D] rounded-full px-4 py-2 text-xs font-bold text-white flex items-center gap-2 cursor-pointer hover:bg-white/10 transition-colors">
+                                <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full px-4 py-2 text-xs font-bold text-white flex items-center gap-2 cursor-pointer hover:bg-white/10 transition-colors">
                                     by Plays <ChevronDown className="w-3 h-3" />
                                 </div>
                             </div>
 
                             <div className="flex-1 space-y-3 overflow-y-auto scrollbar-hide pr-2">
                                 {finalTracks.map((track) => (
-                                    <div key={track.rank} className="flex items-center gap-4 bg-[#1B2332] p-3 pr-4 rounded-[20px] hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-[#2A364D]">
+                                    <div key={track.rank} className="flex items-center gap-4 bg-[var(--theme-panel)] p-3 pr-4 rounded-[20px] hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-[var(--theme-border)]">
                                         <div className="w-12 h-12 rounded-[14px] bg-[#2A364D] overflow-hidden flex items-center justify-center shrink-0 shadow-md">
                                             {track.image ? (
                                                 <img src={track.image} alt={track.name} className="w-full h-full object-cover" />
