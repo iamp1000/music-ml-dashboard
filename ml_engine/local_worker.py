@@ -1,10 +1,25 @@
 import os
 import sys
+
+# Ensure ffmpeg is in PATH for madmom and torchaudio
+ffmpeg_path = r"C:\Users\pranav\AppData\Local\Microsoft\WinGet\Links"
+if ffmpeg_path not in os.environ["PATH"]:
+    os.environ["PATH"] += os.pathsep + ffmpeg_path
 import time
 import asyncio
 import httpx
 import logging
 import torch
+
+import numpy as np
+# Patch numpy deprecated aliases for madmom compatibility
+np.float = np.float64
+np.int = np.int64
+np.bool = np.bool_
+np.complex = complex
+np.object = object
+np.unicode = str
+np.str = str
 
 from dotenv import load_dotenv
 

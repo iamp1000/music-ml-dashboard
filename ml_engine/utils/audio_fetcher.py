@@ -20,6 +20,7 @@ class AudioFetcher:
         
         ydl_opts = {
             'format': 'bestaudio/best',
+            'ffmpeg_location': r'C:\Users\pranav\AppData\Local\Microsoft\WinGet\Links',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
@@ -30,7 +31,6 @@ class AudioFetcher:
             'no_warnings': True,
             'extract_audio': True,
             'audio_format': 'wav',
-            'max_downloads': 1,
             # We don't download the whole thing if we can avoid it, but yt-dlp doesn't easily do partial chunks without ffmpeg slicing
             # We'll download the best small audio. Usually songs are 3-4 minutes.
         }
