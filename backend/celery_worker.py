@@ -108,7 +108,7 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
 
             missing_tracks = [t for t in new_tracks if t[1] not in offline_features]
             
-            # Audio features completely removed - handled entirely by DeepSeek later
+            # Audio features completely removed - handled entirely by Gemini later
 
             # Insert into Firestore
             for played_at, track_id, track_name, artist_name, duration_ms, doc_ref in new_tracks:
@@ -271,7 +271,7 @@ async def async_process_unanalyzed(task_instance):
                     settings_ref = db.collection("users").document(tenant_id).collection("settings").document("ml_config")
                     settings_doc = settings_ref.get()
                     if settings_doc.exists:
-                        tenant_keys[tenant_id] = settings_doc.to_dict().get("deepseek_api_key")
+                        tenant_keys[tenant_id] = settings_doc.to_dict().get("gemini_api_key")
                     else:
                         tenant_keys[tenant_id] = None
                         

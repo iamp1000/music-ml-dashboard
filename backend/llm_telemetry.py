@@ -25,15 +25,12 @@ class SemanticTelemetry(BaseModel):
 
 async def extract_semantic_telemetry(track_name: str, artist_name: str, lyrics: str, api_key: str = None) -> SemanticTelemetry:
     """
-    Uses an LLM (e.g., DeepSeek) to infer semantic telemetry from lyrics.
+    Uses Google Gemini to infer semantic telemetry from lyrics.
     Now takes the API key directly so we can use tenant-specific keys.
     """
     if not api_key:
-        api_key = os.getenv("LLM_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY")
         
-    base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
-    
-    # Empty default fallback
     fallback = SemanticTelemetry(
         valence=0.5, energy=0.5, danceability=0.5, mood_category="Neutral",
         lyrics_analysis="No lyrics analyzed.", energy_weight=0.5, bpm_estimate=120,
@@ -45,6 +42,56 @@ async def extract_semantic_telemetry(track_name: str, artist_name: str, lyrics: 
     
     if not api_key:
         return fallback
+        
+    prompt = f"""You are a highly advanced musical psychologist and audio engineer AI. 
+Analyze the semantic meaning, tone, and profile of this song based solely on its title, artist, and lyrics.
+If lyrics are missing or sparse, make your best educated guess based on the artist and track name.
+
+Track: {track_name} by {artist_name}
+Lyrics:
+{lyrics[:2000]}
+
+Return exactly ONE valid JSON object with the following fields:
+- valence (float 0-1): Positivity of the song.
+- energy (float 0-1): Intensity and activity.
+- danceability (float 0-1): How suitable it is for dancing.
+- mood_category (string): e.g., "Euphoric", "Depressive Spiral", "Chill", "Aggressive".
+- lyrics_analysis (string): 1-sentence summary of the thematic meaning.
+- energy_weight (float 0-1): The "heaviness" or absolute intensity weight of the track.
+- bpm_estimate (int): Estimated tempo based on lyrical pacing and genre.
+- song_genre_estimate (string): e.g., "Trap", "Indie Folk", "Death Metal".
+- acoustic_profile (string): e.g., "Blasting bass", "Calming acoustic notes", "Heavy synth".
+- emotional_complexity (float 0-1): How mixed or nuanced the emotions are.
+- lyrical_theme (string): e.g., "Heartbreak", "Rebellion", "Existential Dread".
+- narrative_arc (string): Is there a story? e.g., "Rising tension", "Static", "Resolution".
+- instrumental_density (string): "Sparse", "Medium", "Dense", "Wall of Sound".
+- vocal_intensity (string): "Soft whisper", "Melodic", "Screaming", "Fast Rap".
+- cultural_context (string): e.g., "90s Grunge", "Modern Club", "Classic Rock".
+- replay_value (float 0-1): How likely is this to be looped on repeat.
+- time_of_day_fit (string): "Morning", "Afternoon", "Late Night", "Workout".
+- context_tag (string): "None"
+"""
+    try:
+        from google import genai
+        from google.genai import types
+        import json
+        
+        client_ai = genai.Client(api_key=api_key)
+        response = await client_ai.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        result_json = json.loads(response.text)
+        return SemanticTelemetry(**result_json)
+    except Exception as e:
+        print(f"Gemini Inference Error: {e}")
+        
+    return fallback
         
     prompt = f"""You are a highly advanced musical psychologist and audio engineer AI. 
 Analyze the semantic meaning, tone, and profile of this song based solely on its title, artist, and lyrics.

@@ -64,7 +64,7 @@ class SemanticAnalysisRequest(BaseModel):
 @app.post("/analyze_semantics")
 async def analyze_semantics(payload: SemanticAnalysisRequest):
     """
-    Hits DeepSeek API for heavy semantic 6D vector math.
+    Hits Gemini API for heavy semantic 6D vector math.
     """
     try:
         telemetry = await extract_semantic_telemetry(

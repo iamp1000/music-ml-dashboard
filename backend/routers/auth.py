@@ -7,6 +7,7 @@ import base64
 import httpx
 from database import db
 from security import encryptor, create_access_token
+from state import active_users_cache
 
 router = APIRouter(tags=["Authentication"])
 
@@ -135,6 +136,7 @@ async def get_user_profile(request: Request):
         if user_doc.exists:
             u_dict = user_doc.to_dict()
             display_name = u_dict.get("display_name")
+            active_users_cache[user_id] = u_dict
             
             # Always try to refresh the token to ensure the Web Playback SDK gets a valid one
             ref_cipher = u_dict.get("refresh_token_cipher")

@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 
 from database import init_db, db
 from routers import auth, telemetry, settings, spotify
-import openai
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 # Load environment variables
@@ -30,6 +31,7 @@ async def startup_event():
         print(f"Warning: Database initialization failed. Ensure Firebase is configured. Error: {e}")
         
     # Start the background poller
+    asyncio.create_task(refresh_users_cache())
     asyncio.create_task(background_polling_loop())
     asyncio.create_task(sync_recently_played_loop())
 
@@ -122,13 +124,13 @@ async def update_session_context(request: SessionContextUpdate, token: str):
         if data.get("tenant_id") != user_id:
             continue # Unauthorized or wrong user
             
-        # Re-run DeepSeek AI
+        # Re-run Gemini AI
         track_name = data.get("track_name", "Unknown")
         artist_name = data.get("artist_name", "Unknown")
         valence = data.get("valence", 0.5)
         energy = data.get("energy", 0.5)
         
-        mood, ai_analysis, time_fit = await run_deepseek_analysis(track_name, artist_name, valence, energy, request.context)
+        mood, ai_analysis, time_fit = await run_gemini_analysis(track_name, artist_name, valence, energy, request.context)
         
         # Update the document
         doc_ref.update({
@@ -159,7 +161,7 @@ async def get_history(token: str, limit: int = 50):
         
     return {"status": "success", "data": history}
 
-from state import global_tokens
+from state import global_tokens, active_users_cache
 from spotify_client import SpotifyClient
 from security import verify_access_token, encryptor
 from database import db
@@ -246,7 +248,20 @@ def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, ener
         
     return ml_score, listen_type
 
+
+async def refresh_users_cache():
+    while True:
+        try:
+            users_ref = db.collection("users").stream()
+            for user_doc in users_ref:
+                active_users_cache[user_doc.id] = user_doc.to_dict()
+            print("Refreshed active users cache")
+        except Exception as e:
+            print(f"Error refreshing users cache: {e}")
+        await asyncio.sleep(1800) # 30 minutes
+
 async def background_polling_loop():
+
     """
     Runs continuously, checking all users' Spotify playback every 20 seconds.
     If a song is skipped or finishes, it is saved to telemetry_history.
@@ -254,10 +269,7 @@ async def background_polling_loop():
     print("Background polling loop started.")
     while True:
         try:
-            users_ref = db.collection("users").stream()
-            for user_doc in users_ref:
-                user_id = user_doc.id
-                row = user_doc.to_dict()
+            for user_id, row in list(active_users_cache.items()):
                 
                 # We need a refresh token to poll
                 if not row.get("refresh_token_cipher"):
@@ -329,10 +341,7 @@ async def sync_recently_played_loop():
     
     while True:
         try:
-            users_ref = db.collection("users").stream()
-            for user_doc in users_ref:
-                user_id = user_doc.id
-                row = user_doc.to_dict()
+            for user_id, row in list(active_users_cache.items()):
                 
                 if user_id in user_spotify_clients:
                     client = user_spotify_clients[user_id]
@@ -397,7 +406,7 @@ async def sync_recently_played_loop():
                         batch = tracks_to_process[i:i+10]
                         batch_payload = []
                         
-                        # Audio features completely removed. DeepSeek infers everything.
+                        # Audio features completely removed. Gemini infers everything.
                         valence = 0.5
                         energy = 0.5
                         
@@ -426,7 +435,7 @@ async def sync_recently_played_loop():
                             })
                             
                         current_context = row.get("current_context", "None")
-                        batch_results = await run_deepseek_batch_analysis(batch_payload, current_context)
+                        batch_results = await run_gemini_batch_analysis(batch_payload, current_context)
                         
                         # Process and save batch results
                         for t_data in batch_payload:
@@ -469,11 +478,91 @@ async def sync_recently_played_loop():
             
         await asyncio.sleep(1800) # 30 minutes
 
-async def run_deepseek_batch_analysis(batch_payload, current_context):
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+
+async def run_gemini_analysis(track_name, artist_name, valence, energy, current_context):
+    batch = [{
+        "track_id": "single",
+        "track_name": track_name,
+        "artist_name": artist_name,
+        "base_weight": 50,
+        "valence": valence,
+        "energy": energy
+    }]
+    res = await run_gemini_batch_analysis(batch, current_context)
+    data = res.get("single", {})
+    return data.get("mood_vector", [0.5,0.5,0.5]), data.get("telemetry_summary", ""), "Matched"
+
+async def run_gemini_batch_analysis(batch_payload, current_context):
+    gemini_key = os.getenv("GEMINI_API_KEY")
     result_dict = {}
-    if not deepseek_key or not batch_payload:
+    if not gemini_key or not batch_payload:
         return result_dict
+        
+    prompt_items = []
+    for item in batch_payload:
+        prompt_items.append(f"""
+- Track ID: {item['track_id']}
+- Song: "{item['track_name']}" by {item['artist_name']}
+- Base Recommendation Weight: {item['base_weight']} (Derived purely from playback duration/engagement, scaled 0-100)
+- Acoustic Anchors: Valence={item['valence']}, Energy={item['energy']}
+""")
+
+    prompt_body = "".join(prompt_items)
+
+    prompt = f"""
+You are a high-performance audio telemetry feature engineering engine. Your task is to ingest a massive payload of raw audio features, evaluate lyrics internally, and output a highly optimized JSON object for a machine learning pipeline.
+
+### ACTIVE USER PROFILE CONTEXT: {current_context}
+
+### COGNITIVE INSTRUCTIONS:
+1. Identify each song and instantly recall its lyrics directly from your own pre-trained knowledge base. Do NOT expect external lyrics to be provided.
+2. Internally evaluate the song's acoustic features (danceability, tempo, etc.) alongside your recalled lyrical themes to determine how the track behaves emotionally, rhythmically, and structurally.
+3. Calculate an absolute "mood_vector" representing the spatial position of this song on a 3-dimensional coordinate grid: [Positivity, Intensity, Cognitive Load]. Scale each float from 0.0 to 1.0.
+4. Compare the song's profile against the Active User Profile Context. Determine if it enhances the state, conflicts with it, or is completely isolated to it.
+5. Compute an "incremental_weight" modifier between -20.0 and +20.0 based on how perfectly it snaps into the active user context profile.
+
+### INPUT DATA TO EVALUATE:
+{prompt_body}
+
+### OUTPUT SPECIFICATION:
+Return EXACTLY a JSON object with a single key "results" containing an array. Each object in the array MUST contain these exact keys and NO conversational fluff:
+{{
+  "results": [
+    {{
+      "track_id": "string",
+      "mood_vector": [0.5, 0.5, 0.5],
+      "context_fit_status": "MATCH",
+      "incremental_weight": 0.0,
+      "exclusion_flags": [],
+      "telemetry_summary": "string"
+    }}
+  ]
+}}
+"""
+    for attempt in range(3):
+        try:
+            client_ai = genai.Client(api_key=gemini_key)
+            response = await client_ai.aio.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
+            )
+            
+            result_json = json.loads(response.text)
+            results_array = result_json.get("results", [])
+            for r in results_array:
+                if "track_id" in r:
+                    result_dict[r["track_id"]] = r
+            break # Success, exit retry loop
+        except Exception as e:
+            print(f"Gemini Batch AI Error (Attempt {attempt+1}): {e}")
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+
+    return result_dict
         
     prompt_items = []
     for item in batch_payload:
@@ -536,7 +625,7 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
                     result_dict[r["track_id"]] = r
             break # Success, exit retry loop
         except Exception as e:
-            print(f"DeepSeek Batch AI Error (Attempt {attempt+1}): {e}")
+            print(f"Gemini Batch AI Error (Attempt {attempt+1}): {e}")
             if attempt < 2:
                 await asyncio.sleep(2 ** attempt)
 
@@ -548,17 +637,17 @@ async def save_track_to_db(user_id, state, client):
     track_name = state["track_name"]
     artist_name = state["artist_name"]
     
-    # Removed get_audio_features - DeepSeek will infer everything internally
+    # Removed get_audio_features - Gemini will infer everything internally
     valence, energy = 0.5, 0.5
 
-    # Determine Lyrical Valence (Simulated since user asked DeepSeek to infer)
+    # Determine Lyrical Valence (Simulated since user asked Gemini to infer)
     lyrical_valence = 1.0 - valence if valence else 0.5
     
     # Retrieve user's current context
     user_doc = db.collection("users").document(user_id).get()
     current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
 
-    # Run DeepSeek AI Integration using the batch processor with 1 item
+    # Run Gemini AI Integration using the batch processor with 1 item
     played_ms = state.get("max_progress_ms", 0)
     duration_ms = state.get("duration_ms", 1)
     ml_score, listen_type = calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, energy)
@@ -575,7 +664,7 @@ async def save_track_to_db(user_id, state, client):
         "duration_ms": duration_ms
     }]
     
-    batch_results = await run_deepseek_batch_analysis(batch_payload, current_context)
+    batch_results = await run_gemini_batch_analysis(batch_payload, current_context)
     ai_res = batch_results.get(track_id, {})
     
     # Combine base weight and incremental weight into a single final variable
@@ -681,9 +770,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             ws_cache["energy"] = 0.5
                             valence = 0.5
                             energy = 0.5
-                            # Determine Lyrical Valence (Simulated since user asked DeepSeek to infer)
+                            # Determine Lyrical Valence (Simulated since user asked Gemini to infer)
                             ws_cache["lyrical_valence"] = 1.0 - valence if valence else 0.5
-                            ws_cache["lyrics_text"] = "Analyzed dynamically by DeepSeek"
+                            ws_cache["lyrics_text"] = "Analyzed dynamically by Gemini"
                             lyrical_valence = ws_cache["lyrical_valence"]
                             lyrics_text = ws_cache["lyrics_text"]
 
