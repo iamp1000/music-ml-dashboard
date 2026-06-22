@@ -127,17 +127,19 @@ async def get_user_profile(request: Request):
     user_id = user_data.get("sub")
     
     # Decrypt access token and refresh token
-    user_doc = db.collection("users").document(user_id).get()
     access_token = None
     display_name = None
-    if user_doc.exists:
-        u_dict = user_doc.to_dict()
-        display_name = u_dict.get("display_name")
-        
-        # Always try to refresh the token to ensure the Web Playback SDK gets a valid one
-        ref_cipher = u_dict.get("refresh_token_cipher")
-        ref_nonce = u_dict.get("refresh_token_nonce")
-        if ref_cipher and ref_nonce:
+    
+    try:
+        user_doc = db.collection("users").document(user_id).get()
+        if user_doc.exists:
+            u_dict = user_doc.to_dict()
+            display_name = u_dict.get("display_name")
+            
+            # Always try to refresh the token to ensure the Web Playback SDK gets a valid one
+            ref_cipher = u_dict.get("refresh_token_cipher")
+            ref_nonce = u_dict.get("refresh_token_nonce")
+            if ref_cipher and ref_nonce:
             try:
                 from spotify_client import SpotifyClient
                 refresh_token = encryptor.decrypt(ref_cipher, ref_nonce)
@@ -159,18 +161,22 @@ async def get_user_profile(request: Request):
                 if cipher and nonce:
                     access_token = encryptor.decrypt(cipher, nonce)
 
-    stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
-    if not stats_doc.exists:
-        # If stats do not exist yet, we still return pending but can provide access token
+        stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
+        if not stats_doc.exists:
+            # If stats do not exist yet, we still return pending but can provide access token
+            return {"status": "pending", "data": {"id": user_id, "access_token": access_token, "display_name": display_name} if access_token or display_name else {"id": user_id}}
+            
+        data = stats_doc.to_dict()
+        data["id"] = user_id
+        if access_token:
+            data["access_token"] = access_token
+        if display_name:
+            data["display_name"] = display_name
+            
+        return {"status": "success", "data": data}
+    except Exception as db_e:
+        print(f"Database error in /auth/profile: {db_e}")
+        # If the database fails (e.g. Firebase not configured), return a minimal profile
         return {"status": "pending", "data": {"id": user_id, "access_token": access_token, "display_name": display_name} if access_token or display_name else {"id": user_id}}
-        
-    data = stats_doc.to_dict()
-    data["id"] = user_id
-    if access_token:
-        data["access_token"] = access_token
-    if display_name:
-        data["display_name"] = display_name
-        
-    return {"status": "success", "data": data}
 
 
