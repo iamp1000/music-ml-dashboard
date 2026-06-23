@@ -38,6 +38,14 @@ async def startup_event():
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+
+# Legacy callback route to catch Spotify redirects using the old URI
+@app.get("/auth/callback", include_in_schema=False)
+async def legacy_callback(request: Request):
+    # Reconstruct the exact same query parameters and pass them to the correct API route
+    query_string = request.url.query
+    return RedirectResponse(url=f"/api/auth/callback?{query_string}")
+
 app.include_router(telemetry.router, prefix="/api/telemetry", tags=["Telemetry"])
 app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(spotify.router, prefix="/api/spotify", tags=["Spotify"])
