@@ -27,6 +27,8 @@ export default function ListeningHistoryPage() {
     const [filterGenre, setFilterGenre] = useState("All");
     const [dateRange, setDateRange] = useState("Current Week");
     const [period, setPeriod] = useState("All Time");
+    const [timelineGrouping, setTimelineGrouping] = useState("Artist");
+    const [timelineGroupingOpen, setTimelineGroupingOpen] = useState(false);
 
     const fetchHistory = async (isBackground = false) => {
         const token = localStorage.getItem("jwt");
@@ -56,51 +58,63 @@ export default function ListeningHistoryPage() {
     }, []);
 
     // 1. Process data for the Advanced Timeline (X = Days of week, Y = Top Artists)
-    const processedTimelineData = useMemo(() => {
-        if (history.length === 0) return { artists: [], sessions: [], minTime: 0, maxTime: 1 };
+        const processedTimelineData = useMemo(() => {
+        if (history.length === 0) return { groups: [], sessions: [], minTime: 0, maxTime: 1 };
 
-        // Determine top artists
-        const artistCounts: Record<string, number> = {};
+        // Determine top groups based on timelineGrouping
+        const groupCounts: Record<string, number> = {};
         history.forEach(t => {
-            if (t.artist_name) {
-                artistCounts[t.artist_name] = (artistCounts[t.artist_name] || 0) + 1;
-            }
+            let val = "Unknown";
+            if (timelineGrouping === "Artist") val = t.artist_name || "Unknown Artist";
+            else if (timelineGrouping === "Mood") val = t.ai_mood || t.mood_category || "Unknown Mood";
+            else if (timelineGrouping === "Genre") val = t.ml_features?.song_genre_estimate || "Unknown Genre";
+            else if (timelineGrouping === "Context") val = t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context";
+            
+            groupCounts[val] = (groupCounts[val] || 0) + 1;
         });
-        const topArtists = Object.entries(artistCounts)
+        
+        const topGroups = Object.entries(groupCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5)
             .map(e => e[0]);
 
-        // Group history into sessions per artist
-        const sessionsByArtist: any[] = [];
+        // Group history into sessions per group
+        const sessionsByGroup: any[] = [];
         let idCounter = 0;
 
-        topArtists.forEach((artist, index) => {
-            const artistTracks = history.filter(t => t.artist_name === artist).reverse(); // chronological
-            if (artistTracks.length === 0) return;
+        topGroups.forEach((groupName, index) => {
+            const groupTracks = history.filter(t => {
+                if (timelineGrouping === "Artist") return (t.artist_name || "Unknown Artist") === groupName;
+                if (timelineGrouping === "Mood") return (t.ai_mood || t.mood_category || "Unknown Mood") === groupName;
+                if (timelineGrouping === "Genre") return (t.ml_features?.song_genre_estimate || "Unknown Genre") === groupName;
+                if (timelineGrouping === "Context") return (t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context") === groupName;
+                return false;
+            }).reverse(); // chronological
+            
+            if (groupTracks.length === 0) return;
 
             let currentSession = {
                 id: `sess-${idCounter++}`,
-                artist: artist,
-                artistIndex: index,
-                startTime: new Date(artistTracks[0].time),
-                endTime: new Date(artistTracks[0].time),
-                mood: artistTracks[0].ai_mood || artistTracks[0].mood_category || "Unknown",
-                tracks: [artistTracks[0]]
+                groupName: groupName,
+                groupIndex: index,
+                startTime: new Date(groupTracks[0].time),
+                endTime: new Date(groupTracks[0].time),
+                mood: groupTracks[0].ai_mood || groupTracks[0].mood_category || "Unknown",
+                tracks: [groupTracks[0]]
             };
 
-            for (let i = 1; i < artistTracks.length; i++) {
-                const track = artistTracks[i];
+            for (let i = 1; i < groupTracks.length; i++) {
+                const track = groupTracks[i];
                 const trackTime = new Date(track.time);
-                const prevTime = new Date(artistTracks[i-1].time);
+                const prevTime = new Date(groupTracks[i-1].time);
                 const diffMins = (trackTime.getTime() - prevTime.getTime()) / 60000;
 
                 if (diffMins > 30 || (track.ai_mood !== currentSession.mood && diffMins > 5)) {
-                    sessionsByArtist.push(currentSession);
+                    sessionsByGroup.push(currentSession);
                     currentSession = {
                         id: `sess-${idCounter++}`,
-                        artist: artist,
-                        artistIndex: index,
+                        groupName: groupName,
+                        groupIndex: index,
                         startTime: trackTime,
                         endTime: trackTime,
                         mood: track.ai_mood || track.mood_category || "Unknown",
@@ -111,21 +125,19 @@ export default function ListeningHistoryPage() {
                     currentSession.endTime = trackTime;
                 }
             }
-            sessionsByArtist.push(currentSession);
+            sessionsByGroup.push(currentSession);
         });
 
-        // Determine the time bounds for the week view
-        // Let's mock a fixed 7-day window ending at the latest track, or simply a 7-day rolling window
         const latestTrackTime = history.length > 0 ? new Date(history[0].time).getTime() : Date.now();
         const startOfWeek = latestTrackTime - (7 * 24 * 60 * 60 * 1000);
 
         return {
-            artists: topArtists,
-            sessions: sessionsByArtist,
+            groups: topGroups,
+            sessions: sessionsByGroup,
             minTime: startOfWeek,
             maxTime: latestTrackTime
         };
-    }, [history]);
+    }, [history, timelineGrouping]);
 
     const getMoodColor = (mood: string) => {
         for (const [key, color] of Object.entries(MOOD_COLORS)) {
@@ -170,7 +182,7 @@ export default function ListeningHistoryPage() {
         return Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     }, [history]);
 
-    const { artists, sessions, minTime, maxTime } = processedTimelineData;
+    const { groups, sessions, minTime, maxTime } = processedTimelineData;
     const timeSpan = maxTime - minTime;
 
     // Helper to position blocks
@@ -222,10 +234,31 @@ export default function ListeningHistoryPage() {
                     <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-2 xl:col-span-3 relative overflow-hidden flex flex-col">
                         <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="bg-[#1C1C24] px-4 py-2 rounded-full border border-[#2D2D3A] flex items-center gap-2 cursor-pointer">
-                                    <span className="text-xs text-white">Group Artist</span>
-                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                <div className="relative">
+                                <div 
+                                    className="bg-[#1C1C24] px-4 py-2 rounded-full border border-[#2D2D3A] flex items-center gap-2 cursor-pointer hover:border-[var(--theme-accent)] transition-colors"
+                                    onClick={() => setTimelineGroupingOpen(!timelineGroupingOpen)}
+                                >
+                                    <span className="text-xs text-white">Group By: {timelineGrouping}</span>
+                                    <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${timelineGroupingOpen ? 'rotate-180' : ''}`} />
                                 </div>
+                                {timelineGroupingOpen && (
+                                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                                        {['Artist', 'Mood', 'Genre', 'Context'].map((option) => (
+                                            <div 
+                                                key={option}
+                                                className={`px-4 py-2 text-xs cursor-pointer hover:bg-[var(--theme-border)] ${timelineGrouping === option ? 'text-[var(--theme-accent)]' : 'text-gray-300'}`}
+                                                onClick={() => {
+                                                    setTimelineGrouping(option);
+                                                    setTimelineGroupingOpen(false);
+                                                }}
+                                            >
+                                                Group by {option}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             </div>
                             <div className="flex gap-4">
                                 {Object.entries(MOOD_COLORS).slice(0,3).map(([name, color]) => (
@@ -242,7 +275,7 @@ export default function ListeningHistoryPage() {
                             <div className="flex-1 flex justify-center items-center">
                                 <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
                             </div>
-                        ) : artists.length === 0 ? (
+                        ) : groups.length === 0 ? (
                             <div className="flex-1 flex justify-center items-center text-gray-500 text-sm">
                                 No listening history found for this period.
                             </div>
@@ -275,16 +308,16 @@ export default function ListeningHistoryPage() {
                                         </div>
                                     </div>
 
-                                    {/* Artist Rows */}
-                                    {artists.map((artist, idx) => (
-                                        <div key={artist} className="relative h-16 flex items-center border-b border-[var(--theme-border)] opacity-80 last:border-0 hover:bg-white/5 transition-colors group">
+                                    {/* Artist/Group Rows */}
+                                    {groups.map((groupName, idx) => (
+                                        <div key={groupName} className="relative h-16 flex items-center border-b border-[var(--theme-border)] opacity-80 last:border-0 hover:bg-white/5 transition-colors group">
                                             {/* Row Header (Y-Axis) */}
                                             <div className="w-[120px] shrink-0 flex items-center gap-3 z-20">
                                                 <div className="w-8 h-8 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 overflow-hidden">
                                                     {/* Generic Avatar/Icon */}
                                                     <Star className="w-4 h-4 text-gray-500 group-hover:text-[var(--theme-accent)] transition-colors" />
                                                 </div>
-                                                <div className="text-xs text-gray-300 font-medium truncate pr-2">{artist}</div>
+                                                <div className="text-xs text-gray-300 font-medium truncate pr-2">{groupName}</div>
                                             </div>
 
                                             {/* Row Blocks */}
