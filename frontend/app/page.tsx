@@ -9,7 +9,7 @@ export default function LandingPage() {
     // Using production URL or falling back gracefully if not defined
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://music-ml-dashboard.onrender.com';
     const cleanUrl = baseUrl.replace(/\/+$/, '');
-    window.location.href = `${cleanUrl}/auth/login`;
+    window.location.href = `${cleanUrl}/api/auth/login`;
   };
 
   return (
