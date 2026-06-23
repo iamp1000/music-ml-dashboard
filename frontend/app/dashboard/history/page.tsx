@@ -70,9 +70,18 @@ export default function AnalyticsHubPage() {
                 }
 
                 // Fetch history
-                const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
+                const limit = isBackground ? 1 : 50;
+                const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/telemetry/history?limit=${limit}`);
                 if (historyData && historyData.data) {
-                    setHistory(historyData.data);
+                    if (isBackground && historyData.data.length > 0) {
+                        setHistory(prev => {
+                            const newId = historyData.data[0].id;
+                            if (prev.some(t => t.id === newId)) return prev;
+                            return [historyData.data[0], ...prev].slice(0, 50);
+                        });
+                    } else if (!isBackground) {
+                        setHistory(historyData.data);
+                    }
                 }
 
                 // Fetch deep insights

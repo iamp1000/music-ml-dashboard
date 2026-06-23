@@ -35,7 +35,7 @@ async def ingest_heart_rate(payload: HeartRatePayload, background_tasks: Backgro
     return {"status": "accepted"}
 
 @router.get("/history")
-async def get_listening_history(authorization: str = Header(None)):
+async def get_listening_history(authorization: str = Header(None), limit: int = 50):
     """
     Returns the user's historical listening data (Valence/Arousal) for the dashboard plots.
     """
@@ -54,7 +54,7 @@ async def get_listening_history(authorization: str = Header(None)):
         docs = db.collection("listening_history") \
                  .where(filter=firestore.FieldFilter("tenant_id", "==", user_id)) \
                  .order_by("time", direction=firestore.Query.DESCENDING) \
-                 .limit(50).stream()
+                 .limit(limit).stream()
                  
         history = []
         for doc in docs:

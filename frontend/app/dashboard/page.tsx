@@ -57,11 +57,20 @@ export default function DashboardOverviewPage() {
                     return false;
                 };
 
-                const fetchHistoryData = async () => {
+                const fetchHistoryData = async (isBackground = false) => {
                     try {
-                        const historyData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
+                        const limit = isBackground ? 1 : 50;
+                        const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/telemetry/history?limit=${limit}`);
                         if (historyData && isMounted) {
-                            setHistory(historyData.data || historyData || []);
+                            if (isBackground && historyData.data && historyData.data.length > 0) {
+                                setHistory(prev => {
+                                    const newId = historyData.data[0].id;
+                                    if (prev.some((t: any) => t.id === newId)) return prev;
+                                    return [historyData.data[0], ...prev].slice(0, 50);
+                                });
+                            } else if (!isBackground) {
+                                setHistory(historyData.data || historyData || []);
+                            }
                         }
                     } catch (e: any) {
                         console.error("Failed to load history", e);
@@ -70,7 +79,7 @@ export default function DashboardOverviewPage() {
 
                 const success = await fetchProfileOnce();
                 if (success) {
-                    await fetchHistoryData();
+                    await fetchHistoryData(false);
                 }
                 
                 if (isMounted) setLoading(false);
@@ -78,7 +87,7 @@ export default function DashboardOverviewPage() {
                 // Polling for live updates every 10 seconds
                 const pollInterval = setInterval(async () => {
                     if (isMounted && profile) {
-                        await fetchHistoryData();
+                        await fetchHistoryData(true);
                     }
                 }, 10000);
 

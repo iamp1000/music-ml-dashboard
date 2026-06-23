@@ -36,9 +36,18 @@ export default function ListeningHistoryPage() {
 
         if (!isBackground) setLoading(true);
         try {
-            const data = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history?token=${token}&limit=300`);
+            const limit = isBackground ? 1 : 300;
+            const data = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history?token=${token}&limit=${limit}`);
             if (data && data.data) {
-                setHistory(data.data);
+                if (isBackground && data.data.length > 0) {
+                    setHistory(prev => {
+                        const newTrack = data.data[0];
+                        if (prev.some(t => t.id === newTrack.id)) return prev;
+                        return [newTrack, ...prev].slice(0, 300);
+                    });
+                } else if (!isBackground) {
+                    setHistory(data.data);
+                }
             }
         } catch (e) {
             console.error("Failed to fetch history", e);
