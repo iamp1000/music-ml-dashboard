@@ -8,12 +8,11 @@ load_dotenv()
 # We use aiomysql as the async driver
 # Connection string format: mysql+aiomysql://user:password@host:port/database
 # For TiDB Serverless, we need ssl enabled
-host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
-port = 4000
-user = "2u2TczwT65g96ET.root"
-password = "Fs9jesHk5BPSdF2l"
-database = "test"
-
+host = os.getenv("TIDB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
+port = int(os.getenv("TIDB_PORT", 4000))
+user = os.getenv("TIDB_USERNAME", "2u2TczwT65g96ET.root")
+password = os.getenv("TIDB_PASSWORD", "Fs9jesHk5BPSdF2l")
+database = os.getenv("TIDB_DATABASE", "test")
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
