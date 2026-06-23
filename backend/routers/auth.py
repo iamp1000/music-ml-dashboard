@@ -15,8 +15,7 @@ router = APIRouter(tags=["Authentication"])
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-# Hardcode the redirect URI to ensure it always matches the Spotify Dashboard
-SPOTIFY_REDIRECT_URI = "https://music-ml-dashboard.onrender.com/api/auth/callback"
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://iamp1000.github.io/music-ml-dashboard")
 
 @router.get("/login")
