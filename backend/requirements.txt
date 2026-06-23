@@ -15,3 +15,7 @@ google-genai
 
 SQLAlchemy
 PyMySQL
+
+pandas
+numpy
+scikit-learn
