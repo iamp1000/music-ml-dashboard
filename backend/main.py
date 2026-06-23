@@ -10,8 +10,14 @@ import math
 import time
 from datetime import datetime, timezone
 
+from inference_service import run_gemini_batch_analysis
+from llm_telemetry import calculate_ml_weight
+from ml_engine.utils.feature_extractor import FeatureExtractor
+from ml_engine.utils.vector_math import VectorMathEngine
+import pandas as pd
+
 from database import init_db, db
-from routers import auth, telemetry, settings, spotify
+from routers import auth, telemetry, settings, spotify, ml
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
@@ -34,11 +40,14 @@ async def startup_event():
     asyncio.create_task(refresh_users_cache())
     asyncio.create_task(background_polling_loop())
     asyncio.create_task(sync_recently_played_loop())
+    asyncio.create_task(process_5min_batch_queue_loop())
 
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-app.include_router(telemetry.router, prefix="/telemetry", tags=["Telemetry"])
-app.include_router(settings.router, prefix="/settings", tags=["Settings"])
-app.include_router(spotify.router, prefix="/api/spotify", tags=["Spotify API"])
+
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(telemetry.router, prefix="/api/telemetry", tags=["Telemetry"])
+app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(spotify.router, prefix="/api/spotify", tags=["Spotify"])
+app.include_router(ml.router, prefix="/api/ml", tags=["ML"])
 
 # Allow CORS for GitHub Pages / Next.js frontend
 app.add_middleware(
@@ -174,6 +183,7 @@ user_ml_sessions = {}
 
 user_last_poll_time = {}
 user_last_poll_data = {}
+five_min_batch_queue = []
 
 async def get_cached_currently_playing(user_id, client):
     import time
@@ -665,70 +675,132 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
     return result_dict
 
 async def save_track_to_db(user_id, state, client):
-    """Helper to analyze and save a track when it's done playing."""
+    """
+    Appends the finished track telemetry to the 5-minute memory queue instead of writing instantly.
+    This protects Firebase write limits and allows batch processing for the 4D Vector math.
+    """
     track_id = state["last_track_id"]
     track_name = state["track_name"]
     artist_name = state["artist_name"]
-    
-    # Removed get_audio_features - Gemini will infer everything internally
-    valence, energy = 0.5, 0.5
-
-    # Determine Lyrical Valence (Simulated since user asked Gemini to infer)
-    lyrical_valence = 1.0 - valence if valence else 0.5
-    
-    # Retrieve user's current context
-    user_doc = db.collection("users").document(user_id).get()
-    current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
-
-    # Run Gemini AI Integration using the batch processor with 1 item
     played_ms = state.get("max_progress_ms", 0)
     duration_ms = state.get("duration_ms", 1)
-    ml_score, listen_type = calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, energy)
     
-    batch_payload = [{
+    # Push to memory queue
+    five_min_batch_queue.append({
+        "user_id": user_id,
         "track_id": track_id,
         "track_name": track_name,
         "artist_name": artist_name,
-        "valence": valence,
-        "energy": energy,
-        "base_weight": ml_score,
-        "listen_type": listen_type,
-        "played_at_str": datetime.now(timezone.utc).isoformat(),
-        "duration_ms": duration_ms
-    }]
-    
-    batch_results = await run_gemini_batch_analysis(batch_payload, current_context)
-    ai_res = batch_results.get(track_id, {})
-    
-    # Combine base weight and incremental weight into a single final variable
-    incremental = ai_res.get("incremental_weight", 0.0)
-    final_weight = min(100, max(0, int(ml_score + incremental)))
-    
-    try:
-        db.collection("listening_history").add({
-            "time": batch_payload[0]["played_at_str"],
-            "tenant_id": user_id,
-            "track_id": track_id,
-            "track_name": track_name,
-            "artist_name": artist_name,
-            "duration_ms": duration_ms,
-            "played_ms": played_ms,
-            "listen_type": listen_type,
-            "listen_weight": final_weight,
-            "valence": valence,
-            "energy": energy,
-            "context": current_context,
-            "ml_features": {
-                "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
-                "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
-                "exclusion_flags": ai_res.get("exclusion_flags", []),
-                "telemetry_summary": ai_res.get("telemetry_summary", "AI Analysis Unavailable")
-            },
-            "sync_source": "websocket_live_tracking"
-        })
-        print(f"Background recorded track for {user_id}: {track_name} (Context: {current_context})")
-    except Exception as e:
-        print(f"Failed to save background track to DB: {e}")
+        "played_ms": played_ms,
+        "duration_ms": duration_ms,
+        "played_at": datetime.now(timezone.utc).isoformat(),
+        "raw_state": state
+    })
+    print(f"Queued for 5-min batch: {track_name} by {artist_name} (User: {user_id})")
+
+async def process_5min_batch_queue_loop():
+    """
+    Wakes up every 5 minutes.
+    1. Pops all tracks from the in-memory queue.
+    2. Runs feature_extractor.py to get the 15-variable matrix.
+    3. Runs vector_math.py to get the 4D Explosive Vector (Fixation, Immersion, Volatility, Vault).
+    4. Makes ONE batch request to Gemini for Lyrical Context.
+    5. Performs ONE batch write to Firebase.
+    """
+    global five_min_batch_queue
+    while True:
+        await asyncio.sleep(300)  # 5 Minutes
+        
+        if not five_min_batch_queue:
+            continue
+            
+        print(f"=== [Batch Queue] Processing {len(five_min_batch_queue)} queued tracks ===")
+        
+        # Pop the queue thread-safely
+        batch_to_process = five_min_batch_queue.copy()
+        five_min_batch_queue.clear()
+        
+        # Group by user for contextual processing
+        user_batches = {}
+        for item in batch_to_process:
+            uid = item["user_id"]
+            if uid not in user_batches:
+                user_batches[uid] = []
+            user_batches[uid].append(item)
+            
+        for uid, items in user_batches.items():
+            user_doc = db.collection("users").document(uid).get()
+            current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
+            
+            gemini_payload = []
+            final_db_objects = []
+            
+            # Step 1: Local Math (Feature Extraction + 4D Vector)
+            for track in items:
+                # We mock the historical DF for now, as fetching full history is heavy.
+                # In production, this pulls the trailing 30 days.
+                mock_history_df = pd.DataFrame([{
+                    "track_id": track["track_id"], 
+                    "played_ms": track["played_ms"],
+                    "duration_ms": track["duration_ms"],
+                    "time": track["played_at"]
+                }])
+                
+                # 15 Variables
+                features = FeatureExtractor.extract_features(track["raw_state"], mock_history_df)
+                
+                # Context overrides for the Math engine
+                historical_context = {
+                    "session_repeat_count": 0, # Could be calculated from mock_history
+                    "base_completion_ratio": track["played_ms"] / track["duration_ms"] if track["duration_ms"] > 0 else 0.0,
+                    "artist_plays_7d": 1,
+                    "total_plays_7d": 50,
+                    "duration_ms": track["duration_ms"]
+                }
+                
+                # 4D Vector Math
+                w_vec = VectorMathEngine.generate_vector(features, historical_context)
+                
+                track["w_vec"] = w_vec
+                
+                gemini_payload.append({
+                    "track_id": track["track_id"],
+                    "track_name": track["track_name"],
+                    "artist_name": track["artist_name"],
+                    "w_vec": w_vec,
+                    "duration_ms": track["duration_ms"]
+                })
+                
+            # Step 2: Gemini Batch (1 Request per User Batch)
+            gemini_results = await run_gemini_batch_analysis(gemini_payload, current_context)
+            
+            # Step 3: Write to Firebase
+            batch_writer = db.batch()
+            for track in items:
+                tid = track["track_id"]
+                ai_res = gemini_results.get(tid, {})
+                
+                doc_ref = db.collection("listening_history").document()
+                batch_writer.set(doc_ref, {
+                    "time": track["played_at"],
+                    "tenant_id": uid,
+                    "track_id": tid,
+                    "track_name": track["track_name"],
+                    "artist_name": track["artist_name"],
+                    "duration_ms": track["duration_ms"],
+                    "played_ms": track["played_ms"],
+                    "context": current_context,
+                    "ml_features": {
+                        "w_vec": track["w_vec"],
+                        "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
+                        "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
+                        "telemetry_summary": ai_res.get("telemetry_summary", "AI Analyzed")
+                    },
+                    "sync_source": "5min_batch_queue"
+                })
+                
+            batch_writer.commit()
+            print(f"=== [Batch Queue] Successfully committed {len(items)} tracks for user {uid} ===")
 
 @app.websocket("/ws/stream/live")
 async def websocket_endpoint(websocket: WebSocket, token: str = None):

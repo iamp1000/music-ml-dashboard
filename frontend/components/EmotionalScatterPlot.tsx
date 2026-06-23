@@ -12,7 +12,7 @@ const EmotionalScatterPlot: React.FC = () => {
     if (!token) return;
 
     // Fetch initial history
-    fetch('https://music-ml-dashboard.onrender.com/telemetry/history', {
+    fetch('https://music-ml-dashboard.onrender.com/api/telemetry/history', {
       headers: {
         'Authorization': `Bearer ${token}`
       }

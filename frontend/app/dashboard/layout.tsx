@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             
             try {
                 // Actually verify the token with the backend
-                const res = await fetch("https://music-ml-dashboard.onrender.com/auth/profile", {
+                const res = await fetch("https://music-ml-dashboard.onrender.com/api/auth/profile", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 

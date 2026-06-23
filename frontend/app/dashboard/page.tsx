@@ -45,7 +45,7 @@ export default function DashboardOverviewPage() {
 
                 const fetchProfileOnce = async () => {
                     try {
-                        const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
+                        const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/auth/profile");
                         if (data && isMounted) {
                             // Support both { data: {...} } and direct object returns
                             setProfile(data.data || data);
@@ -60,7 +60,7 @@ export default function DashboardOverviewPage() {
                 const fetchHistoryData = async (isBackground = false) => {
                     try {
                         const limit = isBackground ? 1 : 50;
-                        const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/telemetry/history?limit=${limit}`);
+                        const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=${limit}`);
                         if (historyData && isMounted) {
                             if (isBackground && historyData.data && historyData.data.length > 0) {
                                 setHistory(prev => {
@@ -244,7 +244,7 @@ export default function DashboardOverviewPage() {
                     <Shield className="w-16 h-16 text-[#8293B4] mb-4 opacity-50" />
                     <h2 className="text-xl font-bold mb-2 text-white">No Active Session</h2>
                     <p className="text-[#8293B4] max-w-sm mb-6 text-sm">Please log in to your Spotify account to view your telemetry dashboard.</p>
-                    <a href="https://music-ml-dashboard.onrender.com/auth/login" className="px-6 py-3 rounded-full bg-[#D1F26D] text-black font-bold uppercase text-xs tracking-widest hover:scale-105 transition-transform">
+                    <a href="https://music-ml-dashboard.onrender.com/api/auth/login" className="px-6 py-3 rounded-full bg-[#D1F26D] text-black font-bold uppercase text-xs tracking-widest hover:scale-105 transition-transform">
                         Connect Spotify
                     </a>
                 </div>

@@ -57,7 +57,7 @@ export default function LiveSyncPlayer() {
         const fetchSpotifyToken = async () => {
             try {
                 // Fetch profile to get token
-                const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
+                const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/auth/profile");
                 if (data && data.data?.access_token) {
                     setSpotifyToken(data.data.access_token);
                     initializePlayer(data.data.access_token);
@@ -125,7 +125,7 @@ export default function LiveSyncPlayer() {
                     name: "SonicLens Web Player",
                     getOAuthToken: async (cb: any) => { 
                         try {
-                            const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/auth/profile");
+                            const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/auth/profile");
                             if (data && data.data?.access_token) {
                                 cb(data.data.access_token);
                             } else {

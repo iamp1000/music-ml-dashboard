@@ -33,7 +33,7 @@ export default function UserProfilePanel({ isOpen, onClose, profile }: UserProfi
                 const fetchedTopArtists = topArtistsRes?.items || topArtistsRes?.data?.items || [];
                 
                 // 3. Fetch our ML-analyzed Listening History
-                const historyRes = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/telemetry/history");
+                const historyRes = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/history");
                 const fetchedHistory = historyRes?.data || [];
                 setHistory(fetchedHistory);
 
