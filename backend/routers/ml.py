@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
-from database import db
+
 from ml_engine.models.clustering_model import VectorGraphEngine
-from auth_utils import verify_firebase_token
+from security import verify_access_token
 
 router = APIRouter()
 
@@ -14,8 +14,8 @@ async def get_vector_graph(token: str = Query(...)):
     """
     try:
         # Verify the user
-        user_info = verify_firebase_token(token)
-        user_id = user_info['uid']
+        user_info = verify_access_token(token)
+        user_id = user_info['sub']
         
         # Run the Scikit-Learn pipeline
         graph_data = VectorGraphEngine.generate_graph_data(user_id)

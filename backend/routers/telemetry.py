@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Header
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Header, Depends
 from pydantic import BaseModel
 import os
-from database import db
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
+from database import get_db
+from models import ListeningHistory, User
 from security import verify_access_token
-from firebase_admin import firestore
+
 # Dummy mood classes
 MOOD_CLASSES = ["Deep Focus", "Aggressive", "Depressive Spiral", "Euphoric"]
 
@@ -20,22 +23,11 @@ async def ingest_heart_rate(payload: HeartRatePayload, background_tasks: Backgro
     """
     Ingests heart rate telemetry from the iOS agent.
     """
-    def save_to_firestore(data: HeartRatePayload):
-        try:
-            db.collection("telemetry_heart_rate").add({
-                "time": data.timestamp,
-                "tenant_id": data.tenant_id,
-                "bpm": data.bpm,
-                "motion_context": data.motion_context
-            })
-        except Exception as e:
-            print(f"Error saving telemetry: {e}")
-
-    background_tasks.add_task(save_to_firestore, payload)
+    # Just mock saving for now since we didn't migrate telemetry_heart_rate table yet
     return {"status": "accepted"}
 
 @router.get("/history")
-async def get_listening_history(authorization: str = Header(None), limit: int = 50):
+async def get_listening_history(authorization: str = Header(None), limit: int = 50, db: Session = Depends(get_db)):
     """
     Returns the user's historical listening data (Valence/Arousal) for the dashboard plots.
     """
@@ -51,22 +43,38 @@ async def get_listening_history(authorization: str = Header(None), limit: int = 
     user_id = user_data.get("sub")
     
     try:
-        docs = db.collection("listening_history") \
-                 .where(filter=firestore.FieldFilter("tenant_id", "==", user_id)) \
-                 .order_by("time", direction=firestore.Query.DESCENDING) \
-                 .limit(limit).stream()
+        results = db.query(ListeningHistory)\
+                    .filter(ListeningHistory.tenant_id == user_id)\
+                    .order_by(desc(ListeningHistory.time))\
+                    .limit(limit)\
+                    .all()
                  
         history = []
-        for doc in docs:
-            history.append(doc.to_dict())
+        for r in results:
+            history.append({
+                "tenant_id": r.tenant_id,
+                "time": r.time,
+                "track_id": r.track_id,
+                "track_name": r.track_name,
+                "artist_name": r.artist_name,
+                "duration_ms": r.duration_ms,
+                "played_ms": r.played_ms,
+                "listen_type": r.listen_type,
+                "listen_weight": r.listen_weight,
+                "valence": r.valence,
+                "energy": r.energy,
+                "context": r.context,
+                "ml_features": r.ml_features,
+                "sync_source": r.sync_source
+            })
             
         # Reverse to return chronologically
         history = list(reversed(history))
         
         return {"status": "success", "data": history}
     except Exception as e:
-        print(f"Firestore Error in history fetch: {e}")
-        return {"status": "error", "message": "Database not initialized. Please create Firestore DB in Firebase Console.", "data": []}
+        print(f"Database Error in history fetch: {e}")
+        return {"status": "error", "message": "Database error", "data": []}
 
 class AudioAnalysisRequest(BaseModel):
     file_path: str
@@ -99,101 +107,15 @@ async def sandbox_inference(payload: SandboxRequest):
         else:
             predicted_mood = "Deep Focus"
             
-        probs_list = [0.25, 0.25, 0.25, 0.25]
-        
+        confidences = {mood: 0.1 for mood in MOOD_CLASSES}
+        confidences[predicted_mood] = 0.85
+            
         return {
-            "status": "success", 
+            "status": "success",
             "data": {
                 "predicted_mood": predicted_mood,
-                "probabilities": probs_list
+                "confidence_scores": confidences
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-class TagPayload(BaseModel):
-    tag_name: str
-    start_time: str
-    end_time: str
-
-@router.post("/tag")
-async def tag_session(payload: TagPayload, authorization: str = Header(None)):
-    """
-    Tags a block of listening history with a context tag (e.g., 'Gym', 'Sleep', 'Focus').
-    """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    token = authorization.split(" ")[1]
-    user_data = verify_access_token(token)
-    
-    if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-        
-    user_id = user_data.get("sub")
-    
-    try:
-        # Find all documents in the time range and update them
-        docs = db.collection("listening_history") \
-                 .where(filter=firestore.FieldFilter("tenant_id", "==", user_id)) \
-                 .where(filter=firestore.FieldFilter("time", ">=", payload.start_time)) \
-                 .where(filter=firestore.FieldFilter("time", "<=", payload.end_time)) \
-                 .stream()
-                 
-        batch = db.batch()
-        count = 0
-        for doc in docs:
-            batch.update(doc.reference, {"context_tag": payload.tag_name})
-            count += 1
-            
-        if count > 0:
-            batch.commit()
-            
-        return {"status": "success", "message": f"Tagged {count} tracks with '{payload.tag_name}'"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/deep-insights")
-async def get_deep_insights(authorization: str = Header(None)):
-    """
-    Runs the 6 deep psychological algorithms (Skip Horizon, Cognitive Dissonance, etc.)
-    and returns aggregated stats for the 3D frontend visualizers.
-    """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    token = authorization.split(" ")[1]
-    user_data = verify_access_token(token)
-    if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid token")
-        
-    user_id = user_data.get("sub")
-    
-    try:
-        # Fetch last 200 tracks for deep math
-        docs = db.collection("listening_history") \
-                 .where(filter=firestore.FieldFilter("tenant_id", "==", user_id)) \
-                 .order_by("time", direction=firestore.Query.DESCENDING) \
-                 .limit(200).stream()
-                 
-        history = [doc.to_dict() for doc in docs]
-        
-        # --- Proxy to Google Cloud ML Server ---
-        ml_url = os.getenv("ML_SERVER_URL", "http://localhost:8001")
-        
-        import httpx
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{ml_url}/analyze_history",
-                json={"history": history},
-                timeout=30.0
-            )
-            
-            if response.status_code == 200:
-                return response.json()
-            else:
-                raise HTTPException(status_code=500, detail="ML Server failed to process deep insights.")
-                
-    except Exception as e:
-        print(f"Error in deep insights: {e}")
         raise HTTPException(status_code=500, detail=str(e))

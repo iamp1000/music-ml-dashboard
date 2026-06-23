@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
-from database import db
+from sqlalchemy.orm import Session
+from database import get_db
+from models import User, ListeningHistory
 from security import verify_access_token
 
 router = APIRouter()
@@ -20,13 +22,12 @@ def get_current_user(request: Request):
     return payload.get("sub")
 
 @router.get("/preferences")
-async def get_preferences(spotify_id: str = Depends(get_current_user)):
-    user_ref = db.collection("users").document(spotify_id)
-    doc = user_ref.get()
-    if not doc.exists:
+async def get_preferences(spotify_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == spotify_id).first()
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    prefs = doc.to_dict().get("preferences", {})
+    prefs = user.preferences or {}
     return {
         "status": "success",
         "data": {
@@ -36,61 +37,38 @@ async def get_preferences(spotify_id: str = Depends(get_current_user)):
     }
 
 @router.post("/preferences")
-async def update_preferences(prefs: PreferencesUpdate, spotify_id: str = Depends(get_current_user)):
-    user_ref = db.collection("users").document(spotify_id)
-    doc = user_ref.get()
-    if not doc.exists:
+async def update_preferences(prefs: PreferencesUpdate, spotify_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == spotify_id).first()
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    current_prefs = doc.to_dict().get("preferences", {})
+    current_prefs = user.preferences or {}
     if prefs.ml_enabled is not None:
         current_prefs["ml_enabled"] = prefs.ml_enabled
     if prefs.app_sleep is not None:
         current_prefs["app_sleep"] = prefs.app_sleep
         
-    user_ref.update({"preferences": current_prefs})
+    user.preferences = current_prefs
+    db.commit()
     
     return {"status": "success", "message": "Preferences updated"}
 
 @router.delete("/history")
-async def purge_history(spotify_id: str = Depends(get_current_user)):
-    # Batch delete listening history for this user
-    docs = db.collection("listening_history").list_documents()
-    batch = db.batch()
-    count = 0
-    for doc in docs:
-        if doc.id.startswith(f"{spotify_id}_"):
-            batch.delete(doc)
-            count += 1
-            if count % 500 == 0:
-                batch.commit()
-                batch = db.batch()
-    
-    if count > 0 and count % 500 != 0:
-        batch.commit()
+async def purge_history(spotify_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Delete listening history for this user
+    deleted_count = db.query(ListeningHistory).filter(ListeningHistory.tenant_id == spotify_id).delete(synchronize_session=False)
+    db.commit()
         
-    return {"status": "success", "message": f"Purged {count} history records"}
+    return {"status": "success", "message": f"Purged {deleted_count} history records"}
 
 @router.post("/disconnect")
-async def disconnect_account(spotify_id: str = Depends(get_current_user)):
-    user_ref = db.collection("users").document(spotify_id)
-    doc = user_ref.get()
-    if doc.exists:
+async def disconnect_account(spotify_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == spotify_id).first()
+    if user:
         # Purge history first
-        docs = db.collection("listening_history").list_documents()
-        batch = db.batch()
-        count = 0
-        for d in docs:
-            if d.id.startswith(f"{spotify_id}_"):
-                batch.delete(d)
-                count += 1
-                if count % 500 == 0:
-                    batch.commit()
-                    batch = db.batch()
-        if count > 0 and count % 500 != 0:
-            batch.commit()
-
+        db.query(ListeningHistory).filter(ListeningHistory.tenant_id == spotify_id).delete(synchronize_session=False)
         # Delete user document
-        user_ref.delete()
+        db.delete(user)
+        db.commit()
         
     return {"status": "success", "message": "Account disconnected and data purged"}

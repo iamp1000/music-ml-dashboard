@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, Query, Response
-from database import db
+from database import SessionLocal
+from models import User
 from security import verify_access_token, encryptor
 from spotify_client import SpotifyClient
 
@@ -18,23 +19,24 @@ async def get_user_spotify_client(request: Request) -> SpotifyClient:
         
     user_id = user_data.get("sub")
     
-    # Fetch refresh token from firestore
-    user_doc = db.collection("users").document(user_id).get()
-    if not user_doc.exists:
-        raise HTTPException(status_code=404, detail="User account not found")
+    # Fetch refresh token from TiDB
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User account not found")
+            
+        refresh_cipher = user.refresh_token_cipher
+        nonce = user.refresh_token_nonce
         
-    u_dict = user_doc.to_dict()
-    refresh_cipher = u_dict.get("refresh_token_cipher")
-    nonce = u_dict.get("refresh_token_nonce")
-    if not refresh_cipher or not nonce:
-        raise HTTPException(status_code=400, detail="Spotify account not linked")
-        
-    try:
-        refresh_token = encryptor.decrypt(refresh_cipher, nonce)
-        return SpotifyClient(refresh_token=refresh_token)
-    except Exception as e:
-        print(f"Decryption error in spotify router: {e}")
-        raise HTTPException(status_code=500, detail="Decryption error")
+        if not refresh_cipher or not nonce:
+            raise HTTPException(status_code=400, detail="Spotify account not linked")
+            
+        try:
+            refresh_token = encryptor.decrypt(refresh_cipher, nonce)
+            return SpotifyClient(refresh_token=refresh_token)
+        except Exception as e:
+            print(f"Decryption error in spotify router: {e}")
+            raise HTTPException(status_code=500, detail="Decryption error")
 
 def handle_rate_limit(res: dict, response: Response):
     """Utility to raise 429 if the client response indicates rate limiting."""

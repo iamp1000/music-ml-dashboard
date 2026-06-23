@@ -1,7 +1,8 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from database import db
+from database import SessionLocal
+from models import ListeningHistory
 
 class VectorGraphEngine:
     """
@@ -13,29 +14,27 @@ class VectorGraphEngine:
     @staticmethod
     def generate_graph_data(user_id: str):
         # Fetch listening history with ML vectors
-        docs = db.collection("listening_history")\
-                 .where("tenant_id", "==", user_id)\
-                 .stream()
+        with SessionLocal() as db:
+            docs = db.query(ListeningHistory).filter(ListeningHistory.tenant_id == user_id).all()
                  
-        data_points = []
-        vectors = []
-        for doc in docs:
-            d = doc.to_dict()
-            ml_features = d.get("ml_features", {})
-            w_vec = ml_features.get("w_vec")
-            
-            # Ensure it's a valid 4D vector
-            if isinstance(w_vec, list) and len(w_vec) == 4:
-                data_points.append({
-                    "id": doc.id,
-                    "track_id": d.get("track_id"),
-                    "track_name": d.get("track_name"),
-                    "artist_name": d.get("artist_name"),
-                    "time": d.get("time"),
-                    "w_vec": w_vec
-                })
-                vectors.append(w_vec)
+            data_points = []
+            vectors = []
+            for doc in docs:
+                ml_features = doc.ml_features or {}
+                w_vec = ml_features.get("w_vec")
                 
+                # Ensure it's a valid 4D vector
+                if isinstance(w_vec, list) and len(w_vec) == 4:
+                    data_points.append({
+                        "id": doc.id,
+                        "track_id": doc.track_id,
+                        "track_name": doc.track_name,
+                        "artist_name": doc.artist_name,
+                        "time": doc.time,
+                        "w_vec": w_vec
+                    })
+                    vectors.append(w_vec)
+                    
         if len(vectors) < 3:
             return {"status": "insufficient_data", "message": "Need at least 3 analyzed tracks to generate vector graph.", "data": []}
             

@@ -12,3 +12,6 @@ vaderSentiment
 openai
 
 google-genai
+
+SQLAlchemy
+PyMySQL

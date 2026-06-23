@@ -2,20 +2,21 @@ import os
 import asyncio
 import json
 import random
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
-from sqlalchemy.orm import Session
+from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import math
 import time
 from datetime import datetime, timezone
 
-
+from inference_service import run_gemini_batch_analysis
+from llm_telemetry import calculate_ml_weight
 from ml_engine.utils.feature_extractor import FeatureExtractor
 from ml_engine.utils.vector_math import VectorMathEngine
 import pandas as pd
 
-from database import SessionLocal, get_db
+from database import init_db, db
 from routers import auth, telemetry, settings, spotify, ml
 from google import genai
 from google.genai import types
@@ -28,12 +29,17 @@ app = FastAPI(title="Affective Music SaaS - Restored Backend")
 
 @app.on_event("startup")
 async def startup_event():
-    print("FastAPI TiDB Backend Starting...")
+    try:
+        # init_db is synchronous for firebase
+        init_db()
+        print("Database initialized successfully.")
+    except Exception as e:
+        print(f"Warning: Database initialization failed. Ensure Firebase is configured. Error: {e}")
+        
     # Start the background poller
     asyncio.create_task(refresh_users_cache())
     asyncio.create_task(background_polling_loop())
     asyncio.create_task(sync_recently_played_loop())
-    # Initialize background task for memory queue
     asyncio.create_task(process_5min_batch_queue_loop())
 
 
@@ -61,28 +67,31 @@ class SessionContextUpdate(BaseModel):
     context: str
 
 @app.get("/api/context")
-async def get_context(token: str, db: Session = Depends(get_db)):
+async def get_context(token: str):
     user_data = verify_access_token(token)
     user_id = user_data.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
-    current = user.current_context if user else "None"
+    doc = db.collection("users").document(user_id).get()
+    current = doc.to_dict().get("current_context", "None") if doc.exists else "None"
     return {"status": "success", "context": current}
 
 from fastapi import BackgroundTasks
 
 async def retroactive_session_update(user_id: str, new_context: str):
-    with SessionLocal() as db:
-        docs_list = db.query(ListeningHistory).filter(ListeningHistory.tenant_id == user_id).order_by(desc(ListeningHistory.time)).limit(30).all()
+    docs = db.collection("listening_history")\
+             .where("tenant_id", "==", user_id)\
+             .order_by("time", direction="DESCENDING")\
+             .limit(30)\
+             .stream()
     
-    
+    docs_list = list(docs)
     if not docs_list:
         return
         
     session_docs = [docs_list[0]]
     for i in range(1, len(docs_list)):
         try:
-            prev_time_str = docs_list[i-1].time.replace("Z", "+00:00")
-            curr_time_str = docs_list[i].time.replace("Z", "+00:00")
+            prev_time_str = docs_list[i-1].to_dict().get("time", "").replace("Z", "+00:00")
+            curr_time_str = docs_list[i].to_dict().get("time", "").replace("Z", "+00:00")
             from datetime import datetime
             prev_time = datetime.fromisoformat(prev_time_str)
             curr_time = datetime.fromisoformat(curr_time_str)
@@ -96,71 +105,75 @@ async def retroactive_session_update(user_id: str, new_context: str):
             
     for doc in session_docs:
         try:
-            doc.context = new_context
-            db.commit()
+            db.collection("listening_history").document(doc.id).update({"context": new_context})
         except Exception:
             pass
 
 @app.put("/api/context")
-async def update_context(request: ContextUpdate, token: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def update_context(request: ContextUpdate, token: str, background_tasks: BackgroundTasks):
     user_data = verify_access_token(token)
     user_id = user_data.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
-    if user:
-        user.current_context = request.context
-        db.commit()
+    db.collection("users").document(user_id).set({"current_context": request.context}, merge=True)
     background_tasks.add_task(retroactive_session_update, user_id, request.context)
     return {"status": "success"}
 
 @app.put("/api/history/session/context")
-async def update_session_context(request: SessionContextUpdate, token: str, db: Session = Depends(get_db)):
+async def update_session_context(request: SessionContextUpdate, token: str):
     user_data = verify_access_token(token)
     user_id = user_data.get("sub")
     
     # Process each document ID
     for doc_id in request.document_ids:
-        doc = db.query(ListeningHistory).filter(ListeningHistory.id == doc_id).first()
-        if not doc:
+        doc_ref = db.collection("listening_history").document(doc_id)
+        doc = doc_ref.get()
+        if not doc.exists:
             continue
-        if doc.tenant_id != user_id:
+            
+        data = doc.to_dict()
+        if data.get("tenant_id") != user_id:
             continue # Unauthorized or wrong user
             
         # Re-run Gemini AI
-        track_name = doc.track_name or "Unknown"
-        artist_name = doc.artist_name or "Unknown"
-        valence = doc.valence or 0.5
-        energy = doc.energy or 0.5
+        track_name = data.get("track_name", "Unknown")
+        artist_name = data.get("artist_name", "Unknown")
+        valence = data.get("valence", 0.5)
+        energy = data.get("energy", 0.5)
         
         mood, ai_analysis, time_fit = await run_gemini_analysis(track_name, artist_name, valence, energy, request.context)
         
         # Update the document
-        doc.context = request.context
-        # Optional: Save AI fields if added to model later
-        db.commit()
+        doc_ref.update({
+            "context": request.context,
+            "ai_mood": mood,
+            "ai_analysis": ai_analysis,
+            "time_of_day_fit": time_fit
+        })
         
     return {"status": "success", "message": f"Updated {len(request.document_ids)} tracks."}
 
 @app.get("/api/history")
-async def get_history(token: str, limit: int = 50, db: Session = Depends(get_db)):
+async def get_history(token: str, limit: int = 50):
     user_data = verify_access_token(token)
     user_id = user_data.get("sub")
     
-    docs = db.query(ListeningHistory).filter(ListeningHistory.tenant_id == user_id).order_by(desc(ListeningHistory.time)).limit(limit).all()
+    docs = db.collection("listening_history")\
+             .where("tenant_id", "==", user_id)\
+             .order_by("time", direction="DESCENDING")\
+             .limit(limit)\
+             .stream()
              
     history = []
     for doc in docs:
-        history.append({"id": doc.id, "tenant_id": doc.tenant_id, "time": doc.time, "track_name": doc.track_name, "artist_name": doc.artist_name, "context": doc.context})
+        data = doc.to_dict()
+        data["id"] = doc.id
+        history.append(data)
         
     return {"status": "success", "data": history}
 
 from state import global_tokens, active_users_cache
 from spotify_client import SpotifyClient
 from security import verify_access_token, encryptor
-from database import SessionLocal, get_db
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from models import User, ListeningHistory
-from fastapi import Depends
+from database import db
 from lyric_analyzer import get_lyrics_and_sentiment
 
 # Global state for background polling
@@ -262,17 +275,9 @@ def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, ener
 async def refresh_users_cache():
     while True:
         try:
-            with SessionLocal() as db:
-                users_ref = db.query(User).all()
-                for user_doc in users_ref:
-                    active_users_cache[user_doc.id] = {
-                        "display_name": user_doc.display_name,
-                        "current_context": user_doc.current_context,
-                        "access_token_cipher": user_doc.access_token_cipher,
-                        "access_token_nonce": user_doc.access_token_nonce,
-                        "refresh_token_cipher": user_doc.refresh_token_cipher,
-                        "refresh_token_nonce": user_doc.refresh_token_nonce
-                    }
+            users_ref = db.collection("users").stream()
+            for user_doc in users_ref:
+                active_users_cache[user_doc.id] = user_doc.to_dict()
             print("Refreshed active users cache")
         except Exception as e:
             print(f"Error refreshing users cache: {e}")
@@ -398,8 +403,7 @@ async def sync_recently_played_loop():
                                 continue
                                 
                             # Time-Windowed Matcher: Search for exact track_id within +/- 5 minutes
-                            with SessionLocal() as db:
-                                docs = db.query(ListeningHistory).filter(ListeningHistory.tenant_id == user_id, ListeningHistory.track_id == track_id).all()
+                            docs = db.collection("listening_history").where("tenant_id", "==", user_id).where("track_id", "==", track_id).stream()
                                      
                             is_duplicate = False
                             for doc in docs:
@@ -464,30 +468,27 @@ async def sync_recently_played_loop():
                             incremental = ai_res.get("incremental_weight", 0.0)
                             final_weight = min(100, max(0, int(t_data["base_weight"] + incremental)))
                             
-                            with SessionLocal() as db:
-                                new_hist = ListeningHistory(
-                                    time=t_data["played_at_str"],
-                                    tenant_id=user_id,
-                                    track_id=t_data["track_id"],
-                                    track_name=t_data["track_name"],
-                                    artist_name=t_data["artist_name"],
-                                    duration_ms=t_data["duration_ms"],
-                                    played_ms=t_data["duration_ms"],
-                                    listen_type=t_data["listen_type"],
-                                    listen_weight=final_weight,
-                                    valence=t_data["valence"],
-                                    energy=t_data["energy"],
-                                    context=current_context,
-                                    ml_features={
-                                        "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
-                                        "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
-                                        "exclusion_flags": ai_res.get("exclusion_flags", []),
-                                        "telemetry_summary": ai_res.get("telemetry_summary", "AI Analyzed")
-                                    },
-                                    sync_source="recently_played_batch"
-                                )
-                                db.add(new_hist)
-                                db.commit()
+                            db.collection("listening_history").add({
+                                "time": t_data["played_at_str"],
+                                "tenant_id": user_id,
+                                "track_id": t_data["track_id"],
+                                "track_name": t_data["track_name"],
+                                "artist_name": t_data["artist_name"],
+                                "duration_ms": t_data["duration_ms"],
+                                "played_ms": t_data["duration_ms"],
+                                "listen_type": t_data["listen_type"],
+                                "listen_weight": final_weight,
+                                "valence": t_data["valence"],
+                                "energy": t_data["energy"],
+                                "context": current_context,
+                                "ml_features": {
+                                    "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
+                                    "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
+                                    "exclusion_flags": ai_res.get("exclusion_flags", []),
+                                    "telemetry_summary": ai_res.get("telemetry_summary", "AI Analysis Unavailable")
+                                },
+                                "sync_source": "recently_played_batch"
+                            })
                             
                         # Add a 2-second delay between batches to avoid Rate Limits
                         await asyncio.sleep(2)
@@ -771,31 +772,31 @@ async def process_5min_batch_queue_loop():
             gemini_results = await run_gemini_batch_analysis(gemini_payload, current_context)
             
             # Step 3: Write to Firebase
-            with SessionLocal() as db:
-                for track in items:
-                    tid = track["track_id"]
-                    ai_res = gemini_results.get(tid, {})
-                    
-                    new_hist = ListeningHistory(
-                        time=track["played_at"],
-                        tenant_id=uid,
-                        track_id=tid,
-                        track_name=track["track_name"],
-                        artist_name=track["artist_name"],
-                        duration_ms=track["duration_ms"],
-                        played_ms=track["played_ms"],
-                        context=current_context,
-                        ml_features={
-                            "w_vec": track["w_vec"],
-                            "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
-                            "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
-                            "telemetry_summary": ai_res.get("telemetry_summary", "AI Analyzed")
-                        },
-                        sync_source="5min_batch_queue"
-                )
-                db.add(new_hist)
+            batch_writer = db.batch()
+            for track in items:
+                tid = track["track_id"]
+                ai_res = gemini_results.get(tid, {})
                 
-            db.commit()
+                doc_ref = db.collection("listening_history").document()
+                batch_writer.set(doc_ref, {
+                    "time": track["played_at"],
+                    "tenant_id": uid,
+                    "track_id": tid,
+                    "track_name": track["track_name"],
+                    "artist_name": track["artist_name"],
+                    "duration_ms": track["duration_ms"],
+                    "played_ms": track["played_ms"],
+                    "context": current_context,
+                    "ml_features": {
+                        "w_vec": track["w_vec"],
+                        "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
+                        "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
+                        "telemetry_summary": ai_res.get("telemetry_summary", "AI Analyzed")
+                    },
+                    "sync_source": "5min_batch_queue"
+                })
+                
+            batch_writer.commit()
             print(f"=== [Batch Queue] Successfully committed {len(items)} tracks for user {uid} ===")
 
 @app.websocket("/ws/stream/live")

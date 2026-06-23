@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 from typing import Optional
 import os
 import urllib.parse
 import base64
 import httpx
-from database import db
-from security import encryptor, create_access_token
+from database import get_db
+from models import User
+from security import encryptor, create_access_token, verify_access_token
 from state import active_users_cache
 
 router = APIRouter(tags=["Authentication"])
@@ -35,17 +37,17 @@ def login_spotify():
 
 
 @router.get("/callback")
-async def spotify_callback(code: Optional[str] = None, error: Optional[str] = None):
+async def spotify_callback(code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Handles the Spotify OAuth callback.
-    Exchanges the code for tokens, fetches user ID, stores in DB, and redirects with JWT.
+    Exchanges the code for tokens, fetches user ID, stores in TiDB, and redirects with JWT.
     """
     if error:
-        # Redirect back to frontend with the error so the user isn't stuck on a blank JSON screen
         return RedirectResponse(f"{FRONTEND_URL}?error={error}")
     
     if not code:
         return RedirectResponse(f"{FRONTEND_URL}?error=missing_code")
+        
     auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
     auth_bytes = auth_string.encode("utf-8")
     auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
@@ -64,8 +66,6 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         # 1. Get Tokens
         response = await client.post("https://accounts.spotify.com/api/token", headers=headers, data=data)
         if response.status_code != 200:
-            retry_after = response.headers.get("Retry-After", "unknown")
-            print(f"Spotify /api/token failed: {response.status_code} (Retry-After: {retry_after}s) - {response.text}")
             return RedirectResponse(f"{FRONTEND_URL}/?error=token_failed_{response.status_code}")
             
         token_data = response.json()
@@ -76,33 +76,36 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
         me_headers = {"Authorization": f"Bearer {access_token}"}
         me_response = await client.get("https://api.spotify.com/v1/me", headers=me_headers)
         if me_response.status_code != 200:
-            retry_after = me_response.headers.get("Retry-After", "unknown")
-            print(f"Spotify /v1/me failed: {me_response.status_code} (Retry-After: {retry_after}s) - {me_response.text}")
-            return RedirectResponse(f"{FRONTEND_URL}/?error=profile_failed_{me_response.status_code}_retry_{retry_after}")
+            return RedirectResponse(f"{FRONTEND_URL}/?error=profile_failed_{me_response.status_code}")
             
         me_data = me_response.json()
         spotify_id = me_data.get("id")
         display_name = me_data.get("display_name", "")
+        email = me_data.get("email", "")
 
     # 3. Encrypt Tokens
     access_cipher, access_nonce = encryptor.encrypt(access_token)
     refresh_cipher, refresh_nonce = encryptor.encrypt(refresh_token)
 
-    # 4. Store in Firestore (with fallback if DB doesn't exist yet)
+    # 4. Store in TiDB
     try:
-        user_ref = db.collection("users").document(spotify_id)
-        user_ref.set({
-            "display_name": display_name,
-            "access_token_cipher": access_cipher,
-            "access_token_nonce": access_nonce,
-            "refresh_token_cipher": refresh_cipher,
-            "refresh_token_nonce": refresh_nonce,
-        }, merge=True)
+        user = db.query(User).filter(User.id == spotify_id).first()
+        if not user:
+            user = User(id=spotify_id)
+            db.add(user)
+            
+        user.display_name = display_name
+        user.email = email
+        user.access_token_cipher = access_cipher
+        user.access_token_nonce = access_nonce
+        user.refresh_token_cipher = refresh_cipher
+        user.refresh_token_nonce = refresh_nonce
+        db.commit()
         
-        # Skipping background sync since Celery was removed to improve performance
-        print(f"Successfully authenticated {spotify_id}")
+        print(f"Successfully authenticated {spotify_id} in TiDB")
     except Exception as e:
-        print(f"Warning: Could not save to Firestore (has it been created?): {e}")
+        print(f"Warning: Could not save to TiDB: {e}")
+        db.rollback()
 
     # 5. Create JWT for Frontend Session
     jwt_token = create_access_token({"sub": spotify_id})
@@ -111,11 +114,9 @@ async def spotify_callback(code: Optional[str] = None, error: Optional[str] = No
     redirect_url = f"{FRONTEND_URL}/dashboard?token={jwt_token}"
     return RedirectResponse(redirect_url)
 
-from fastapi import HTTPException
-from security import verify_access_token
 
 @router.get("/profile")
-async def get_user_profile(request: Request):
+async def get_user_profile(request: Request, db: Session = Depends(get_db)):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not logged in")
@@ -126,59 +127,44 @@ async def get_user_profile(request: Request):
         raise HTTPException(status_code=401, detail="Invalid token")
         
     user_id = user_data.get("sub")
-    
-    # Decrypt access token and refresh token
     access_token = None
     display_name = None
     
     try:
-        user_doc = db.collection("users").document(user_id).get()
-        if user_doc.exists:
-            u_dict = user_doc.to_dict()
-            display_name = u_dict.get("display_name")
-            active_users_cache[user_id] = u_dict
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            display_name = user.display_name
+            # Cache it
+            active_users_cache[user_id] = {
+                "display_name": user.display_name,
+                "access_token_cipher": user.access_token_cipher,
+                "access_token_nonce": user.access_token_nonce,
+                "refresh_token_cipher": user.refresh_token_cipher,
+                "refresh_token_nonce": user.refresh_token_nonce
+            }
             
             # Always try to refresh the token to ensure the Web Playback SDK gets a valid one
-            ref_cipher = u_dict.get("refresh_token_cipher")
-            ref_nonce = u_dict.get("refresh_token_nonce")
-            if ref_cipher and ref_nonce:
+            if user.refresh_token_cipher and user.refresh_token_nonce:
                 try:
                     from spotify_client import SpotifyClient
-                    refresh_token = encryptor.decrypt(ref_cipher, ref_nonce)
+                    refresh_token = encryptor.decrypt(user.refresh_token_cipher, user.refresh_token_nonce)
                     client = SpotifyClient(refresh_token=refresh_token)
                     new_access = await client.get_access_token()
                     
                     # Save new access token
                     cipher, nonce = encryptor.encrypt(new_access)
-                    db.collection("users").document(user_id).update({
-                        "access_token_cipher": cipher,
-                        "access_token_nonce": nonce
-                    })
+                    user.access_token_cipher = cipher
+                    user.access_token_nonce = nonce
+                    db.commit()
                     access_token = new_access
                 except Exception as e:
                     print(f"Failed to refresh token in profile load: {e}")
                     # Fallback to decrypting old one
-                    cipher = u_dict.get("access_token_cipher")
-                    nonce = u_dict.get("access_token_nonce")
-                    if cipher and nonce:
-                        access_token = encryptor.decrypt(cipher, nonce)
+                    if user.access_token_cipher and user.access_token_nonce:
+                        access_token = encryptor.decrypt(user.access_token_cipher, user.access_token_nonce)
 
-        stats_doc = db.collection("users").document(user_id).collection("stats").document("current").get()
-        if not stats_doc.exists:
-            # If stats do not exist yet, we still return pending but can provide access token
-            return {"status": "pending", "data": {"id": user_id, "access_token": access_token, "display_name": display_name} if access_token or display_name else {"id": user_id}}
-            
-        data = stats_doc.to_dict()
-        data["id"] = user_id
-        if access_token:
-            data["access_token"] = access_token
-        if display_name:
-            data["display_name"] = display_name
-            
-        return {"status": "success", "data": data}
+        # For stats we will just return pending for now since we are starting fresh with TiDB
+        return {"status": "pending", "data": {"id": user_id, "access_token": access_token, "display_name": display_name} if access_token or display_name else {"id": user_id}}
     except Exception as db_e:
         print(f"Database error in /auth/profile: {db_e}")
-        # If the database fails (e.g. Firebase not configured), return a minimal profile
         return {"status": "pending", "data": {"id": user_id, "access_token": access_token, "display_name": display_name} if access_token or display_name else {"id": user_id}}
-
-
