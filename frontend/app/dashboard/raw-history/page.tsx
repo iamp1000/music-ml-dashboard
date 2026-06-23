@@ -67,7 +67,7 @@ export default function ListeningHistoryPage() {
             let val = "Unknown";
             if (timelineGrouping === "Artist") val = t.artist_name || "Unknown Artist";
             else if (timelineGrouping === "Mood") val = t.ai_mood || t.mood_category || "Unknown Mood";
-            else if (timelineGrouping === "Genre") val = t.ml_features?.song_genre_estimate || "Unknown Genre";
+            else if (timelineGrouping === "Listening Activity") val = t.ml_features?.time_of_day_fit || t.time_of_day_fit || "General Activity";
             else if (timelineGrouping === "Context") val = t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context";
             
             groupCounts[val] = (groupCounts[val] || 0) + 1;
@@ -86,7 +86,7 @@ export default function ListeningHistoryPage() {
             const groupTracks = history.filter(t => {
                 if (timelineGrouping === "Artist") return (t.artist_name || "Unknown Artist") === groupName;
                 if (timelineGrouping === "Mood") return (t.ai_mood || t.mood_category || "Unknown Mood") === groupName;
-                if (timelineGrouping === "Genre") return (t.ml_features?.song_genre_estimate || "Unknown Genre") === groupName;
+                if (timelineGrouping === "Listening Activity") return (t.ml_features?.time_of_day_fit || t.time_of_day_fit || "General Activity") === groupName;
                 if (timelineGrouping === "Context") return (t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context") === groupName;
                 return false;
             }).reverse(); // chronological
@@ -244,7 +244,7 @@ export default function ListeningHistoryPage() {
                                 </div>
                                 {timelineGroupingOpen && (
                                     <div className="absolute top-full left-0 mt-2 w-48 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl shadow-xl z-50 overflow-hidden py-1">
-                                        {['Artist', 'Mood', 'Genre', 'Context'].map((option) => (
+                                        {['Artist', 'Mood', 'Listening Activity', 'Context'].map((option) => (
                                             <div 
                                                 key={option}
                                                 className={`px-4 py-2 text-xs cursor-pointer hover:bg-[var(--theme-border)] ${timelineGrouping === option ? 'text-[var(--theme-accent)]' : 'text-gray-300'}`}
@@ -279,7 +279,20 @@ export default function ListeningHistoryPage() {
                             <div className="flex-1 flex justify-center items-center text-gray-500 text-sm">
                                 No listening history found for this period.
                             </div>
-                        ) : (
+                        ) : timelineGrouping === "Mood" ? (
+                                <div className="flex-1 flex flex-col justify-center items-center bg-[#1C1C24] rounded-3xl border-2 border-dashed border-[#2D2D3A] m-4 p-8 relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-[var(--theme-accent)]/5 to-transparent pointer-events-none"></div>
+                                    <div className="w-16 h-16 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center mb-6 shadow-lg shadow-[var(--theme-accent)]/10">
+                                        <div className="w-8 h-8 rounded-full bg-[var(--theme-accent)]/20 animate-pulse"></div>
+                                    </div>
+                                    <h3 className="text-2xl font-bold tracking-tight text-white mb-4">TBD: 3D Mood Analytics</h3>
+                                    <p className="text-sm text-gray-400 text-center max-w-lg leading-relaxed">
+                                        This section will feature an interactive 3D graph showing how your listening activity takes a dip when you listen to sad songs, goes up with heavy metal, and stays positive with happy songs. 
+                                        <br/><br/>
+                                        <span className="text-[var(--theme-accent)]">Currently under development.</span>
+                                    </p>
+                                </div>
+                            ) : (
                             <div className="flex-1 flex flex-col mt-4">
                                 {/* X-Axis Header (Days) */}
                                 <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[120px]">
@@ -379,7 +392,7 @@ export default function ListeningHistoryPage() {
                                     ))}
                                 </div>
                             </div>
-                        )}
+                            )}
                         
                         <div className="mt-8 flex justify-between items-center bg-[#1C1C24] border border-[#2D2D3A] rounded-full p-1 pl-4 pr-1 max-w-[200px] cursor-pointer hover:bg-[#2A2A35] transition-colors">
                             <span className="text-xs text-gray-300 flex items-center gap-2"><ArrowLeft className="w-4 h-4"/> Navigate to Past</span>
