@@ -172,6 +172,19 @@ user_spotify_clients = {}
 user_playback_state = {}
 user_ml_sessions = {}
 
+user_last_poll_time = {}
+user_last_poll_data = {}
+
+async def get_cached_currently_playing(user_id, client):
+    import time
+    now = time.time()
+    if user_id not in user_last_poll_time or (now - user_last_poll_time[user_id]) >= 15:
+        data = await client.get_currently_playing()
+        user_last_poll_time[user_id] = now
+        user_last_poll_data[user_id] = data
+        return data
+    return user_last_poll_data.get(user_id)
+
 def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, energy):
     """
     Calculates the multi-dimensional ML score and normalizes it 0-100.
@@ -287,7 +300,7 @@ async def background_polling_loop():
                 client = user_spotify_clients[user_id]
                 
                 try:
-                    current_track = await client.get_currently_playing()
+                    current_track = await get_cached_currently_playing(user_id, client)
                     state = user_playback_state.get(user_id, {})
                     last_track_id = state.get("last_track_id")
                     
@@ -543,7 +556,7 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
         try:
             client_ai = genai.Client(api_key=gemini_key)
             response = await client_ai.aio.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -558,9 +571,19 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
                     result_dict[r["track_id"]] = r
             break # Success, exit retry loop
         except Exception as e:
-            print(f"Gemini Batch AI Error (Attempt {attempt+1}): {e}")
+            err_str = str(e)
+            print(f"Gemini Batch AI Error (Attempt {attempt+1}): {err_str}")
             if attempt < 2:
-                await asyncio.sleep(2 ** attempt)
+                import re
+                match = re.search(r"retry in ([\d\.]+)s", err_str)
+                if match:
+                    sleep_time = float(match.group(1)) + 1.0
+                elif "429" in err_str or "503" in err_str:
+                    sleep_time = 60.0
+                else:
+                    sleep_time = 2 ** attempt
+                print(f"Backing off for {sleep_time}s")
+                await asyncio.sleep(sleep_time)
 
     return result_dict
         
@@ -625,9 +648,19 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
                     result_dict[r["track_id"]] = r
             break # Success, exit retry loop
         except Exception as e:
-            print(f"Gemini Batch AI Error (Attempt {attempt+1}): {e}")
+            err_str = str(e)
+            print(f"Gemini Batch AI Error (Attempt {attempt+1}): {err_str}")
             if attempt < 2:
-                await asyncio.sleep(2 ** attempt)
+                import re
+                match = re.search(r"retry in ([\d\.]+)s", err_str)
+                if match:
+                    sleep_time = float(match.group(1)) + 1.0
+                elif "429" in err_str or "503" in err_str:
+                    sleep_time = 60.0
+                else:
+                    sleep_time = 2 ** attempt
+                print(f"Backing off for {sleep_time}s")
+                await asyncio.sleep(sleep_time)
 
     return result_dict
 
@@ -747,7 +780,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
             # Fetch real live track data
             if spotify_client:
                 try:
-                    current_track = await spotify_client.get_currently_playing()
+                    current_track = await get_cached_currently_playing(user_id, spotify_client)
                     if current_track and current_track.get("status") == "playing":
                         track_id = current_track["id"]
                         track_name = current_track["track"]

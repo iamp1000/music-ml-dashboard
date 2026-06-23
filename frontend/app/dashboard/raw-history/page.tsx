@@ -67,7 +67,10 @@ export default function ListeningHistoryPage() {
             let val = "Unknown";
             if (timelineGrouping === "Artist") val = t.artist_name || "Unknown Artist";
             else if (timelineGrouping === "Mood") val = t.ai_mood || t.mood_category || "Unknown Mood";
-            else if (timelineGrouping === "Listening Activity") val = t.ml_features?.time_of_day_fit || t.time_of_day_fit || "General Activity";
+            else if (timelineGrouping === "Listening Activity") {
+                val = t.ml_features?.time_of_day_fit || t.time_of_day_fit || "General Activity";
+                if (val.toLowerCase().includes("general") || val.toLowerCase().includes("anytime")) return;
+            }
             else if (timelineGrouping === "Context") val = t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context";
             
             groupCounts[val] = (groupCounts[val] || 0) + 1;
@@ -146,31 +149,7 @@ export default function ListeningHistoryPage() {
         return MOOD_COLORS["Unknown"];
     };
 
-    // Genre Calculations for Radial Graph
-    const genreData = useMemo(() => {
-        const genreCounts: Record<string, number> = {};
-        let total = 0;
-        history.forEach(t => {
-            const g = t.ai_mood || "Unknown";
-            genreCounts[g] = (genreCounts[g] || 0) + 1;
-            total++;
-        });
-        const sorted = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-        
-        // Recharts RadialBar expects data sorted inner to outer or vice versa. 
-        // We map them to generic names to match the reference image.
-        const mockNames = ["Top", "Beuwers", "Radio", "Conzects", "Music"];
-        
-        return sorted.map((item, idx) => ({
-            name: mockNames[idx] || item[0],
-            realName: item[0],
-            count: item[1],
-            percent: total > 0 ? ((item[1] / total) * 100).toFixed(1) : 0,
-            fill: GENRE_COLORS[idx % GENRE_COLORS.length],
-            // Radial bar requires a value to plot the arc length
-            value: total > 0 ? (item[1] / total) * 100 : 0
-        })).reverse(); // Reverse so largest is outer ring
-    }, [history]);
+
 
     const topArtistsList = useMemo(() => {
         const artistCounts: Record<string, number> = {};
@@ -221,9 +200,13 @@ export default function ListeningHistoryPage() {
                         <Search className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-300 ml-2">Search timeline...</span>
                     </div>
-                    <div className="flex items-center gap-2 bg-[var(--theme-panel)] px-4 py-2 rounded-xl border border-[var(--theme-border)] ml-auto cursor-pointer">
+                    <div className="flex items-center gap-2 bg-[var(--theme-panel)] px-4 py-2 rounded-xl border border-[var(--theme-border)] ml-auto">
                         <span className="text-xs text-gray-400 font-medium">Date Range:</span>
-                        <span className="text-xs text-white flex items-center gap-2">{dateRange} <ChevronDown className="w-3 h-3 text-gray-500" /></span>
+                        <div className="flex items-center gap-2 group/nav cursor-pointer">
+                            <span className="text-gray-500 hover:text-white opacity-0 group-hover/nav:opacity-100 transition-opacity">&lt;</span>
+                            <span className="text-xs text-white flex items-center gap-2">{dateRange} <ChevronDown className="w-3 h-3 text-gray-500" /></span>
+                            <span className="text-gray-500 hover:text-white opacity-0 group-hover/nav:opacity-100 transition-opacity">&gt;</span>
+                        </div>
                     </div>
                 </div>
 
@@ -261,12 +244,21 @@ export default function ListeningHistoryPage() {
                             </div>
                             </div>
                             <div className="flex gap-4">
-                                {Object.entries(MOOD_COLORS).slice(0,3).map(([name, color]) => (
-                                    <div key={name} className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></div>
-                                        <span className="text-[10px] text-gray-400">{name}</span>
-                                    </div>
-                                ))}
+                                {timelineGrouping === "Mood" ? (
+                                    Object.entries(MOOD_COLORS).slice(0,3).map(([name, color]) => (
+                                        <div key={name} className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></div>
+                                            <span className="text-[10px] text-gray-400">{name}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    groups.slice(0,3).map((name, idx) => (
+                                        <div key={name} className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: GENRE_COLORS[idx % GENRE_COLORS.length] }}></div>
+                                            <span className="text-[10px] text-gray-400 truncate max-w-[80px]" title={name}>{name}</span>
+                                        </div>
+                                    ))
+                                )}
                                 <div className="text-gray-400">...</div>
                             </div>
                         </div>
@@ -310,16 +302,7 @@ export default function ListeningHistoryPage() {
                                         ))}
                                     </div>
 
-                                    {/* Release Marker (Current Time Line) */}
-                                    <div className="absolute top-0 bottom-0 border-l border-red-500/50 border-dashed z-10 pointer-events-none" style={{ left: 'calc(120px + 70%)' }}>
-                                        <div className="absolute -bottom-6 -left-3 flex flex-col items-center">
-                                            <div className="w-2 h-2 rotate-45 bg-red-500"></div>
-                                            <div className="bg-[#1C1C24] border border-[#2D2D3A] text-[9px] text-gray-300 px-2 py-1 rounded mt-1 whitespace-nowrap">
-                                                <span className="text-white font-bold block">Current Time</span>
-                                                <span className="text-red-400">Live Telemetry</span>
-                                            </div>
-                                        </div>
-                                    </div>
+
 
                                     {/* Artist/Group Rows */}
                                     {groups.map((groupName, idx) => (
@@ -335,12 +318,12 @@ export default function ListeningHistoryPage() {
 
                                             {/* Row Blocks */}
                                             <div className="flex-1 relative h-full">
-                                                {sessions.filter(s => s.artistIndex === idx).map(session => {
+                                                {sessions.filter(s => s.groupIndex === idx).map(session => {
                                                     // Add artificial width padding based on track count to make it visible
                                                     const extraWidth = session.tracks.length * 2;
                                                     const left = getLeftPercent(session.startTime.getTime());
                                                     const width = getWidthPercent(session.startTime.getTime(), session.endTime.getTime(), 3 + extraWidth);
-                                                    const color = getMoodColor(session.mood);
+                                                    const color = timelineGrouping === "Mood" ? getMoodColor(session.mood) : GENRE_COLORS[session.groupIndex % GENRE_COLORS.length];
 
                                                     return (
                                                         <div 
@@ -394,51 +377,18 @@ export default function ListeningHistoryPage() {
                             </div>
                             )}
                         
-                        <div className="mt-8 flex justify-between items-center bg-[#1C1C24] border border-[#2D2D3A] rounded-full p-1 pl-4 pr-1 max-w-[200px] cursor-pointer hover:bg-[#2A2A35] transition-colors">
-                            <span className="text-xs text-gray-300 flex items-center gap-2"><ArrowLeft className="w-4 h-4"/> Navigate to Past</span>
-                        </div>
+
                     </div>
 
                     {/* Right Column: Genre Exploration & Top Artists */}
                     <div className="lg:col-span-1 flex flex-col gap-6">
                         
-                        {/* Genre Exploration Concentric Circles */}
-                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex flex-col h-[300px]">
-                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest mb-4">Genre Exploration</h3>
-                            <div className="flex-1 flex relative">
-                                <div className="flex-1 relative">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <RadialBarChart 
-                                            cx="50%" 
-                                            cy="50%" 
-                                            innerRadius="20%" 
-                                            outerRadius="100%" 
-                                            barSize={12} 
-                                            data={genreData}
-                                            startAngle={90}
-                                            endAngle={-270}
-                                        >
-                                            <RadialBar
-                                                background={{ fill: '#1C1C24' }}
-                                                dataKey="value"
-                                                cornerRadius={10}
-                                            />
-                                        </RadialBarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                {/* Exact Legend styling */}
-                                <div className="w-[80px] flex flex-col justify-center gap-3 shrink-0">
-                                    {/* Reverse the array visually so outer ring (index 0) is top */}
-                                    {[...genreData].reverse().map((entry, idx) => (
-                                        <div key={idx} className="flex flex-col">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }}></div>
-                                                <span className="text-[10px] text-gray-300 font-bold">{entry.name}</span>
-                                            </div>
-                                            <div className="text-[9px] text-gray-500 pl-3.5">{entry.percent}%</div>
-                                        </div>
-                                    ))}
-                                </div>
+                        {/* Mood 3D Graph Placeholder */}
+                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex flex-col h-[300px] items-center justify-center">
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest mb-2">Mood Trends</h3>
+                            <div className="text-gray-500 text-sm text-center">
+                                <p>[TBD: 3D Mood Graph Visualization]</p>
+                                <p className="text-xs mt-2 opacity-70">Will display dynamic trends tracking sad dips, positive highs, and heavy metal intensity.</p>
                             </div>
                         </div>
 

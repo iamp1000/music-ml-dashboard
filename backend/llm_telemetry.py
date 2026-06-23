@@ -78,7 +78,7 @@ Return exactly ONE valid JSON object with the following fields:
         
         client_ai = genai.Client(api_key=api_key)
         response = await client_ai.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
