@@ -14,6 +14,8 @@ import { fetchWithRateLimit } from "@/utils/api";
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
+    const [aggregates, setAggregates] = useState<any>(null);
+    const [fullHistoryLoaded, setFullHistoryLoaded] = useState(false);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [expandedMetric, setExpandedMetric] = useState<"time" | "tracks" | "artists" | "genres" | null>(null);
@@ -59,7 +61,7 @@ export default function DashboardOverviewPage() {
 
                 const fetchHistoryData = async (isBackground = false) => {
                     try {
-                        const limit = isBackground ? 1 : 10000;
+                        const limit = isBackground ? 1 : (fullHistoryLoaded ? 10000 : 15);
                         const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=${limit}`);
                         if (historyData && isMounted) {
                             if (isBackground && historyData.data && historyData.data.length > 0) {
@@ -77,8 +79,18 @@ export default function DashboardOverviewPage() {
                     }
                 };
 
+                const fetchAggregates = async () => {
+                    try {
+                        const aggData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/aggregates");
+                        if (aggData && isMounted) {
+                            setAggregates(aggData.data);
+                        }
+                    } catch(e) {}
+                };
+
                 const success = await fetchProfileOnce();
                 if (success) {
+                    await fetchAggregates();
                     await fetchHistoryData(false);
                 }
                 
@@ -107,6 +119,25 @@ export default function DashboardOverviewPage() {
         return () => { isMounted = false; };
     }, []);
 
+    
+    // Load full history if user searches or changes filter
+    useEffect(() => {
+        if (!fullHistoryLoaded && (searchQuery.trim() !== "" || filterYear !== "1 Year" || activityFilter !== "30D")) {
+            const loadFull = async () => {
+                setLoading(true);
+                try {
+                    const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=10000");
+                    if (data && data.data) {
+                        setHistory(data.data);
+                        setFullHistoryLoaded(true);
+                    }
+                } catch(e) {}
+                setLoading(false);
+            };
+            loadFull();
+        }
+    }, [searchQuery, filterYear, activityFilter, fullHistoryLoaded]);
+
     // Derived Metrics & Filters
     const filteredHistory = useMemo(() => {
         let result = history;
@@ -131,47 +162,50 @@ export default function DashboardOverviewPage() {
         return result;
     }, [history, searchQuery, expandedMetric, filterYear]);
 
-    // Metrics based on filtered data
-    const tracksPlayedCount = filteredHistory.length;
-    const totalListeningTime = Math.round(filteredHistory.reduce((sum, item) => sum + ((item.duration_ms || 204000) / 60000), 0));
+
+    const isDefaultView = filterYear === "1 Year" && searchQuery.trim() === "";
+
+    // Metrics based on filtered data OR aggregates
+    const tracksPlayedCount = (isDefaultView && aggregates) ? aggregates.total_tracks_played : filteredHistory.length;
+    const totalListeningTime = (isDefaultView && aggregates) ? aggregates.total_listening_time_mins : Math.round(filteredHistory.reduce((sum, item) => sum + ((item.duration_ms || 204000) / 60000), 0));
     const uniqueArtists = new Set(filteredHistory.map(item => item.artist_name));
-    const artistsDiscoveredCount = uniqueArtists.size;
+    const artistsDiscoveredCount = (isDefaultView && aggregates) ? aggregates.artists_discovered : uniqueArtists.size;
     
     // For Top Genres / Genres Explored
     const genreCounts: Record<string, number> = {};
-    filteredHistory.forEach(item => {
-        if (item.genre) {
-            genreCounts[item.genre] = (genreCounts[item.genre] || 0) + 1;
-        } else if (item.mood_category) {
-            // fallback to mood as genre if genre doesn't exist
-            genreCounts[item.mood_category] = (genreCounts[item.mood_category] || 0) + 1;
-        }
-    });
-    const genresExploredCount = Object.keys(genreCounts).length || 1;
-    const sortedGenres = Object.entries(genreCounts).sort((a,b) => b[1] - a[1]);
+    if (!isDefaultView || !aggregates) {
+        filteredHistory.forEach(item => {
+            if (item.genre) {
+                genreCounts[item.genre] = (genreCounts[item.genre] || 0) + 1;
+            } else if (item.mood_category) {
+                genreCounts[item.mood_category] = (genreCounts[item.mood_category] || 0) + 1;
+            }
+        });
+    }
+    const genresExploredCount = (isDefaultView && aggregates) ? aggregates.genres_explored : (Object.keys(genreCounts).length || 1);
+    const sortedGenres = (isDefaultView && aggregates && aggregates.top_genres_json) ? aggregates.top_genres_json.map((g:any) => [g.name, g.value]) : Object.entries(genreCounts).sort((a,b) => b[1] - a[1]);
 
     // Top Tracks Processing
     const trackCounts: Record<string, { name: string; artist: string; count: number; image: string; time: number }> = {};
-    filteredHistory.forEach(item => {
-        const key = `${item.track_name} - ${item.artist_name}`;
-        if (!trackCounts[key]) {
-            trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0, image: item.album_image_url, time: 0 };
-        }
-        trackCounts[key].count += 1;
-        trackCounts[key].time += ((item.duration_ms || 204000) / 60000);
-    });
+    if (!isDefaultView || !aggregates) {
+        filteredHistory.forEach(item => {
+            const key = `${item.track_name} - ${item.artist_name}`;
+            if (!trackCounts[key]) {
+                trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0, image: item.album_image_url, time: 0 };
+            }
+            trackCounts[key].count += 1;
+            trackCounts[key].time += ((item.duration_ms || 204000) / 60000);
+        });
+    }
 
-    const displayTracks = Object.values(trackCounts)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5)
-        .map((t, idx) => ({
-            rank: idx + 1,
-            name: t.name,
-            artist: t.artist,
-            plays: t.count,
-            time: Math.round(t.time),
-            image: t.image
+    const displayTracks = (isDefaultView && aggregates && aggregates.top_artists_json && aggregates.top_artists_json.length > 0) 
+        ? aggregates.top_artists_json.map((t:any, idx:number) => ({
+            rank: idx + 1, name: t.name, artist: t.artist, plays: t.count, time: t.count*3, image: undefined
+        })) 
+        : Object.values(trackCounts).sort((a, b) => b.count - a.count).slice(0, 5).map((t, idx) => ({
+            rank: idx + 1, name: t.name, artist: t.artist, plays: t.count, time: Math.round(t.time), image: t.image
         }));
+
     
     const dummyTracks = [
         { rank: 1, name: "Ode To The Mets", artist: "The Strokes", plays: 2, time: 10, image: undefined },

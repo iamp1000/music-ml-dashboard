@@ -4,7 +4,7 @@ import os
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import get_db
-from models import ListeningHistory, User
+from models import ListeningHistory, User, UserAggregates
 from security import verify_access_token
 
 # Dummy mood classes
@@ -75,6 +75,44 @@ async def get_listening_history(authorization: str = Header(None), limit: int = 
     except Exception as e:
         print(f"Database Error in history fetch: {e}")
         return {"status": "error", "message": "Database error", "data": []}
+
+@router.get("/aggregates")
+async def get_user_aggregates(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """
+    Returns pre-calculated metrics for the dashboard to save RUs.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    token = authorization.split(" ")[1]
+    user_data = verify_access_token(token)
+    
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = user_data.get("sub")
+    
+    agg = db.query(UserAggregates).filter(UserAggregates.tenant_id == user_id).first()
+    if not agg:
+        return {"status": "success", "data": {
+            "total_listening_time_mins": 0,
+            "total_tracks_played": 0,
+            "artists_discovered": 0,
+            "genres_explored": 0,
+            "top_genres_json": [],
+            "top_artists_json": [],
+            "timeline_data_json": []
+        }}
+        
+    return {"status": "success", "data": {
+        "total_listening_time_mins": agg.total_listening_time_mins,
+        "total_tracks_played": agg.total_tracks_played,
+        "artists_discovered": agg.artists_discovered,
+        "genres_explored": agg.genres_explored,
+        "top_genres_json": agg.top_genres_json or [],
+        "top_artists_json": agg.top_artists_json or [],
+        "timeline_data_json": agg.timeline_data_json or []
+    }}
 
 class AudioAnalysisRequest(BaseModel):
     file_path: str

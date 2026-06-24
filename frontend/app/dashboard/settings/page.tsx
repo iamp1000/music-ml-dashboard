@@ -1,72 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Key, Save, Database, Server, Loader2, CheckCircle2 } from "lucide-react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import React from "react";
+import { Palette, Plus, Trash2 } from "lucide-react";
+import { useThemeStore } from "@/store/useThemeStore";
 
 export default function SettingsPage() {
-    const [apiKey, setApiKey] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
-    const [userId, setUserId] = useState<string | null>(null);
+    const { theme, setTheme, gradientColors, setGradientColors } = useThemeStore();
 
-    useEffect(() => {
-        // We get the user id from local storage profile data
-        const fetchUserData = async () => {
-            try {
-                const token = localStorage.getItem("jwt");
-                if (!token) return;
-                
-                const res = await fetch("https://music-ml-dashboard.onrender.com/api/auth/profile", {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.data && data.data.id) {
-                        const uid = data.data.id;
-                        setUserId(uid);
-                        
-                        // Fetch existing settings
-                        const docRef = doc(db, "users", uid, "settings", "ml_config");
-                        const docSnap = await getDoc(docRef);
-                        
-                        if (docSnap.exists() && docSnap.data().deepseek_api_key) {
-                            setApiKey(docSnap.data().deepseek_api_key);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to load settings:", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const handleColorChange = (index: number, newColor: string) => {
+        const newColors = [...gradientColors];
+        newColors[index] = newColor;
+        setGradientColors(newColors);
+    };
 
-        fetchUserData();
-    }, []);
+    const addColor = () => {
+        if (gradientColors.length < 3) {
+            setGradientColors([...gradientColors, '#000000']);
+        }
+    };
 
-    const handleSave = async () => {
-        if (!userId) return;
-        
-        setIsSaving(true);
-        setSaveSuccess(false);
-        try {
-            const docRef = doc(db, "users", userId, "settings", "ml_config");
-            await setDoc(docRef, {
-                deepseek_api_key: apiKey,
-                updated_at: new Date().toISOString()
-            }, { merge: true });
-            
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
-        } catch (err) {
-            console.error("Error saving API key:", err);
-            alert("Failed to save API key. Make sure you are authenticated.");
-        } finally {
-            setIsSaving(false);
+    const removeColor = (index: number) => {
+        if (gradientColors.length > 2) {
+            const newColors = gradientColors.filter((_, i) => i !== index);
+            setGradientColors(newColors);
         }
     };
 
@@ -74,73 +30,104 @@ export default function SettingsPage() {
         <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
             {/* Page Header */}
             <div className="mb-8">
-                <h2 className="text-2xl font-black tracking-tight text-white uppercase">Engine Settings</h2>
-                <p className="text-sm text-theme-text-muted mt-1">Configure your LLM providers and background processing variables.</p>
+                <h2 className="text-2xl font-black tracking-tight text-white uppercase">Settings</h2>
+                <p className="text-sm text-theme-text-muted mt-1">Configure your dashboard preferences.</p>
             </div>
 
-            <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl overflow-hidden">
+            {/* Theme & Aesthetics Settings */}
+            <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl overflow-hidden mt-6">
                 <div className="p-6 border-b border-[#1B2332]/50">
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <Server className="w-5 h-5 text-theme-accent" />
-                        Machine Learning Pipeline
+                        <Palette className="w-5 h-5 text-theme-accent" />
+                        Theme & Aesthetics
                     </h3>
                     <p className="text-xs text-theme-text-muted mt-2">
-                        To compute advanced psychological telemetry (valence, energy, lyrical analysis, and mood), the system processes your listening history in batches through an LLM. You must provide your own API key.
+                        Customize the visual appearance of your dashboard. Your choices are saved in your browser and will persist across sessions.
                     </p>
                 </div>
                 
-                <div className="p-6 space-y-6">
-                    <div>
-                        <label className="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <Key className="w-3.5 h-3.5 text-theme-text-muted" />
-                            DeepSeek API Key
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="password"
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                                placeholder="sk-..."
-                                disabled={isLoading}
-                                className="w-full bg-[#070A0F] border border-[#1B2332] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-theme-accent transition-colors placeholder:text-gray-700 disabled:opacity-50"
-                            />
+                <div className="p-6 space-y-4 max-w-md">
+                    <button 
+                        onClick={() => setTheme('theme-olive')}
+                        className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all duration-300 ${
+                            theme === 'theme-olive' ? "bg-theme-bg/50 border-theme-accent shadow-[0_0_15px_rgba(34,197,94,0.15)]" : "border-theme-border/50 hover:bg-theme-bg/50"
+                        }`}
+                    >
+                        <div className="w-8 h-8 rounded-full bg-[#1a201b] border-2 border-[#86A789] shrink-0"></div>
+                        <div className="flex flex-col items-start">
+                            <span className="text-sm font-bold text-white">Olive Green</span>
+                            <span className="text-[10px] text-theme-text-muted uppercase">Default Solid</span>
                         </div>
-                        <p className="text-[10px] text-theme-text-muted mt-2">
-                            Used exclusively for processing track lyrics in batches of 10-20 songs. Keys are saved securely to your personal Firebase document.
-                        </p>
-                    </div>
+                    </button>
+                    
+                    <button 
+                        onClick={() => setTheme('theme-cyan')}
+                        className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all duration-300 ${
+                            theme === 'theme-cyan' ? "bg-theme-bg/50 border-theme-accent shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-theme-border/50 hover:bg-theme-bg/50"
+                        }`}
+                    >
+                        <div className="w-8 h-8 rounded-full bg-[#0f172a] border-2 border-[#06b6d4] shrink-0"></div>
+                        <div className="flex flex-col items-start">
+                            <span className="text-sm font-bold text-white">Dark Cyan</span>
+                            <span className="text-[10px] text-theme-text-muted uppercase">Solid Accent</span>
+                        </div>
+                    </button>
 
-                    <div className="flex items-center gap-3 pt-2">
-                        <button
-                            onClick={handleSave}
-                            disabled={isLoading || isSaving}
-                            className="bg-theme-accent text-black font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    <div className="pt-2">
+                        <div 
+                            onClick={() => setTheme('theme-glass')}
+                            className={`w-full flex flex-col gap-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer ${
+                                theme === 'theme-glass' ? "bg-theme-bg/50 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "border-theme-border/50 hover:bg-theme-bg/50"
+                            }`}
                         >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            Save Configuration
-                        </button>
-                        
-                        {saveSuccess && (
-                            <span className="text-green-500 text-xs flex items-center gap-1 animate-in fade-in">
-                                <CheckCircle2 className="w-4 h-4" />
-                                Saved successfully
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
+                            <div className="flex items-center gap-4 w-full">
+                                <div 
+                                    className="w-8 h-8 rounded-full border-2 border-white/50 shrink-0"
+                                    style={{ background: `linear-gradient(135deg, ${gradientColors.join(', ')})` }}
+                                ></div>
+                                <div className="flex flex-col items-start">
+                                    <span className="text-sm font-bold text-white">Glassmorphism</span>
+                                    <span className="text-[10px] text-theme-text-muted uppercase">Custom Gradient Setup</span>
+                                </div>
+                            </div>
 
-            <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-2">
-                    <Database className="w-5 h-5 text-theme-accent" />
-                    Batch Processing Status
-                </h3>
-                <p className="text-xs text-theme-text-muted mb-4">
-                    The Celery background worker runs automatically every 2 minutes. It will only consume your API key if you have accumulated at least 10 unanalyzed tracks to optimize memory and API costs.
-                </p>
-                <div className="bg-[#070A0F] border border-[#1B2332] p-4 rounded-xl flex items-center justify-between">
-                    <span className="text-xs font-bold text-theme-text-muted uppercase">Worker Status</span>
-                    <span className="text-xs font-bold text-green-500 bg-green-500/10 px-3 py-1 rounded-md uppercase tracking-wider">Active</span>
+                            {theme === 'theme-glass' && (
+                                <div className="w-full space-y-3 pt-3 border-t border-theme-border/50" onClick={(e) => e.stopPropagation()}>
+                                    <p className="text-[10px] text-theme-text-muted text-left">Custom Gradient Colors (2-3)</p>
+                                    <div className="flex flex-col gap-2">
+                                        {gradientColors.map((color, idx) => (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <input 
+                                                    type="color" 
+                                                    value={color}
+                                                    onChange={(e) => handleColorChange(idx, e.target.value)}
+                                                    className="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent"
+                                                />
+                                                <div className="text-xs font-mono text-theme-text-muted uppercase flex-1 text-left">{color}</div>
+                                                
+                                                {gradientColors.length > 2 && (
+                                                    <button 
+                                                        onClick={() => removeColor(idx)}
+                                                        className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-md transition-colors"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {gradientColors.length < 3 && (
+                                        <button 
+                                            onClick={addColor}
+                                            className="w-full flex items-center justify-center gap-2 py-2 mt-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-white transition-colors"
+                                        >
+                                            <Plus className="w-3 h-3" /> Add Color
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

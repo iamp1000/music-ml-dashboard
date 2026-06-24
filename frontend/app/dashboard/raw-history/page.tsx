@@ -78,7 +78,6 @@ export default function ListeningHistoryPage() {
             else if (timelineGrouping === "Mood") val = t.ai_mood || t.mood_category || "Unknown Mood";
             else if (timelineGrouping === "Listening Activity") {
                 val = t.ml_features?.time_of_day_fit || t.time_of_day_fit || "General Activity";
-                if (val.toLowerCase().includes("general") || val.toLowerCase().includes("anytime")) return;
             }
             else if (timelineGrouping === "Context") val = t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context";
             

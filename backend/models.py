@@ -46,3 +46,20 @@ class ListeningHistory(Base):
     genre_confidence = Column(Float, nullable=True)
     audio_valence = Column(Float, nullable=True)
     audio_arousal = Column(Float, nullable=True)
+
+class UserAggregates(Base):
+    __tablename__ = "user_aggregates"
+    
+    tenant_id = Column(String(255), ForeignKey("users.id"), primary_key=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Pre-calculated yearly metrics
+    total_listening_time_mins = Column(Integer, default=0)
+    total_tracks_played = Column(Integer, default=0)
+    artists_discovered = Column(Integer, default=0)
+    genres_explored = Column(Integer, default=0)
+    
+    # Pre-calculated complex JSON objects for graphs
+    top_genres_json = Column(JSON, nullable=True)
+    top_artists_json = Column(JSON, nullable=True)
+    timeline_data_json = Column(JSON, nullable=True)

@@ -5,7 +5,6 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import LiveSyncPlayer from "@/components/LiveSyncPlayer";
-import { ThemeSettings } from "@/components/ThemeSettings";
 import { 
     LayoutDashboard, Activity, Compass, Settings, Clock
 } from "lucide-react";
@@ -80,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
             
             {/* Sidebar */}
-            <aside className="w-72 border-r border-[#1B2332] bg-[#06080C] flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
+            <aside className="w-56 border-r border-[var(--theme-border)]/30 bg-[var(--theme-bg)]/80 backdrop-blur-xl flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
                 {/* Branding Logo Block */}
                 <div className="p-6 pb-2">
                     <div className="flex items-center gap-3 mb-6">
@@ -120,13 +119,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </nav>
 
                 {/* Sidebar Player Bottom */}
-                <div className="p-4 border-t border-[#1B2332]/60">
+                <div className="p-4 border-t border-[var(--theme-border)]/50">
                     <LiveSyncPlayer />
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto h-screen relative bg-theme-bg">
+            <main className="flex-1 overflow-y-auto h-screen relative bg-theme-bg/90">
                 <div className="w-full max-w-[1400px] mx-auto p-6 md:p-8 min-h-full flex flex-col justify-between">
                     <div className="flex-1">
                         {children}
@@ -135,7 +134,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         SonicLens Dashboard v2.0
                     </div>
                 </div>
-                <ThemeSettings />
             </main>
         </div>
     );

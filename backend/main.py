@@ -358,6 +358,92 @@ async def background_polling_loop():
             
         await asyncio.sleep(20)
 
+def calculate_and_store_aggregates(user_id: str, db: Session):
+    try:
+        from models import UserAggregates, ListeningHistory
+        from datetime import datetime, timezone, timedelta
+        
+        one_year_ago = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat()
+        history = db.query(ListeningHistory).filter(
+            ListeningHistory.tenant_id == user_id, 
+            ListeningHistory.time >= one_year_ago
+        ).all()
+        
+        total_time_mins = 0
+        artists = set()
+        genre_counts = {}
+        track_counts = {}
+        date_counts = {}
+        
+        for h in history:
+            dur_ms = h.duration_ms if h.duration_ms else 204000
+            total_time_mins += dur_ms / 60000
+            
+            if h.artist_name:
+                artists.add(h.artist_name)
+                
+            # Genre logic matching frontend
+            genre = h.real_genre
+            if not genre and h.ml_features:
+                genre = h.ml_features.get("mood_category") or h.ml_features.get("telemetry_summary")
+            if genre:
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
+                
+            # Top Tracks
+            t_key = f"{h.track_name} - {h.artist_name}"
+            if t_key not in track_counts:
+                track_counts[t_key] = {"name": h.track_name, "artist": h.artist_name, "count": 0}
+            track_counts[t_key]["count"] += 1
+            
+            # Timeline data
+            try:
+                date_str = h.time[:10]
+                if date_str not in date_counts:
+                    date_counts[date_str] = {"time": 0, "valence": 0, "energy": 0, "count": 0}
+                date_counts[date_str]["time"] += dur_ms / 60000
+                date_counts[date_str]["valence"] += h.valence if h.valence is not None else 0.5
+                date_counts[date_str]["energy"] += h.energy if h.energy is not None else 0.5
+                date_counts[date_str]["count"] += 1
+            except:
+                pass
+                
+        # Format Top Genres
+        sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_genres_formatted = [{"name": g[0], "value": g[1]} for g in sorted_genres]
+        
+        # Format Top Tracks
+        sorted_tracks = sorted(track_counts.values(), key=lambda x: x["count"], reverse=True)[:5]
+        
+        # Format Timeline
+        timeline_data = []
+        for date, d in date_counts.items():
+            timeline_data.append({
+                "name": date,
+                "time": round(d["time"]),
+                "mood": round((d["valence"] / d["count"]) * 100),
+                "energy": round((d["energy"] / d["count"]) * 100)
+            })
+        timeline_data = sorted(timeline_data, key=lambda x: x["name"])[-30:] # Last 30 days
+        
+        # Upsert
+        agg = db.query(UserAggregates).filter(UserAggregates.tenant_id == user_id).first()
+        if not agg:
+            agg = UserAggregates(tenant_id=user_id)
+            db.add(agg)
+            
+        agg.updated_at = datetime.now(timezone.utc)
+        agg.total_listening_time_mins = round(total_time_mins)
+        agg.total_tracks_played = len(history)
+        agg.artists_discovered = len(artists)
+        agg.genres_explored = len(genre_counts.keys()) or 1
+        agg.top_genres_json = top_genres_formatted
+        agg.top_artists_json = sorted_tracks # Actually top tracks, matching frontend's usage
+        agg.timeline_data_json = timeline_data
+        
+        db.commit()
+    except Exception as e:
+        print(f"Error calculating aggregates for {user_id}: {e}")
+
 async def sync_recently_played_loop():
     """
     Runs every 30 minutes to fetch /recently-played and backfill any missing tracks.
@@ -496,6 +582,13 @@ async def sync_recently_played_loop():
                             
                         # Add a 2-second delay between batches to avoid Rate Limits
                         await asyncio.sleep(2)
+                        
+                    # Calculate aggregates
+                    with SessionLocal() as db:
+                        from models import UserAggregates
+                        agg_exists = db.query(UserAggregates).filter(UserAggregates.tenant_id == user_id).first()
+                        if not agg_exists or len(tracks_to_process) > 0:
+                            calculate_and_store_aggregates(user_id, db)
                             
                 except Exception as e:
                     print(f"Error in recently-played sync for {user_id}: {e}")
