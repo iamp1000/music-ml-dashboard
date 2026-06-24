@@ -102,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
-                            <Link 
+                            <Link prefetch={false} 
                                 key={item.href} 
                                 href={item.href}
                                 className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-300 border ${
