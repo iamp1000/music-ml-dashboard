@@ -498,7 +498,7 @@ async def sync_recently_played_loop():
                                      
                             is_duplicate = False
                             for doc in docs:
-                                d_time_str = doc.to_dict().get("time")
+                                d_time_str = getattr(doc, "time", None)
                                 if d_time_str:
                                     try:
                                         d_time = datetime.fromisoformat(d_time_str.replace("Z", "+00:00"))
