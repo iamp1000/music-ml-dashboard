@@ -70,14 +70,14 @@ export default function AnalyticsHubPage() {
                 }
 
                 // Fetch history
-                const limit = isBackground ? 1 : 50;
+                const limit = isBackground ? 1 : 10000;
                 const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=${limit}`);
                 if (historyData && historyData.data) {
                     if (isBackground && historyData.data.length > 0) {
                         setHistory(prev => {
                             const newId = historyData.data[0].id;
                             if (prev.some(t => t.id === newId)) return prev;
-                            return [historyData.data[0], ...prev].slice(0, 50);
+                            return [historyData.data[0], ...prev].slice(0, 10000);
                         });
                     } else if (!isBackground) {
                         setHistory(historyData.data);

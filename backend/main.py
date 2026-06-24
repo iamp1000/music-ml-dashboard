@@ -443,11 +443,7 @@ async def sync_recently_played_loop():
                             artist_name = ", ".join([a.get("name") for a in track.get("artists", [])])
                             
                             valence, energy = 0.5, 0.5
-                            feat = audio_features_dict.get(track_id)
-                            if feat:
-                                valence = feat.get("valence", 0.5)
-                                energy = feat.get("energy", 0.5)
-                                
+                            
                             ml_score, listen_type = calculate_ml_weight(user_id, track_id, duration_ms, duration_ms, valence, energy)
                             
                             batch_payload.append({
@@ -737,8 +733,9 @@ async def process_5min_batch_queue_loop():
             user_batches[uid].append(item)
             
         for uid, items in user_batches.items():
-            user_doc = db.collection("users").document(uid).get()
-            current_context = user_doc.to_dict().get("current_context", "None") if user_doc.exists else "None"
+            with SessionLocal() as db_session:
+                user_doc = db_session.query(User).filter(User.id == uid).first()
+                current_context = user_doc.current_context if user_doc else "None"
             
             gemini_payload = []
             final_db_objects = []
@@ -827,20 +824,20 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     user_id = user_data.get("sub")
     print(f"=== [WS] User authenticated: {user_id} ===")
 
-    # Get user's refresh token from Firestore
+    # Get user's refresh token from TiDB
     spotify_client = None
     try:
-        user_ref = db.collection("users").document(user_id).get()
-        if user_ref.exists:
-            row = user_ref.to_dict()
-            if row.get("refresh_token_cipher"):
-                refresh_token = encryptor.decrypt(row["refresh_token_cipher"], row["refresh_token_nonce"])
-                spotify_client = SpotifyClient(refresh_token=refresh_token)
-                print("=== [WS] Spotify Client instantiated successfully ===")
+        with SessionLocal() as db_session:
+            user_ref = db_session.query(User).filter(User.id == user_id).first()
+            if user_ref:
+                if user_ref.refresh_token_cipher:
+                    refresh_token = encryptor.decrypt(user_ref.refresh_token_cipher, user_ref.refresh_token_nonce)
+                    spotify_client = SpotifyClient(refresh_token=refresh_token)
+                    print("=== [WS] Spotify Client instantiated successfully ===")
+                else:
+                    print("=== [WS] No refresh_token_cipher in TiDB ===")
             else:
-                print("=== [WS] No refresh_token_cipher in Firestore ===")
-        else:
-            print("=== [WS] User document does not exist in Firestore ===")
+                print("=== [WS] User document does not exist in TiDB ===")
     except Exception as e:
         print(f"=== [WS] Error initializing Spotify client: {e} ===")
 

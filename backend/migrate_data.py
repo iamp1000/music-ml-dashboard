@@ -1,8 +1,27 @@
-import asyncio
+import os
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
 from datetime import datetime
-from database import db as firebase_db
-from tidb_database import SessionLocal, init_tidb
+from database import SessionLocal, init_tidb
 from models import User, ListeningHistory
+
+# 1. Initialize Firebase Admin SDK
+firebase_cred_path = os.path.join(os.path.dirname(__file__), "firebase-adminsdk.json")
+
+if not os.path.exists(firebase_cred_path):
+    print(f"Error: {firebase_cred_path} not found.")
+    exit(1)
+
+print("Initializing Firebase Admin SDK...")
+try:
+    cred = credentials.Certificate(firebase_cred_path)
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+    firebase_db = firestore.client()
+except Exception as e:
+    print(f"Failed to initialize Firebase: {e}")
+    exit(1)
 
 def migrate_users(session):
     print("Migrating users...")
@@ -17,7 +36,7 @@ def migrate_users(session):
         if not existing:
             new_user = User(
                 id=user_id,
-                name=data.get('name'),
+                name=data.get('display_name', data.get('name', '')),
                 email=data.get('email'),
                 picture=data.get('picture'),
                 current_context=data.get('current_context', 'None'),
@@ -75,6 +94,7 @@ def migrate_listening_history(session):
     print(f"Migrated {count} listening history records.")
 
 if __name__ == "__main__":
+    init_tidb()
     with SessionLocal() as session:
         migrate_users(session)
         migrate_listening_history(session)
