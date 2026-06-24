@@ -529,7 +529,7 @@ export default function DashboardOverviewPage() {
                                     </div>
                                 ))}
 
-                                {expandedMetric === "genres" && sortedGenres.map(([genre, count], idx) => (
+                                {expandedMetric === "genres" && sortedGenres.map(([genre, count]: any, idx: number) => (
                                     <div key={idx} className="flex justify-between items-center p-4 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#EAB308]/50 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-full bg-[#EAB308]/20 flex items-center justify-center text-[#EAB308] shrink-0 border border-[#EAB308]/30">
@@ -614,7 +614,7 @@ export default function DashboardOverviewPage() {
                             </div>
 
                             <div className="flex-1 space-y-3 overflow-y-auto scrollbar-hide pr-2">
-                                {finalTracks.map((track) => (
+                                {finalTracks.map((track: any) => (
                                     <div key={track.rank} className="flex items-center gap-4 bg-[var(--theme-panel)] p-3 pr-4 rounded-[20px] hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-[var(--theme-border)]">
                                         <div className="w-12 h-12 rounded-[14px] bg-[#2A364D] overflow-hidden flex items-center justify-center shrink-0 shadow-md">
                                             {track.image ? (
