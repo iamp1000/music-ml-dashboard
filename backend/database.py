@@ -25,6 +25,7 @@ engine = create_engine(
         "ssl_verify_identity": True
     },
     pool_recycle=3600,
+    pool_pre_ping=True,
     echo=False
 )
 
