@@ -139,14 +139,48 @@ export default function ListeningHistoryPage() {
             sessionsByGroup.push(currentSession);
         });
 
+        // 7-day calendar window based on Logical Day (Starting 5 AM)
+        const LOGICAL_DAY_START_HOUR = 5; 
+        const getLogicalTime = (d: Date) => {
+            const h = d.getHours();
+            const m = d.getMinutes();
+            let logicalHour = h - LOGICAL_DAY_START_HOUR;
+            if (logicalHour < 0) logicalHour += 24;
+            return logicalHour + m / 60;
+        };
+
+        let minLogicalTime = 24;
+        let maxLogicalTime = 0;
+
+        sessionsByGroup.forEach(s => {
+            const startLT = getLogicalTime(s.startTime);
+            let endLT = getLogicalTime(s.endTime);
+            if (endLT < startLT) endLT += 24;
+            
+            if (startLT < minLogicalTime) minLogicalTime = startLT;
+            if (endLT > maxLogicalTime) maxLogicalTime = endLT;
+        });
+
+        // Add padding, cap at 0 and 24
+        const minLogicalHour = Math.max(0, Math.floor(minLogicalTime));
+        const maxLogicalHour = Math.min(24, Math.ceil(maxLogicalTime));
+
         const latestTrackTime = history.length > 0 ? new Date(history[0].time).getTime() : Date.now();
-        const startOfWeek = latestTrackTime - (7 * 24 * 60 * 60 * 1000);
+        const latestLogicalDate = new Date(latestTrackTime - LOGICAL_DAY_START_HOUR * 60 * 60 * 1000);
+        
+        const daysOffset: Date[] = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(latestLogicalDate.getTime() - (i * 24 * 60 * 60 * 1000));
+            daysOffset.push(d);
+        }
 
         return {
             groups: topGroups,
             sessions: sessionsByGroup,
-            minTime: startOfWeek,
-            maxTime: latestTrackTime
+            minLogicalHour,
+            maxLogicalHour,
+            daysOffset,
+            LOGICAL_DAY_START_HOUR
         };
     }, [history, timelineGrouping]);
 
@@ -169,24 +203,59 @@ export default function ListeningHistoryPage() {
         return Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     }, [history]);
 
-    const { groups, sessions, minTime, maxTime } = processedTimelineData;
-    const timeSpan = maxTime - minTime;
+    const { groups, sessions, minLogicalHour, maxLogicalHour, daysOffset, LOGICAL_DAY_START_HOUR } = processedTimelineData;
+    const timeSpanHours = (maxLogicalHour || 24) - (minLogicalHour || 0);
 
-    // Helper to position blocks
-    const getLeftPercent = (time: number) => {
-        if (time < minTime) return 0;
-        return ((time - minTime) / timeSpan) * 100;
-    };
-    const getWidthPercent = (start: number, end: number, minWidth = 2) => {
-        const s = Math.max(start, minTime);
-        const e = Math.min(end, maxTime);
-        if (s >= maxTime || e <= minTime) return 0;
-        // Make sure it has a minimum width to be visible, or scale by track count
-        const calculated = ((e - s) / timeSpan) * 100;
-        return Math.max(minWidth, calculated);
+    const getLogicalTime = (time: Date) => {
+        const h = time.getHours();
+        const m = time.getMinutes();
+        let logicalHour = h - (LOGICAL_DAY_START_HOUR || 5);
+        if (logicalHour < 0) logicalHour += 24;
+        return logicalHour + m / 60;
     };
 
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const getTopPercent = (time: Date) => {
+        if (timeSpanHours === 0) return 0;
+        const lt = getLogicalTime(time);
+        return Math.max(0, Math.min(100, ((lt - (minLogicalHour || 0)) / timeSpanHours) * 100));
+    };
+
+    const getHeightPercent = (start: Date, end: Date) => {
+        if (timeSpanHours === 0) return 0;
+        const startLT = getLogicalTime(start);
+        let endLT = getLogicalTime(end);
+        if (endLT < startLT) endLT += 24;
+        const calculated = ((endLT - startLT) / timeSpanHours) * 100;
+        return Math.max(1.5, Math.min(100, calculated)); 
+    };
+
+    const getSessionColumn = (time: Date) => {
+        if (!daysOffset) return -1;
+        const logicalDate = new Date(time.getTime() - (LOGICAL_DAY_START_HOUR || 5) * 60 * 60 * 1000);
+        const logicalDateStr = logicalDate.toISOString().split('T')[0];
+        
+        for (let i = 0; i < daysOffset.length; i++) {
+            if (daysOffset[i].toISOString().split('T')[0] === logicalDateStr) {
+                return i;
+            }
+        }
+        return -1;
+    };
+
+    const formatDayLabel = (d: Date) => {
+        const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        return `${daysOfWeek[d.getDay()]} ${d.getMonth()+1}/${d.getDate()}`;
+    };
+
+    const yAxisLabels = [];
+    if (minLogicalHour !== undefined && maxLogicalHour !== undefined) {
+        for (let h = minLogicalHour; h <= maxLogicalHour; h++) {
+            const realHour = (h + LOGICAL_DAY_START_HOUR) % 24;
+            const ampm = realHour >= 12 ? 'PM' : 'AM';
+            const displayHour = realHour % 12 === 0 ? 12 : realHour % 12;
+            yAxisLabels.push({ logical: h, display: `${displayHour} ${ampm}` });
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[var(--theme-bg)] text-white p-4 sm:p-6 font-sans scrollbar-hide">
@@ -295,51 +364,52 @@ export default function ListeningHistoryPage() {
                             ) : (
                             <div className="flex-1 flex flex-col mt-4">
                                 {/* X-Axis Header (Days) */}
-                                <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[120px]">
-                                    {days.map((day, i) => (
-                                        <div key={day} className="flex-1 text-center text-xs text-gray-500">{day}</div>
+                                <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[60px] sm:ml-[80px]">
+                                    {(daysOffset || []).map((d, i) => (
+                                        <div key={i} className="flex-1 text-center text-xs text-gray-500 font-medium">{formatDayLabel(d)}</div>
                                     ))}
                                 </div>
 
-                                {/* Y-Axis Rows and Timeline Grid */}
-                                <div className="relative flex-1">
-                                    {/* Vertical Grid Lines */}
-                                    <div className="absolute inset-0 ml-[120px] flex pointer-events-none">
-                                        {days.map((day, i) => (
-                                            <div key={day} className="flex-1 border-l border-[var(--theme-border)] opacity-30"></div>
+                                {/* Calendar Grid Body */}
+                                <div className="relative flex-1 min-h-[600px] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                                    
+                                    {/* Y-Axis (Time Labels) & Horizontal Grid Lines */}
+                                    <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
+                                        {yAxisLabels.map((label, i) => (
+                                            <div key={i} className="flex-1 flex items-start border-t border-[var(--theme-border)] opacity-30 relative group">
+                                                <div className="absolute -top-2.5 left-0 w-[50px] sm:w-[70px] text-[10px] text-gray-500 text-right pr-2">
+                                                    {label.display}
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
 
+                                    {/* Vertical Column Separators */}
+                                    <div className="absolute inset-0 ml-[60px] sm:ml-[80px] flex pointer-events-none z-0">
+                                        {(daysOffset || []).map((_, i) => (
+                                            <div key={i} className="flex-1 border-l border-[var(--theme-border)] opacity-10"></div>
+                                        ))}
+                                    </div>
 
-
-                                    {/* Artist/Group Rows */}
-                                    {groups.map((groupName, idx) => (
-                                        <div key={groupName} className="relative h-16 flex items-center border-b border-[var(--theme-border)] opacity-80 last:border-0 hover:bg-white/5 transition-colors group">
-                                            {/* Row Header (Y-Axis) */}
-                                            <div className="w-[120px] shrink-0 flex items-center gap-3 z-20">
-                                                <div className="w-8 h-8 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 overflow-hidden">
-                                                    {/* Generic Avatar/Icon */}
-                                                    <Star className="w-4 h-4 text-gray-500 group-hover:text-[var(--theme-accent)] transition-colors" />
-                                                </div>
-                                                <div className="text-xs text-gray-300 font-medium truncate pr-2">{groupName}</div>
-                                            </div>
-
-                                            {/* Row Blocks */}
-                                            <div className="flex-1 relative h-full">
-                                                {sessions.filter(s => s.groupIndex === idx).map(session => {
-                                                    // Add artificial width padding based on track count to make it visible
-                                                    const extraWidth = session.tracks.length * 2;
-                                                    const left = getLeftPercent(session.startTime.getTime());
-                                                    const width = getWidthPercent(session.startTime.getTime(), session.endTime.getTime(), 3 + extraWidth);
+                                    {/* Sessions Data Container */}
+                                    <div className="absolute inset-0 ml-[60px] sm:ml-[80px] flex z-10">
+                                        {(daysOffset || []).map((_, colIndex) => (
+                                            <div key={colIndex} className="flex-1 relative h-full border-r border-transparent">
+                                                {sessions.map(session => {
+                                                    const col = getSessionColumn(session.startTime);
+                                                    if (col !== colIndex) return null;
+                                                    
+                                                    const top = getTopPercent(session.startTime);
+                                                    const height = getHeightPercent(session.startTime, session.endTime);
                                                     const color = timelineGrouping === "Mood" ? getMoodColor(session.mood) : GENRE_COLORS[session.groupIndex % GENRE_COLORS.length];
 
                                                     return (
                                                         <div 
                                                             key={session.id}
-                                                            className="absolute top-1/2 -translate-y-1/2 h-6 rounded-full cursor-pointer transition-all hover:brightness-125 z-20"
+                                                            className="absolute left-1 right-1 rounded-md cursor-pointer transition-all hover:brightness-125 z-20 shadow-sm"
                                                             style={{ 
-                                                                left: `${left}%`,
-                                                                width: `${width}%`, 
+                                                                top: `${top}%`,
+                                                                height: `${height}%`, 
                                                                 backgroundColor: color,
                                                                 opacity: hoveredSession && hoveredSession.id !== session.id ? 0.3 : 0.8
                                                             }}
@@ -348,7 +418,7 @@ export default function ListeningHistoryPage() {
                                                         >
                                                             {/* Hover Tooltip perfectly matching image */}
                                                             {hoveredSession?.id === session.id && (
-                                                                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 shadow-2xl z-50">
+                                                                <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-64 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 shadow-2xl z-50">
                                                                     <div className="flex gap-3 mb-3 border-b border-[#2D2D3A] pb-3">
                                                                         <div className="w-12 h-12 bg-[#101014] rounded shadow-inner shrink-0 flex items-center justify-center">
                                                                             <span className="text-[8px] text-gray-500 uppercase">Cover</span>
@@ -370,7 +440,7 @@ export default function ListeningHistoryPage() {
                                                                         </div>
                                                                         <div className="flex items-center gap-2 text-[10px] text-gray-300">
                                                                             <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#A855F7' }}></div>
-                                                                            <span>Group Activity</span>
+                                                                            <span>Group: {session.groupName}</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -379,8 +449,8 @@ export default function ListeningHistoryPage() {
                                                     );
                                                 })}
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                             )}
