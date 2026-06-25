@@ -68,9 +68,6 @@ async def get_listening_history(authorization: str = Header(None), limit: int = 
                 "sync_source": r.sync_source
             })
             
-        # Reverse to return chronologically
-        history = list(reversed(history))
-        
         return {"status": "success", "data": history}
     except Exception as e:
         print(f"Database Error in history fetch: {e}")

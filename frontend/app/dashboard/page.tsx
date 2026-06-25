@@ -101,7 +101,7 @@ export default function DashboardOverviewPage() {
                     if (isMounted && profile) {
                         await fetchHistoryData(true);
                     }
-                }, 10000);
+                }, 60000);
 
                 return () => {
                     isMounted = false;

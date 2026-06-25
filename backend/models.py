@@ -38,6 +38,10 @@ class ListeningHistory(Base):
     ml_features = Column(JSON, nullable=True)
     sync_source = Column(String(255), nullable=True)
     
+    from sqlalchemy import Index
+    __table_args__ = (
+        Index('idx_tenant_time', tenant_id, time.desc()),
+    )
     # ML Extracted fields
     audio_ml_analyzed = Column(Integer, default=0) # SQLite/TiDB boolean (0/1)
     real_bpm = Column(Float, nullable=True)
