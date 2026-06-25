@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-    BarChart, Bar, LineChart, Line 
+    BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, Legend
 } from "recharts";
 import { fetchWithRateLimit } from "@/utils/api";
 
@@ -61,6 +61,15 @@ export default function DashboardOverviewPage() {
 
                 const fetchHistoryData = async (isBackground = false) => {
                     try {
+                        if (!isBackground) {
+                            const cached = sessionStorage.getItem("dashboard_history");
+                            if (cached) {
+                                const parsed = JSON.parse(cached);
+                                setHistory(parsed);
+                                if (parsed.length > 500) setFullHistoryLoaded(true);
+                            }
+                        }
+
                         const limit = isBackground ? 1 : (fullHistoryLoaded ? 10000 : 15);
                         const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=${limit}`);
                         if (historyData && isMounted) {
@@ -68,10 +77,14 @@ export default function DashboardOverviewPage() {
                                 setHistory(prev => {
                                     const newId = historyData.data[0].id;
                                     if (prev.some((t: any) => t.id === newId)) return prev;
-                                    return [historyData.data[0], ...prev].slice(0, 10000);
+                                    const newHistory = [historyData.data[0], ...prev].slice(0, 10000);
+                                    sessionStorage.setItem("dashboard_history", JSON.stringify(newHistory));
+                                    return newHistory;
                                 });
                             } else if (!isBackground) {
-                                setHistory(historyData.data || historyData || []);
+                                const data = historyData.data || historyData || [];
+                                setHistory(data);
+                                sessionStorage.setItem("dashboard_history", JSON.stringify(data));
                             }
                         }
                     } catch (e: any) {
@@ -81,9 +94,15 @@ export default function DashboardOverviewPage() {
 
                 const fetchAggregates = async () => {
                     try {
+                        const cached = sessionStorage.getItem("dashboard_aggregates");
+                        if (cached && isMounted) {
+                            setAggregates(JSON.parse(cached));
+                        }
+
                         const aggData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/aggregates");
                         if (aggData && isMounted) {
                             setAggregates(aggData.data);
+                            sessionStorage.setItem("dashboard_aggregates", JSON.stringify(aggData.data));
                         }
                     } catch(e) {}
                 };
@@ -248,16 +267,64 @@ export default function DashboardOverviewPage() {
         if (data.length < 3) {
             return [
                 { name: "Jun 13", time: 30, mood: 60, energy: 40 },
-                { name: "Jun 14", time: 70, mood: 40, energy: 50 },
-                { name: "Jun 15", time: 50, mood: 70, energy: 80 },
-                { name: "Jun 16", time: 90, mood: 50, energy: 60 },
-                { name: "Jun 17", time: 40, mood: 90, energy: 70 },
-                { name: "Jun 18", time: 100, mood: 60, energy: 50 },
-                { name: "Jun 19", time: 60, mood: 40, energy: 90 },
+                { name: "Jun 14", time: 45, mood: 65, energy: 45 },
+                { name: "Jun 15", time: 60, mood: 70, energy: 50 },
             ];
         }
         return data;
     }, [history, activityFilter]);
+
+    const artistDonutData = useMemo(() => {
+        if (isDefaultView && aggregates && aggregates.top_artists_json) {
+            return aggregates.top_artists_json.slice(0, 5).map((a: any) => ({ name: a.name, value: a.count }));
+        }
+        const counts: Record<string, number> = {};
+        filteredHistory.forEach(item => {
+            if (item.artist_name) {
+                counts[item.artist_name] = (counts[item.artist_name] || 0) + 1;
+            }
+        });
+        return Object.entries(counts)
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, value]) => ({ name, value }));
+    }, [filteredHistory, isDefaultView, aggregates]);
+
+    const genreTrendData = useMemo(() => {
+        const trend: Record<string, Record<string, number>> = {};
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const today = new Date();
+        
+        // Initialize last 7 days
+        for(let i = 6; i >= 0; i--) {
+            const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+            const dayName = days[d.getDay()];
+            trend[dayName] = {};
+        }
+
+        const top5Genres = sortedGenres.slice(0, 5).map((g: any) => g[0]);
+
+        filteredHistory.forEach(item => {
+            const d = new Date(item.time);
+            if (today.getTime() - d.getTime() <= 7 * 24 * 60 * 60 * 1000) {
+                const dayName = days[d.getDay()];
+                if (trend[dayName]) {
+                    const genre = item.genre || item.mood_category || "Unknown";
+                    if (top5Genres.includes(genre)) {
+                        trend[dayName][genre] = (trend[dayName][genre] || 0) + 1;
+                    }
+                }
+            }
+        });
+
+        return Object.entries(trend).map(([day, genres]) => ({
+            day,
+            ...genres
+        }));
+    }, [filteredHistory, sortedGenres]);
+
+    // Format top 5 genres for Stacked Bar Legend
+    const top5GenresList = sortedGenres.slice(0, 5).map((g: any) => g[0]);
 
     // Sparkline random data
     const sparklineData = history.slice(-10).map((h, i) => ({ val: Math.random() * 100, i }));
@@ -426,43 +493,75 @@ export default function DashboardOverviewPage() {
                     </div>
 
                     {/* Artists */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "artists" ? "border-[#3B82F6]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#3B82F6]/50 transition-colors h-[200px] relative overflow-hidden group items-center text-center`}>
-                            <div className="w-full flex justify-between items-start mb-0 relative z-10">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#3B82F6]/10 text-[#3B82F6]">
-                                <Users className="w-4 h-4" />
+                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "artists" ? "border-[#3B82F6]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#3B82F6]/50 transition-colors h-[200px] relative overflow-hidden group`}>
+                        <div className="w-full flex justify-between items-start mb-0 relative z-10">
+                            <h3 className="text-sm font-bold text-white tracking-wider">Artists Discovered</h3>
+                        </div>
+
+                        <div className="flex-1 flex items-center justify-center mt-2 relative">
+                            {/* Inner Donut + Text */}
+                            <div className="absolute inset-0 flex items-center justify-center -ml-20">
+                                <span className="text-3xl font-bold text-white relative z-10">{artistsDiscoveredCount}</span>
+                                <ResponsiveContainer width={140} height={140} className="absolute inset-0 m-auto">
+                                    <PieChart>
+                                        <Pie 
+                                            data={artistDonutData} 
+                                            innerRadius={45} 
+                                            outerRadius={60} 
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                            stroke="none"
+                                        >
+                                            {artistDonutData.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} />
+                                            ))}
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
-                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
-                                {filterYear} <ChevronDown className="w-3 h-3"/>
+                            
+                            {/* Legend on the right */}
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1 pr-2">
+                                {artistDonutData.map((entry: any, index: number) => (
+                                    <div key={index} className="flex items-center gap-2 text-[10px] text-gray-300">
+                                        <div className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}}></div>
+                                        <span className="truncate max-w-[80px]">{entry.name}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="relative w-20 h-20 mx-auto flex items-center justify-center mt-2">
-                            <div className="absolute inset-0 rounded-full border-[6px] border-[#3B82F6] opacity-20"></div>
-                            <div className="absolute inset-2 rounded-full border-[6px] border-[#3B82F6] opacity-50" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)' }}></div>
-                            <div className="absolute inset-4 bg-[var(--theme-panel)] rounded-full flex items-center justify-center flex-col shadow-inner">
-                                <span className="text-xl font-bold">{artistsDiscoveredCount}</span>
-                            </div>
-                        </div>
-                        <h3 className="text-xs text-[#8293B4] mt-3 w-full text-left">Artists Discovered</h3>
                     </div>
 
                     {/* Genres Explored */}
                     <div onClick={() => setExpandedMetric(expandedMetric === "genres" ? null : "genres")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "genres" ? "border-[#EAB308]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#EAB308]/50 transition-colors h-[200px] relative overflow-hidden group`}>
                         <div className="flex justify-between items-start mb-0 relative z-10">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#EAB308]/10 text-[#EAB308]">
-                                <Disc className="w-4 h-4" />
-                            </div>
+                            <h3 className="text-sm font-bold text-white tracking-wider">Genres Explored</h3>
                             <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
                                 {filterYear} <ChevronDown className="w-3 h-3"/>
                             </div>
                         </div>
-                        <div className="relative w-full h-20 mx-auto mt-2 flex flex-col items-center justify-center overflow-hidden">
-                            <div className="absolute w-24 h-24 rounded-full bg-gradient-to-t from-[#EAB308]/20 to-transparent translate-y-6" />
-                            <div className="absolute w-20 h-20 rounded-full border border-[#EAB308]/30 bg-[#EAB308]/10 translate-y-4" />
-                            <div className="absolute w-14 h-14 rounded-full bg-[#EAB308] shadow-[0_0_20px_rgba(234,179,8,0.5)] flex flex-col items-center justify-center translate-y-2">
-                                <span className="text-black font-bold text-lg leading-none">{genresExploredCount}</span>
-                            </div>
+                        <div className="text-xs text-[#8293B4] mb-2">7 day trend</div>
+
+                        <div className="flex-1 w-full relative z-10 -ml-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart layout="vertical" data={genreTrendData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={8}>
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: '#8293B4', fontSize: 10}} width={40} />
+                                    {top5GenresList.map((genre: any, index: number) => (
+                                        <Bar key={genre} dataKey={genre} stackId="a" fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} />
+                                    ))}
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
-                        <h3 className="text-xs text-[#8293B4] mt-3">Total Genres Explored</h3>
+                        
+                        <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                            {top5GenresList.map((genre: any, index: number) => (
+                                <div key={index} className="flex items-center gap-1 text-[10px] text-gray-300">
+                                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}}></div>
+                                    <span className="truncate max-w-[50px] capitalize">{genre}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                 </div>

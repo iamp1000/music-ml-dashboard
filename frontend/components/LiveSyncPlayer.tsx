@@ -325,13 +325,31 @@ export default function LiveSyncPlayer() {
                     )}
                 </div>
 
-                <div className="flex flex-col max-w-[200px]">
-                    <span className={`text-sm font-semibold truncate ${rateLimitSeconds > 0 ? 'text-red-400' : 'text-white'}`}>
-                        {trackName}
-                    </span>
-                    <span className="text-xs text-gray-400 truncate">
-                        {artistName}
-                    </span>
+                <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
+                    <div className="relative overflow-hidden w-full group [mask-image:linear-gradient(to_right,black_80%,transparent_100%)]">
+                        <div className={`flex w-max ${trackName.length > 22 ? 'animate-marquee group-hover:[animation-play-state:paused]' : ''}`}>
+                            <span className={`text-sm font-semibold pr-8 ${rateLimitSeconds > 0 ? 'text-red-400' : 'text-white'}`}>
+                                {trackName}
+                            </span>
+                            {trackName.length > 22 && (
+                                <span className={`text-sm font-semibold pr-8 ${rateLimitSeconds > 0 ? 'text-red-400' : 'text-white'}`} aria-hidden="true">
+                                    {trackName}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <div className="relative overflow-hidden w-full group mt-0.5 [mask-image:linear-gradient(to_right,black_80%,transparent_100%)]">
+                        <div className={`flex w-max ${artistName.length > 28 ? 'animate-marquee group-hover:[animation-play-state:paused]' : ''}`}>
+                            <span className="text-xs text-gray-400 pr-8">
+                                {artistName}
+                            </span>
+                            {artistName.length > 28 && (
+                                <span className="text-xs text-gray-400 pr-8" aria-hidden="true">
+                                    {artistName}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Like / Heart Icon */}
