@@ -96,12 +96,12 @@ export default function DashboardOverviewPage() {
                 
                 if (isMounted) setLoading(false);
 
-                // Polling for live updates every 10 seconds
+                // Polling for live updates every 15 minutes (900000ms), only if the tab is visible
                 const pollInterval = setInterval(async () => {
-                    if (isMounted && profile) {
+                    if (isMounted && profile && document.visibilityState === "visible") {
                         await fetchHistoryData(true);
                     }
-                }, 60000);
+                }, 900000);
 
                 return () => {
                     isMounted = false;
