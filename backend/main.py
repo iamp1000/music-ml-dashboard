@@ -175,6 +175,7 @@ from lyric_analyzer import get_lyrics_and_sentiment
 # Global state for background polling
 user_spotify_clients = {}
 user_playback_state = {}
+user_last_active_time = {}
 user_ml_sessions = {}
 
 user_last_poll_time = {}
@@ -319,6 +320,9 @@ async def background_polling_loop():
                     last_track_id = state.get("last_track_id")
                     
                     if current_track and current_track.get("status") == "playing":
+                        import time
+                        user_last_active_time[user_id] = time.time()
+                        
                         track_id = current_track.get("id")
                         progress_ms = current_track.get("progress_ms", 0)
                         duration_ms = current_track.get("duration_ms", 0)
@@ -349,6 +353,23 @@ async def background_polling_loop():
                         
                         if user_id in user_playback_state:
                             del user_playback_state[user_id]
+                            
+                        # Auto-reset context after 15 mins of inactivity
+                        import time
+                        last_active = user_last_active_time.get(user_id)
+                        if last_active and time.time() - last_active > 15 * 60:
+                            if row.get("current_context") and row.get("current_context") != "None":
+                                try:
+                                    with SessionLocal() as db:
+                                        u = db.query(User).filter(User.id == user_id).first()
+                                        if u and u.current_context != "None":
+                                            u.current_context = "None"
+                                            db.commit()
+                                            print(f"Auto-reset context to None for {user_id} due to 15m inactivity.")
+                                except Exception as e:
+                                    print(f"Failed to reset context for {user_id}: {e}")
+                            if user_id in user_last_active_time:
+                                del user_last_active_time[user_id]
                             
                 except Exception as e:
                     print(f"Error polling for {user_id}: {e}")

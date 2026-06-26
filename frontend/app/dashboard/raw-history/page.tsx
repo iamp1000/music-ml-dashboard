@@ -21,6 +21,9 @@ export default function ListeningHistoryPage() {
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoveredSession, setHoveredSession] = useState<any | null>(null);
+    const [editingSession, setEditingSession] = useState<any | null>(null);
+    const [contextInput, setContextInput] = useState("");
+    const [isUpdatingContext, setIsUpdatingContext] = useState(false);
 
     // Filters state
     const [filterShow, setFilterShow] = useState("All");
@@ -120,7 +123,7 @@ export default function ListeningHistoryPage() {
                 const prevTime = new Date(groupTracks[i-1].time);
                 const diffMins = (trackTime.getTime() - prevTime.getTime()) / 60000;
 
-                if (diffMins > 30 || (track.ai_mood !== currentSession.mood && diffMins > 5)) {
+                if (diffMins > 15 || (track.ai_mood !== currentSession.mood && diffMins > 5)) {
                     sessionsByGroup.push(currentSession);
                     currentSession = {
                         id: `sess-${idCounter++}`,
@@ -256,6 +259,38 @@ export default function ListeningHistoryPage() {
             yAxisLabels.push({ logical: h, display: `${displayHour} ${ampm}` });
         }
     }
+
+    const handleUpdateContext = async () => {
+        if (!editingSession) return;
+        setIsUpdatingContext(true);
+        try {
+            const token = localStorage.getItem("jwt");
+            const docIds = editingSession.tracks.map((t: any) => t.id);
+            await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/history/session/context`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    document_ids: docIds,
+                    context: contextInput || "None"
+                })
+            });
+            // Update local state to reflect change
+            setHistory(prev => prev.map(t => {
+                if (docIds.includes(t.id)) {
+                    return { ...t, context: contextInput || "None", ml_features: { ...t.ml_features, context_tag: contextInput || "None" } };
+                }
+                return t;
+            }));
+            setEditingSession(null);
+            setContextInput("");
+        } catch (e) {
+            console.error("Failed to update context", e);
+        }
+        setIsUpdatingContext(false);
+    };
 
     return (
         <div className="min-h-screen bg-[var(--theme-bg)] text-white p-4 sm:p-6 font-sans scrollbar-hide">
@@ -416,6 +451,7 @@ export default function ListeningHistoryPage() {
                                                             }}
                                                             onMouseEnter={() => setHoveredSession(session)}
                                                             onMouseLeave={() => setHoveredSession(null)}
+                                                            onClick={() => { setEditingSession(session); setContextInput(session.tracks[0]?.context || session.tracks[0]?.ml_features?.context_tag || ""); }}
                                                         >
                                                             {/* Hover Tooltip perfectly matching image */}
                                                             {hoveredSession?.id === session.id && (
@@ -599,6 +635,54 @@ export default function ListeningHistoryPage() {
                 </div>
 
             </div>
+            
+            {editingSession && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+                    <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-2xl p-6 w-96 shadow-2xl relative">
+                        <h3 className="text-xl font-bold text-white mb-4">Set Session Context</h3>
+                        <p className="text-xs text-gray-400 mb-4">Apply a context tag to all {editingSession.tracks.length} tracks in this listening session. This will trigger a re-analysis.</p>
+                        
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Context Tag</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Gym, Studying, Driving"
+                                    value={contextInput}
+                                    onChange={(e) => setContextInput(e.target.value)}
+                                    className="w-full bg-[#101014] border border-[#2D2D3A] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-accent)] transition-colors"
+                                    autoFocus
+                                    onKeyDown={e => e.key === 'Enter' && handleUpdateContext()}
+                                />
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                {["Gym", "Studying", "Driving", "Work", "Party", "Sleep"].map(tag => (
+                                    <span key={tag} onClick={() => setContextInput(tag)} className="text-xs bg-[#2D2D3A]/50 hover:bg-[#2D2D3A] text-gray-300 px-3 py-1 rounded-full cursor-pointer transition-colors border border-[#2D2D3A]">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-white/5">
+                            <button
+                                onClick={() => setEditingSession(null)}
+                                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateContext}
+                                disabled={isUpdatingContext || !contextInput}
+                                className="px-4 py-2 bg-[var(--theme-accent)] hover:brightness-110 text-white text-sm font-medium rounded-lg shadow-lg shadow-[var(--theme-accent)]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {isUpdatingContext && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isUpdatingContext ? 'Updating...' : 'Save Context'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
