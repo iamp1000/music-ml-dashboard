@@ -381,104 +381,118 @@ export default function ListeningHistoryPage() {
                 {/* Main 2D Grid Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     
-                    {/* Gantt Chart Timeline */}
-                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 lg:col-span-2 xl:col-span-3 relative overflow-hidden flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-3">
+                    {/* Main Chart Container - Premium */}
+                    <div
+                        className="relative rounded-3xl lg:col-span-2 xl:col-span-3 overflow-hidden flex flex-col border"
+                        style={{ background: "#080B12", borderColor: "#1B2332" }}
+                    >
+                        {/* Gradient top-border accent */}
+                        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #A855F7, #D1F26D, #3B82F6)" }} />
+
+                        <div className="p-6">
+                            {/* Controls Row */}
+                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                {/* Group By pill */}
                                 <div className="relative">
-                                <div 
-                                    className="bg-[#1C1C24] px-4 py-2 rounded-full border border-[#2D2D3A] flex items-center gap-2 cursor-pointer hover:border-[var(--theme-accent)] transition-colors"
-                                    onClick={() => setTimelineGroupingOpen(!timelineGroupingOpen)}
-                                >
-                                    <span className="text-xs text-white">Group By: {timelineGrouping}</span>
-                                    <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${timelineGroupingOpen ? 'rotate-180' : ''}`} />
-                                </div>
-                                {timelineGroupingOpen && (
-                                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl shadow-xl z-50 overflow-hidden py-1">
-                                        {['Artist', 'Mood', 'Listening Activity', 'Context'].map((option) => (
-                                            <div 
-                                                key={option}
-                                                className={`px-4 py-2 text-xs cursor-pointer hover:bg-[var(--theme-border)] ${timelineGrouping === option ? 'text-[var(--theme-accent)]' : 'text-gray-300'}`}
-                                                onClick={() => {
-                                                    setTimelineGrouping(option);
-                                                    setTimelineGroupingOpen(false);
-                                                }}
-                                            >
-                                                Group by {option}
-                                            </div>
-                                        ))}
+                                    <div
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-full border cursor-pointer hover:border-[#D1F26D]/40 transition-all duration-200 select-none"
+                                        style={{ background: "#0D111A", borderColor: "#1B2332" }}
+                                        onClick={() => setTimelineGroupingOpen(!timelineGroupingOpen)}
+                                    >
+                                        <span className="text-xs font-bold text-white tracking-wide">Group By: <span className="text-[#D1F26D]">{timelineGrouping}</span></span>
+                                        <ChevronDown className={`w-3.5 h-3.5 text-[#8293B4] transition-transform duration-200 ${timelineGroupingOpen ? 'rotate-180' : ''}`} />
                                     </div>
-                                )}
-                            </div>
-                            
-                            {/* Week Navigation */}
-                            <div className="flex items-center gap-2 bg-[#1C1C24] border border-[#2D2D3A] rounded-full p-1 ml-auto">
-                                <button 
-                                    onClick={() => setWeekOffset(w => w + 1)}
-                                    className="p-1 text-gray-400 hover:text-white transition-colors"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                                </button>
-                                <span className="text-xs text-gray-300 font-medium px-2">
-                                    {weekOffset === 0 ? "Current Week" : `${weekOffset} Week${weekOffset > 1 ? 's' : ''} Ago`}
-                                </span>
-                                <button 
-                                    onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
-                                    disabled={weekOffset === 0}
-                                    className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                                </button>
-                            </div>
-                            
-                            </div>
-                            <div className="flex gap-4">
-                                {timelineGrouping === "Mood" ? (
-                                    Object.entries(MOOD_COLORS).slice(0,3).map(([name, color]) => (
-                                        <div key={name} className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></div>
-                                            <span className="text-[10px] text-gray-400">{name}</span>
+                                    {timelineGroupingOpen && (
+                                        <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl border overflow-hidden z-50 shadow-[0_8px_32px_rgba(0,0,0,0.6)]" style={{ background: "#0A0F1A", borderColor: "#1B2332" }}>
+                                            {['Artist', 'Mood', 'Listening Activity', 'Context'].map((option) => (
+                                                <div
+                                                    key={option}
+                                                    className="flex items-center gap-3 px-4 py-3 text-xs font-bold cursor-pointer hover:bg-[#D1F26D]/5 transition-colors"
+                                                    style={{ color: timelineGrouping === option ? '#D1F26D' : '#8293B4' }}
+                                                    onClick={() => {
+                                                        setTimelineGrouping(option);
+                                                        setTimelineGroupingOpen(false);
+                                                    }}
+                                                >
+                                                    {timelineGrouping === option && <div className="w-1.5 h-1.5 rounded-full bg-[#D1F26D] shrink-0" />}
+                                                    Group by {option}
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))
-                                ) : (
-                                    groups.slice(0,3).map((name, idx) => (
-                                        <div key={name} className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: GENRE_COLORS[idx % GENRE_COLORS.length] }}></div>
-                                            <span className="text-[10px] text-gray-400 truncate max-w-[80px]" title={name}>{name}</span>
-                                        </div>
-                                    ))
-                                )}
-                                <div className="text-gray-400">...</div>
+                                    )}
+                                </div>
+
+                                {/* Week navigation - pill style like reference image */}
+                                <div className="flex items-center rounded-full border overflow-hidden" style={{ background: "#0D111A", borderColor: "#1B2332" }}>
+                                    <button
+                                        onClick={() => setWeekOffset(w => w + 1)}
+                                        className="px-3 py-2 text-[#8293B4] hover:text-white hover:bg-[#D1F26D]/5 transition-all border-r"
+                                        style={{ borderColor: "#1B2332" }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                                    </button>
+                                    <span className="text-xs font-black text-white px-5 py-2 tracking-wide">
+                                        {weekOffset === 0 ? "Current Week" : `${weekOffset}W Ago`}
+                                    </span>
+                                    <button
+                                        onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
+                                        disabled={weekOffset === 0}
+                                        className="px-3 py-2 text-[#8293B4] hover:text-white hover:bg-[#D1F26D]/5 transition-all border-l disabled:opacity-25 disabled:cursor-not-allowed"
+                                        style={{ borderColor: "#1B2332" }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                                    </button>
+                                </div>
+
+                                {/* Legend */}
+                                <div className="flex items-center gap-4 ml-auto">
+                                    {timelineGrouping === "Mood" ? (
+                                        Object.entries(MOOD_COLORS).slice(0, 3).map(([name, color]) => (
+                                            <div key={name} className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                                                <span className="text-[10px] font-bold text-[#8293B4]">{name}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        groups.slice(0, 3).map((name, idx) => (
+                                            <div key={name} className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full" style={{ background: GENRE_COLORS[idx % GENRE_COLORS.length] }} />
+                                                <span className="text-[10px] font-bold text-[#8293B4] truncate max-w-[72px]" title={name}>{name}</span>
+                                            </div>
+                                        ))
+                                    )}
+                                    <span className="text-[#8293B4] font-bold text-xs">···</span>
+                                </div>
                             </div>
                         </div>
 
+                        {/* Chart area */}
                         {loading ? (
-                            <div className="flex-1 flex justify-center items-center">
-                                <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+                            <div className="flex-1 flex flex-col justify-center items-center gap-4 py-16">
+                                <div className="w-10 h-10 rounded-full border-2 border-[#D1F26D]/20 border-t-[#D1F26D] animate-spin" />
+                                <p className="text-[#8293B4] text-xs font-bold uppercase tracking-widest">Loading history...</p>
                             </div>
                         ) : groups.length === 0 ? (
-                            <div className="flex-1 flex justify-center items-center text-gray-500 text-sm">
+                            <div className="flex-1 flex justify-center items-center text-[#8293B4] text-sm pb-16">
                                 No listening history found for this period.
                             </div>
                         ) : timelineGrouping === "Mood" ? (
-                                <div className="flex-1 flex flex-col justify-center items-center bg-[#1C1C24] rounded-3xl border border-[#2D2D3A] p-4 relative overflow-hidden h-[500px]">
-                                    <EmotionalScatterPlot />
-                                </div>
-                            ) : timelineGrouping === "Artist" ? (
-                                <div className="flex-1 flex flex-col mt-4">
-                                    <ArtistBarChart data={artistData || []} />
-                                </div>
-                            ) : timelineGrouping === "Context" ? (
-                                <div className="flex-1 flex flex-col mt-4">
-                                    <ArtistBarChart data={contextData || []} />
-                                </div>
-                            ) : timelineGrouping === "Listening Activity" ? (
-                                <div className="flex-1 flex flex-col mt-4">
-                                    <ListeningActivityChart data={listeningData || []} daysOffset={daysOffset || []} />
-                                </div>
-                            ) : null}
-                        
-
+                            <div className="flex-1 flex flex-col justify-center items-center p-4 relative overflow-hidden h-[500px]">
+                                <EmotionalScatterPlot />
+                            </div>
+                        ) : timelineGrouping === "Artist" ? (
+                            <div className="flex-1 flex flex-col pb-4">
+                                <ArtistBarChart data={artistData || []} />
+                            </div>
+                        ) : timelineGrouping === "Context" ? (
+                            <div className="flex-1 flex flex-col pb-4">
+                                <ArtistBarChart data={contextData || []} />
+                            </div>
+                        ) : timelineGrouping === "Listening Activity" ? (
+                            <div className="flex-1 flex flex-col pb-4">
+                                <ListeningActivityChart data={listeningData || []} daysOffset={daysOffset || []} />
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Right Column: Genre Exploration & Top Artists */}
