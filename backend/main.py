@@ -476,6 +476,15 @@ async def sync_recently_played_loop():
                         recent_tracks = res["data"]
                         now = datetime.now(timezone.utc)
                         
+                        # Fetch 24-hour history in ONE query instead of 50 separate queries to save database Request Units
+                        from datetime import timedelta
+                        one_day_ago = (now - timedelta(days=1)).isoformat()
+                        with SessionLocal() as db:
+                            db_recent_history = db.query(ListeningHistory).filter(
+                                ListeningHistory.tenant_id == user_id,
+                                ListeningHistory.time >= one_day_ago
+                            ).all()
+                            
                         for item in recent_tracks:
                             track = item.get("track")
                             played_at_str = item.get("played_at")
@@ -492,12 +501,11 @@ async def sync_recently_played_loop():
                             if (now - played_at).total_seconds() > 86400:
                                 continue
                                 
-                            # Time-Windowed Matcher: Search for exact track_id within +/- 5 minutes
-                            with SessionLocal() as db:
-                                docs = db.query(ListeningHistory).filter(ListeningHistory.tenant_id == user_id, ListeningHistory.track_id == track_id).all()
-                                     
+                            # Time-Windowed Matcher: Search memory instead of hitting the database
                             is_duplicate = False
-                            for doc in docs:
+                            for doc in db_recent_history:
+                                if doc.track_id != track_id:
+                                    continue
                                 d_time_str = getattr(doc, "time", None)
                                 if d_time_str:
                                     try:
