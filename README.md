@@ -4,8 +4,7 @@
 
   <h1>🎵 Affective Music Intelligence</h1>
   
-  <p>
-    <strong>A high-performance, full-stack application that analyzes your music listening history using offline PyTorch Machine Learning and Gemini AI to visualize your auditory emotional journey.</strong>
+    <strong>A high-performance, full-stack application that analyzes your music listening history using offline PyTorch Machine Learning and the Gemini API to visualize your auditory emotional journey.</strong>
   </p>
 
   <p>
@@ -26,11 +25,29 @@
 
 <br/>
 
+## 🎯 Our Goal (And How We Built It For $0)
+
+The ultimate goal of this project is to create an enterprise-grade music analytics platform that feels like magic—all without spending a dime (yet). 
+We managed to make it live with **0 cost for now** by utilizing a creative hybrid architecture:
+- **Free-Tier Database**: Leveraging TiDB Serverless for zero-cost distributed SQL.
+- **Free-Tier Backend**: Hosting the FastAPI backend on free cloud tiers (like Render).
+- **Local Heavy Lifting**: Offloading the insanely expensive GPU inference (PyTorch Mel-Spectrograms, Madmom) completely to local hardware via our custom ML Worker.
+
+**The Future 🔮**: In the future, once we secure funding (or I just decide to open my wallet), we would absolutely want to make this live natively with **Oracle Cloud** and stuff like that to scale the ML engine to the cloud for real-time, zero-configuration processing.
+
+## 😅 A Note from the Creator
+
+Look, I am a completely new developer and this project is basically a giant sandbox for me to learn full-stack development, ML, and how to not break production. 
+
+So please... feel free to criticize my dumb mistakes. Seriously. If you see code that looks like it was written by a caffeinated squirrel slamming its head on a keyboard, *call it out*. Submit an issue, laugh at my `console.log("here 1")` statements that I definitely forgot to remove, and help me learn. 
+
+<br/>
+
 ## ✨ Features
 
 - 🧠 **Offline ML Audio Analysis**: Downloads raw audio files and extracts **Mel-Spectrograms**, **BPM**, and **Rhythm Regularity** using state-of-the-art `PyTorch` models and `Madmom` RNNs completely locally on your hardware.
 - ⚡ **Multi-Threaded Worker**: Utilizes `asyncio` and custom ThreadPools to saturate 100% of CPU/GPU capacity for high-throughput batch analysis.
-- 🤖 **Gemini AI Integration**: Uses `google-genai` to analyze deep semantic themes, musical valence, and arousal to score the mood of your music.
+- 🤖 **Gemini API Integration**: Uses `google-genai` to analyze deep semantic themes, musical valence, and arousal to score the mood of your music.
 - 📊 **Cinematic Dashboard**: A premium Next.js frontend built with TailwindCSS, featuring glassmorphism, Recharts graphs, and custom typography to visualize your mood trends over time.
 - 🗄️ **Distributed Database**: Powered by TiDB (Cloud MySQL) with Prisma ORM for high-availability synchronization.
 
