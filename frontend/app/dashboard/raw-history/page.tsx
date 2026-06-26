@@ -32,6 +32,7 @@ export default function ListeningHistoryPage() {
     const [period, setPeriod] = useState("All Time");
     const [timelineGrouping, setTimelineGrouping] = useState("Artist");
     const [timelineGroupingOpen, setTimelineGroupingOpen] = useState(false);
+    const [weekOffset, setWeekOffset] = useState(0);
 
     const fetchHistory = async (isBackground = false) => {
         const token = localStorage.getItem("jwt");
@@ -169,7 +170,8 @@ export default function ListeningHistoryPage() {
         const maxLogicalHour = Math.min(24, Math.ceil(maxLogicalTime));
 
         const latestTrackTime = history.length > 0 ? new Date(history[0].time).getTime() : Date.now();
-        const latestLogicalDate = new Date(latestTrackTime - LOGICAL_DAY_START_HOUR * 60 * 60 * 1000);
+        const weekOffsetMs = weekOffset * 7 * 24 * 60 * 60 * 1000;
+        const latestLogicalDate = new Date(latestTrackTime - LOGICAL_DAY_START_HOUR * 60 * 60 * 1000 - weekOffsetMs);
         
         const daysOffset: Date[] = [];
         for (let i = 6; i >= 0; i--) {
@@ -185,7 +187,7 @@ export default function ListeningHistoryPage() {
             daysOffset,
             LOGICAL_DAY_START_HOUR
         };
-    }, [history, timelineGrouping]);
+    }, [history, timelineGrouping, weekOffset]);
 
     const getMoodColor = (mood: string) => {
         for (const [key, color] of Object.entries(MOOD_COLORS)) {
@@ -354,6 +356,27 @@ export default function ListeningHistoryPage() {
                                     </div>
                                 )}
                             </div>
+                            
+                            {/* Week Navigation */}
+                            <div className="flex items-center gap-2 bg-[#1C1C24] border border-[#2D2D3A] rounded-full p-1 ml-auto">
+                                <button 
+                                    onClick={() => setWeekOffset(w => w + 1)}
+                                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                                </button>
+                                <span className="text-xs text-gray-300 font-medium px-2">
+                                    {weekOffset === 0 ? "Current Week" : `${weekOffset} Week${weekOffset > 1 ? 's' : ''} Ago`}
+                                </span>
+                                <button 
+                                    onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
+                                    disabled={weekOffset === 0}
+                                    className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                                </button>
+                            </div>
+                            
                             </div>
                             <div className="flex gap-4">
                                 {timelineGrouping === "Mood" ? (
@@ -433,6 +456,11 @@ export default function ListeningHistoryPage() {
                                             // Calculate left and width based on continuous 7-day timeline
                                             const minDate = safeDaysOffset[0].getTime();
                                             const maxDate = safeDaysOffset[safeDaysOffset.length - 1].getTime() + (24 * 60 * 60 * 1000); // end of last day
+                                            
+                                            // Check bounds
+                                            const isOverlapping = session.endTime.getTime() >= minDate && session.startTime.getTime() <= maxDate;
+                                            if (!isOverlapping) return null;
+                                            
                                             const totalDuration = maxDate - minDate;
                                             
                                             // Make sure we cap bounds
