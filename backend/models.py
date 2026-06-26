@@ -25,7 +25,7 @@ class ListeningHistory(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(String(255), ForeignKey("users.id"), index=True)
     time = Column(String(255), index=True) # ISO format string to match old Firebase
-    track_id = Column(String(255))
+    track_id = Column(String(255), index=True)
     track_name = Column(String(255))
     artist_name = Column(String(255))
     duration_ms = Column(Integer)
@@ -43,7 +43,7 @@ class ListeningHistory(Base):
         Index('idx_tenant_time', tenant_id, time.desc()),
     )
     # ML Extracted fields
-    audio_ml_analyzed = Column(Integer, default=0) # SQLite/TiDB boolean (0/1)
+    audio_ml_analyzed = Column(Integer, default=0, index=True) # SQLite/TiDB boolean (0/1)
     real_bpm = Column(Float, nullable=True)
     rhythm_regularity = Column(Float, nullable=True)
     real_genre = Column(String(255), nullable=True)
