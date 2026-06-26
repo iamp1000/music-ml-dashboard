@@ -27,6 +27,8 @@ load_dotenv()
 
 app = FastAPI(title="Affective Music SaaS - Restored Backend")
 
+is_gemini_failing = False
+
 @app.on_event("startup")
 async def startup_event():
     print("FastAPI TiDB Backend Starting...")
@@ -60,6 +62,67 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/telemetry/gemini_status")
+async def get_gemini_status():
+    global is_gemini_failing
+    return {"is_failing": is_gemini_failing}
+
+@app.get("/ml_jobs/pending")
+async def get_pending_ml_jobs(limit: int = 3):
+    with SessionLocal() as db:
+        # Group by track and artist so local worker doesn't analyze same track 100 times
+        from sqlalchemy import func
+        pending = db.query(ListeningHistory.track_name, ListeningHistory.artist_name, func.max(ListeningHistory.id).label('doc_id'))\
+                    .filter(ListeningHistory.audio_ml_analyzed == 0)\
+                    .group_by(ListeningHistory.track_name, ListeningHistory.artist_name)\
+                    .limit(limit).all()
+        
+        jobs = []
+        for p in pending:
+            jobs.append({
+                "doc_id": p.doc_id,
+                "track_name": p.track_name,
+                "artist_name": p.artist_name
+            })
+        return {"data": jobs}
+
+class MLJobResult(BaseModel):
+    doc_id: int
+    real_bpm: float
+    rhythm_regularity: float
+    real_genre: str
+    genre_confidence: float
+    valence: float
+    arousal: float
+
+@app.post("/ml_jobs/complete")
+async def complete_ml_job(payload: MLJobResult):
+    with SessionLocal() as db:
+        # Find the track to get name/artist
+        ref_track = db.query(ListeningHistory).filter(ListeningHistory.id == payload.doc_id).first()
+        if not ref_track:
+            return {"status": "error", "message": "Reference track not found"}
+            
+        # Update ALL rows matching this track/artist for ALL users!
+        db.query(ListeningHistory).filter(
+            ListeningHistory.track_name == ref_track.track_name,
+            ListeningHistory.artist_name == ref_track.artist_name,
+            ListeningHistory.audio_ml_analyzed == 0
+        ).update({
+            "audio_ml_analyzed": 1,
+            "real_bpm": payload.real_bpm,
+            "rhythm_regularity": payload.rhythm_regularity,
+            "real_genre": payload.real_genre,
+            "genre_confidence": payload.genre_confidence,
+            "valence": payload.valence,
+            "audio_valence": payload.valence,
+            "energy": payload.arousal,
+            "audio_arousal": payload.arousal
+        }, synchronize_session=False)
+        
+        db.commit()
+    return {"status": "success"}
 
 class ContextUpdate(BaseModel):
     context: str
@@ -197,6 +260,9 @@ def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, ener
     Calculates the multi-dimensional ML score and normalizes it 0-100.
     Maintains a rolling state machine per user for Rage Quits, Repeats, and Recoveries.
     """
+    val = valence if valence is not None else 0.5
+    eng = energy if energy is not None else 0.5
+    
     percentage = played_ms / duration_ms if duration_ms > 0 else 0
     engagement_score = round(percentage, 2)
     skip_penalty = 1.0 - percentage if percentage < 0.2 else 0.0
@@ -228,7 +294,7 @@ def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, ener
     if session["recent_tracks"]:
         avg_valence = sum(t["valence"] for t in session["recent_tracks"]) / len(session["recent_tracks"])
         avg_energy = sum(t["energy"] for t in session["recent_tracks"]) / len(session["recent_tracks"])
-        dist = ((valence - avg_valence)**2 + (energy - avg_energy)**2)**0.5
+        dist = ((val - avg_valence)**2 + (eng - avg_energy)**2)**0.5
         similarity = max(0, 1.0 - dist)
         mood_affinity_bonus = similarity * 0.3
         
@@ -250,10 +316,12 @@ def calculate_ml_weight(user_id, track_id, played_ms, duration_ms, valence, ener
     clamped = max(-1.0, min(2.0, raw_score))
     ml_score = int(((clamped + 1.0) / 3.0) * 100)
     
+    import time
     session["recent_tracks"].append({
         "track_id": track_id,
-        "valence": valence,
-        "energy": energy
+        "valence": val,
+        "energy": eng,
+        "time": time.time()
     })
     if len(session["recent_tracks"]) > 10:
         session["recent_tracks"].pop(0)
@@ -549,15 +617,11 @@ async def sync_recently_played_loop():
                         batch = tracks_to_process[i:i+10]
                         batch_payload = []
                         
-                        # Audio features completely removed. Gemini infers everything.
-                        valence = 0.5
-                        energy = 0.5
-                        
                         for track, track_id, p_str in batch:
                             duration_ms = track.get("duration_ms", 1)
                             artist_name = ", ".join([a.get("name") for a in track.get("artists", [])])
                             
-                            valence, energy = 0.5, 0.5
+                            valence, energy = None, None
                             
                             ml_score, listen_type = calculate_ml_weight(user_id, track_id, duration_ms, duration_ms, valence, energy)
                             
@@ -797,7 +861,8 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
                     sleep_time = 2 ** attempt
                 print(f"Backing off for {sleep_time}s")
                 await asyncio.sleep(sleep_time)
-
+    if not result_dict:
+        return None
     return result_dict
 
 async def save_track_to_db(user_id, state, client):
@@ -898,12 +963,39 @@ async def process_5min_batch_queue_loop():
             # Step 2: Gemini Batch (1 Request per User Batch)
             gemini_results = await run_gemini_batch_analysis(gemini_payload, current_context)
             
+            global is_gemini_failing
+            if gemini_results is None:
+                is_gemini_failing = True
+                print(f"=== [Batch Queue] GEMINI FAILED. Queuing {len(items)} tracks as PENDING ===")
+            else:
+                is_gemini_failing = False
+            
             # Step 3: Write to Firebase
             with SessionLocal() as db:
                 for track in items:
-                    tid = track["track_id"]
-                    ai_res = gemini_results.get(tid, {})
                     
+                    if gemini_results is None:
+                        # Gemini failed completely, write as pending
+                        features_json = {
+                            "w_vec": track["w_vec"],
+                            "gemini_status": "PENDING"
+                        }
+                    else:
+                        ai_res = gemini_results.get(tid, {})
+                        if not ai_res:
+                            # Gemini succeeded but skipped this track (rare), mark as pending
+                            features_json = {
+                                "w_vec": track["w_vec"],
+                                "gemini_status": "PENDING"
+                            }
+                        else:
+                            features_json = {
+                                "w_vec": track["w_vec"],
+                                "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
+                                "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
+                                "telemetry_summary": ai_res.get("telemetry_summary", "AI Analyzed")
+                            }
+
                     new_hist = ListeningHistory(
                         time=track["played_at"],
                         tenant_id=uid,
@@ -913,13 +1005,9 @@ async def process_5min_batch_queue_loop():
                         duration_ms=track["duration_ms"],
                         played_ms=track["played_ms"],
                         context=current_context,
-                        ml_features={
-                            "w_vec": track["w_vec"],
-                            "mood_vector": ai_res.get("mood_vector", [0.5, 0.5, 0.5]),
-                            "context_fit_status": ai_res.get("context_fit_status", "MATCH"),
-                            "telemetry_summary": ai_res.get("telemetry_summary", "AI Analyzed")
-                        },
-                        sync_source="5min_batch_queue"
+                        ml_features=features_json,
+                        sync_source="5min_batch_queue",
+                        audio_ml_analyzed=0
                 )
                 db.add(new_hist)
                 

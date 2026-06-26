@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { 
-    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, ChevronDown, Loader2, AlertCircle, X, MoreVertical, Plus, PlayCircle, Filter, Search
+    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, ChevronDown, Loader2, AlertCircle, X, MoreVertical, Plus, PlayCircle, Filter, Search, Bell
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -23,6 +23,7 @@ export default function DashboardOverviewPage() {
     
     const [searchExpanded, setSearchExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [geminiFailing, setGeminiFailing] = useState(false);
 
     const [activityFilter, setActivityFilter] = useState<"7D" | "30D" | "All Time">("30D");
 
@@ -113,6 +114,19 @@ export default function DashboardOverviewPage() {
                     await fetchHistoryData(false);
                 }
                 
+                // Fetch Gemini Status
+                const fetchGeminiStatus = async () => {
+                    try {
+                        const res = await fetch("https://music-ml-server.onrender.com/api/telemetry/gemini_status");
+                        const data = await res.json();
+                        setGeminiFailing(data.is_failing || false);
+                    } catch (e) {
+                        // Ignore silent errors
+                    }
+                };
+                fetchGeminiStatus();
+                const intervalId = setInterval(fetchGeminiStatus, 10000);
+                
                 if (isMounted) setLoading(false);
 
                 // Polling for live updates every 15 minutes (900000ms), only if the tab is visible
@@ -125,6 +139,7 @@ export default function DashboardOverviewPage() {
                 return () => {
                     isMounted = false;
                     clearInterval(pollInterval);
+                    clearInterval(intervalId);
                 };
             } catch (err: any) {
                 if(isMounted) {
@@ -377,8 +392,21 @@ export default function DashboardOverviewPage() {
                     </div>
                 </div>
 
-                {/* Right: Expandable Fuzzy Search */}
+                {/* Right: Expandable Fuzzy Search & Status */}
                 <div className="flex items-center gap-4">
+                    {geminiFailing && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full cursor-help group relative">
+                            <Bell className="w-4 h-4 text-red-400 animate-pulse" />
+                            <span className="text-xs font-semibold text-red-400">Gemini Pending</span>
+                            
+                            {/* Hover Tooltip */}
+                            <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                <p className="text-xs text-gray-300">
+                                    Gemini AI is currently failing to respond. Tracks are queued and will be processed when the API recovers.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     <div className={`flex items-center bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full transition-all duration-300 overflow-hidden ${searchExpanded ? "w-64 px-4 py-2" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/5"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
                         <Search className="w-5 h-5 text-[#8293B4] shrink-0" />
                         {searchExpanded && (
