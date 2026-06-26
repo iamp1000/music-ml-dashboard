@@ -348,6 +348,21 @@ export default function DashboardOverviewPage() {
         i 
     }));
 
+    // ⚠️ Must be here (before early returns) - React Rules of Hooks
+    const availableYears = useMemo(() => {
+        const years = new Set<string>();
+        if (Array.isArray(history)) {
+            history.forEach(h => {
+                if (h?.time) {
+                    const dateStr = h.time.substring(0,4);
+                    if (!isNaN(Number(dateStr))) years.add(dateStr);
+                }
+            });
+        }
+        const sorted = Array.from(years).sort((a,b) => Number(b) - Number(a));
+        return ["1 Year", ...sorted, "All Time"];
+    }, [history]);
+
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen bg-[var(--theme-bg)] items-center justify-center space-y-6">
@@ -371,20 +386,6 @@ export default function DashboardOverviewPage() {
             </div>
         );
     }
-
-    const availableYears = useMemo(() => {
-        const years = new Set<string>();
-        if (Array.isArray(history)) {
-            history.forEach(h => {
-                if (h?.time) {
-                    const dateStr = h.time.substring(0,4);
-                    if (!isNaN(Number(dateStr))) years.add(dateStr);
-                }
-            });
-        }
-        const sorted = Array.from(years).sort((a,b) => Number(b) - Number(a));
-        return ["1 Year", ...sorted, "All Time"];
-    }, [history]);
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 bg-[var(--theme-bg)] min-h-screen text-white scrollbar-hide">
