@@ -28,8 +28,10 @@ async def extract_semantic_telemetry(track_name: str, artist_name: str, lyrics: 
     Uses Google Gemini to infer semantic telemetry from lyrics.
     Now takes the API key directly so we can use tenant-specific keys.
     """
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY")
+    gemini_keys = []
+    if api_key: gemini_keys.append(api_key)
+    if os.getenv("GEMINI_API_KEY"): gemini_keys.append(os.getenv("GEMINI_API_KEY"))
+    if os.getenv("GEMINI_API_KEY_2"): gemini_keys.append(os.getenv("GEMINI_API_KEY_2"))
         
     fallback = SemanticTelemetry(
         valence=0.5, energy=0.5, danceability=0.5, mood_category="Neutral",
@@ -40,7 +42,7 @@ async def extract_semantic_telemetry(track_name: str, artist_name: str, lyrics: 
         context_tag="None"
     )
     
-    if not api_key:
+    if not gemini_keys:
         return fallback
         
     prompt = f"""You are a highly advanced musical psychologist and audio engineer AI. 
@@ -71,25 +73,27 @@ Return exactly ONE valid JSON object with the following fields:
 - time_of_day_fit (string): "Morning", "Afternoon", "Late Night", "Workout".
 - context_tag (string): "None"
 """
-    try:
-        from google import genai
-        from google.genai import types
-        import json
-        
-        client_ai = genai.Client(api_key=api_key)
-        response = await client_ai.aio.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.3
+    from google import genai
+    from google.genai import types
+    import json
+    
+    for attempt in range(2):
+        current_key = gemini_keys[attempt % len(gemini_keys)]
+        try:
+            client_ai = genai.Client(api_key=current_key)
+            response = await client_ai.aio.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
             )
-        )
-        
-        result_json = json.loads(response.text)
-        return SemanticTelemetry(**result_json)
-    except Exception as e:
-        print(f"Gemini Inference Error: {e}")
+            
+            result_json = json.loads(response.text)
+            return SemanticTelemetry(**result_json)
+        except Exception as e:
+            print(f"Gemini Inference Error (Attempt {attempt+1}): {e}")
         
     return fallback
         

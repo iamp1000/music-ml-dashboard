@@ -706,9 +706,12 @@ async def run_gemini_analysis(track_name, artist_name, valence, energy, current_
     return data.get("mood_vector", [0.5,0.5,0.5]), data.get("telemetry_summary", ""), "Matched"
 
 async def run_gemini_batch_analysis(batch_payload, current_context):
-    gemini_key = os.getenv("GEMINI_API_KEY")
+    gemini_keys = []
+    if os.getenv("GEMINI_API_KEY"): gemini_keys.append(os.getenv("GEMINI_API_KEY"))
+    if os.getenv("GEMINI_API_KEY_2"): gemini_keys.append(os.getenv("GEMINI_API_KEY_2"))
+    
     result_dict = {}
-    if not gemini_key or not batch_payload:
+    if not gemini_keys or not batch_payload:
         return result_dict
         
     prompt_items = []
@@ -753,8 +756,9 @@ Return EXACTLY a JSON object with a single key "results" containing an array. Ea
 }}
 """
     for attempt in range(3):
+        current_key = gemini_keys[attempt % len(gemini_keys)]
         try:
-            client_ai = genai.Client(api_key=gemini_key)
+            client_ai = genai.Client(api_key=current_key)
             response = await client_ai.aio.models.generate_content(
                 model="gemini-1.5-flash",
                 contents=prompt,
