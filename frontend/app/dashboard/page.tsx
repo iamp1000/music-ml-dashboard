@@ -23,6 +23,7 @@ export default function DashboardOverviewPage() {
     
     const [searchExpanded, setSearchExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [searchLoading, setSearchLoading] = useState(false);
     const [geminiFailing, setGeminiFailing] = useState(false);
 
     const [activityFilter, setActivityFilter] = useState<"7D" | "30D" | "All Time">("30D");
@@ -158,7 +159,7 @@ export default function DashboardOverviewPage() {
     useEffect(() => {
         if (!fullHistoryLoaded && (searchQuery.trim() !== "" || filterYear !== "1 Year" || activityFilter !== "30D")) {
             const loadFull = async () => {
-                setLoading(true);
+                setSearchLoading(true);
                 try {
                     const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=10000");
                     if (data && data.data) {
@@ -166,7 +167,7 @@ export default function DashboardOverviewPage() {
                         setFullHistoryLoaded(true);
                     }
                 } catch(e) {}
-                setLoading(false);
+                setSearchLoading(false);
             };
             loadFull();
         }
@@ -446,34 +447,145 @@ export default function DashboardOverviewPage() {
             {/* Main Content Wrapper - No padding to touch edges if needed, but keeping standard padding for interior layout */}
             <div className="p-0 flex flex-col gap-6 w-full mx-auto max-w-[1600px] mt-6 px-6">
                 
-                {/* Fuzzy Search Results Overlay Layout */}
+                {/* Fuzzy Search Results - Full Session Timeline */}
                 {searchQuery && (
-                    <div className="w-full bg-[var(--theme-panel)] border border-[#D1F26D]/50 rounded-[32px] p-6 mb-2 shadow-[0_0_30px_rgba(209,242,109,0.1)]">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Search Results: "{searchQuery}"</h3>
-                        {filteredHistory.length === 0 ? (
-                            <div className="text-center text-[#8293B4] py-8">No matching tracks or artists found in your history.</div>
-                        ) : (
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-hide pr-2">
-                                {/* Aggregate grouped sessions by track */}
-                                {Object.values(trackCounts)
-                                    .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.artist.toLowerCase().includes(searchQuery.toLowerCase()))
-                                    .map((track, idx) => (
-                                        <div key={idx} className="flex items-center gap-4 bg-[var(--theme-bg)] p-3 rounded-[20px] border border-[var(--theme-border)]">
-                                            <div className="w-12 h-12 rounded-[14px] bg-[#2A364D] overflow-hidden flex items-center justify-center shrink-0">
-                                                {track.image ? <img src={track.image} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-[#8293B4]" />}
+                    <div className="w-full rounded-[32px] border border-[#D1F26D]/30 overflow-hidden shadow-[0_0_40px_rgba(209,242,109,0.08)]" style={{ background: "#080C14" }}>
+                        {/* Search Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1B2332]">
+                            <div className="flex items-center gap-3">
+                                <Search className="w-4 h-4 text-[#D1F26D]" />
+                                <span className="text-sm font-black text-white tracking-wider">
+                                    Search: <span className="text-[#D1F26D]">"{searchQuery}"</span>
+                                </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-[#8293B4] bg-[#1B2332] px-3 py-1 rounded-full uppercase tracking-widest">
+                                {filteredHistory.length} session{filteredHistory.length !== 1 ? "s" : ""} found
+                            </span>
+                        </div>
+
+                        {searchLoading ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-4">
+                                <div className="w-8 h-8 rounded-full border-2 border-[#D1F26D]/20 border-t-[#D1F26D] animate-spin" />
+                                <p className="text-[#8293B4] text-xs font-bold uppercase tracking-widest">Loading your full history...</p>
+                            </div>
+                        ) : filteredHistory.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                <Music className="w-10 h-10 text-[#1B2332]" />
+                                <p className="text-[#8293B4] text-sm font-bold">No tracks or artists matching "{searchQuery}"</p>
+                                <p className="text-[#8293B4]/60 text-xs">Try a different song name or artist</p>
+                            </div>
+                        ) : (() => {
+                            // Group matching sessions by track name for the timeline view
+                            const grouped: Record<string, { name: string; artist: string; image: string; sessions: any[] }> = {};
+                            filteredHistory.forEach(item => {
+                                const key = `${item.track_name} - ${item.artist_name}`;
+                                if (!grouped[key]) {
+                                    grouped[key] = { name: item.track_name || "Unknown", artist: item.artist_name || "Unknown Artist", image: item.album_image_url || "", sessions: [] };
+                                }
+                                grouped[key].sessions.push(item);
+                            });
+
+                            const formatSessionDate = (timeStr: string) => {
+                                try {
+                                    const d = new Date(timeStr);
+                                    const now = new Date();
+                                    const diffMs = now.getTime() - d.getTime();
+                                    const diffDays = Math.floor(diffMs / 86400000);
+                                    if (diffDays === 0) return `Today at ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+                                    if (diffDays === 1) return `Yesterday at ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+                                    if (diffDays < 7) return `${diffDays} days ago · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+                                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ` · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+                                } catch { return timeStr; }
+                            };
+
+                            const getMoodColor = (valence: number) => {
+                                if (!valence) return "#8293B4";
+                                if (valence > 0.65) return "#22c55e";
+                                if (valence < 0.38) return "#EF4444";
+                                return "#F59E0B";
+                            };
+                            const getMoodLabel = (valence: number) => {
+                                if (!valence) return "—";
+                                if (valence > 0.65) return "Positive";
+                                if (valence < 0.38) return "Melancholic";
+                                return "Neutral";
+                            };
+
+                            return (
+                                <div className="divide-y divide-[#1B2332] max-h-[520px] overflow-y-auto scrollbar-hide">
+                                    {Object.values(grouped).map((track, gIdx) => (
+                                        <div key={gIdx} className="p-5">
+                                            {/* Track Header */}
+                                            <div className="flex items-center gap-4 mb-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-[#1B2332] overflow-hidden shrink-0 flex items-center justify-center">
+                                                    {track.image ? <img src={track.image} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-[#8293B4]" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-base font-black text-white truncate">{track.name}</div>
+                                                    <div className="text-xs text-[#8293B4] truncate">{track.artist}</div>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                                    <span className="text-xs font-black text-[#D1F26D]">{track.sessions.length}× played</span>
+                                                    <span className="text-[10px] text-[#8293B4]">{Math.round(track.sessions.reduce((s, i) => s + (i.duration_ms || 204000), 0) / 60000)} min total</span>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-bold text-white truncate">{track.name}</div>
-                                                <div className="text-xs text-[#8293B4] truncate">{track.artist}</div>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-1">
-                                                <div className="text-xs font-bold text-[#D1F26D]">{track.count} Sessions</div>
-                                                <div className="text-[10px] text-[#8293B4]">{Math.round(track.time)} mins total</div>
+
+                                            {/* Session Timeline */}
+                                            <div className="space-y-2 pl-2">
+                                                {track.sessions
+                                                    .sort((a, b) => new Date(b.time || b.played_at || 0).getTime() - new Date(a.time || a.played_at || 0).getTime())
+                                                    .map((session, sIdx) => {
+                                                        const timeStr = session.time || session.played_at;
+                                                        const valence = session.valence;
+                                                        const energy = session.energy || session.arousal;
+                                                        const moodColor = getMoodColor(valence);
+                                                        const durMin = session.duration_ms ? Math.round(session.duration_ms / 60000) : null;
+
+                                                        return (
+                                                            <div key={sIdx} className="flex items-center gap-3 rounded-2xl px-4 py-3 border border-[#1B2332] hover:border-[#D1F26D]/20 transition-colors" style={{ background: "#0A0F1A" }}>
+                                                                {/* Timeline dot */}
+                                                                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: moodColor }} />
+
+                                                                {/* Date/time */}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="text-xs font-bold text-white">
+                                                                        {timeStr ? formatSessionDate(timeStr) : "Unknown time"}
+                                                                    </div>
+                                                                    {session.context && (
+                                                                        <div className="text-[10px] text-[#8293B4] mt-0.5">Context: <span className="text-[#D1F26D]">{session.context}</span></div>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Mood pill */}
+                                                                {valence !== undefined && valence !== null && (
+                                                                    <span className="text-[9px] font-black px-2.5 py-1 rounded-full shrink-0" style={{ color: moodColor, background: `${moodColor}18` }}>
+                                                                        {getMoodLabel(valence)}
+                                                                    </span>
+                                                                )}
+
+                                                                {/* Energy bar */}
+                                                                {energy !== undefined && energy !== null && (
+                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                        <div className="w-12 h-1.5 rounded-full bg-[#1B2332] overflow-hidden">
+                                                                            <div className="h-full rounded-full" style={{ width: `${Math.round(energy * 100)}%`, background: "linear-gradient(90deg, #8B5CF6, #D1F26D)" }} />
+                                                                        </div>
+                                                                        <span className="text-[9px] text-[#8293B4]">{Math.round(energy * 100)}%</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Duration */}
+                                                                {durMin && (
+                                                                    <span className="text-[9px] font-bold text-[#8293B4] shrink-0">{durMin}m</span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                             </div>
                                         </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 
