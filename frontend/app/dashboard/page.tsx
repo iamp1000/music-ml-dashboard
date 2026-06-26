@@ -342,8 +342,9 @@ export default function DashboardOverviewPage() {
     const top5GenresList = sortedGenres.slice(0, 5).map((g: any) => g[0]);
 
     // Sparkline real data based on track energy and duration
-    const sparklineData = history.slice(-10).map((h, i) => ({ 
-        val: h.energy !== undefined ? h.energy * 100 : (h.duration_ms ? Math.min(100, (h.duration_ms / 300000) * 100) : 50),
+    const safeHistory = Array.isArray(history) ? history : [];
+    const sparklineData = safeHistory.slice(-10).map((h, i) => ({ 
+        val: h?.energy !== undefined ? h.energy * 100 : (h?.duration_ms ? Math.min(100, (h.duration_ms / 300000) * 100) : 50),
         i 
     }));
 
@@ -373,12 +374,14 @@ export default function DashboardOverviewPage() {
 
     const availableYears = useMemo(() => {
         const years = new Set<string>();
-        history.forEach(h => {
-            if (h.time) {
-                const dateStr = h.time.substring(0,4);
-                if (!isNaN(Number(dateStr))) years.add(dateStr);
-            }
-        });
+        if (Array.isArray(history)) {
+            history.forEach(h => {
+                if (h?.time) {
+                    const dateStr = h.time.substring(0,4);
+                    if (!isNaN(Number(dateStr))) years.add(dateStr);
+                }
+            });
+        }
         const sorted = Array.from(years).sort((a,b) => Number(b) - Number(a));
         return ["1 Year", ...sorted, "All Time"];
     }, [history]);
