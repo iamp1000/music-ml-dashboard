@@ -154,3 +154,129 @@ async def sandbox_inference(payload: SandboxRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/deep-insights")
+async def get_deep_insights(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """
+    Computes deep psychological metrics from real listening history:
+    - cognitive_load: radar data based on energy, valence, danceability proxy
+    - skip_horizon: play-ratio heatmap per genre 
+    - emotional_volatility: variance in valence over time (0-1 scale)
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    token = authorization.split(" ")[1]
+    user_data = verify_access_token(token)
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_id = user_data.get("sub")
+
+    try:
+        results = db.query(ListeningHistory)\
+                    .filter(ListeningHistory.tenant_id == user_id)\
+                    .order_by(desc(ListeningHistory.time))\
+                    .limit(500)\
+                    .all()
+
+        if not results:
+            return {"status": "success", "data": {
+                "cognitive_load": [
+                    {"axis": "Energy", "value": 0},
+                    {"axis": "Valence", "value": 0},
+                    {"axis": "Complexity", "value": 0},
+                    {"axis": "Tempo", "value": 0},
+                    {"axis": "Repetition", "value": 0},
+                ],
+                "skip_horizon": [],
+                "emotional_volatility": 0
+            }}
+
+        # --- 1. Cognitive Load Radar ---
+        energies = [r.energy for r in results if r.energy is not None]
+        valences = [r.valence for r in results if r.valence is not None]
+        
+        avg_energy = sum(energies) / len(energies) if energies else 0.5
+        avg_valence = sum(valences) / len(valences) if valences else 0.5
+
+        # BPM-based tempo metric from real_bpm if available
+        bpms = []
+        for r in results:
+            if r.ml_features and isinstance(r.ml_features, dict):
+                bpm = r.ml_features.get("real_bpm")
+                if bpm:
+                    bpms.append(float(bpm))
+        avg_bpm_norm = (sum(bpms) / len(bpms) / 200.0) if bpms else 0.5
+        avg_bpm_norm = min(1.0, avg_bpm_norm)
+
+        # Complexity: how spread out valence is (variance as proxy)
+        if len(valences) > 1:
+            mean_v = avg_valence
+            variance = sum((v - mean_v) ** 2 for v in valences) / len(valences)
+            complexity = min(1.0, variance * 10)
+        else:
+            complexity = 0.3
+
+        # Repetition: how often same tracks appear
+        track_ids = [r.track_id for r in results if r.track_id]
+        unique_ratio = len(set(track_ids)) / len(track_ids) if track_ids else 1
+        repetition = 1.0 - unique_ratio  # high repetition = low uniqueness
+
+        cognitive_load = [
+            {"axis": "Energy", "value": round(avg_energy, 3)},
+            {"axis": "Valence", "value": round(avg_valence, 3)},
+            {"axis": "Complexity", "value": round(complexity, 3)},
+            {"axis": "Tempo", "value": round(avg_bpm_norm, 3)},
+            {"axis": "Repetition", "value": round(repetition, 3)},
+        ]
+
+        # --- 2. Skip Horizon: play ratio by genre ---
+        genre_stats: dict = {}
+        for r in results:
+            genre = None
+            if r.ml_features and isinstance(r.ml_features, dict):
+                genre = r.ml_features.get("real_genre") or r.ml_features.get("genre")
+            genre = genre or "Unknown"
+
+            duration = r.duration_ms or 200000
+            played = r.played_ms or duration
+            ratio = min(1.0, played / duration) if duration > 0 else 1.0
+
+            if genre not in genre_stats:
+                genre_stats[genre] = {"total": 0, "ratio_sum": 0}
+            genre_stats[genre]["total"] += 1
+            genre_stats[genre]["ratio_sum"] += ratio
+
+        skip_horizon = []
+        for genre, stats in sorted(genre_stats.items(), key=lambda x: -x[1]["total"])[:10]:
+            avg_ratio = stats["ratio_sum"] / stats["total"]
+            skip_horizon.append({
+                "genre": genre,
+                "play_ratio": round(avg_ratio, 3),
+                "count": stats["total"]
+            })
+
+        # --- 3. Emotional Volatility ---
+        # Standard deviation of valence as a measure of emotional volatility
+        if len(valences) > 1:
+            mean_v = avg_valence
+            std_dev = (sum((v - mean_v) ** 2 for v in valences) / len(valences)) ** 0.5
+            emotional_volatility = round(min(1.0, std_dev * 3), 3)
+        else:
+            emotional_volatility = 0.0
+
+        return {
+            "status": "success",
+            "data": {
+                "cognitive_load": cognitive_load,
+                "skip_horizon": skip_horizon,
+                "emotional_volatility": emotional_volatility
+            }
+        }
+
+    except Exception as e:
+        print(f"Error in deep-insights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
