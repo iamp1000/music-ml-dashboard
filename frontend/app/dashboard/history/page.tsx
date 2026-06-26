@@ -232,108 +232,150 @@ export default function AnalyticsHubPage() {
 
         return (
             <div className="space-y-6">
-                {/* 1. Today Dashboard */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-theme-accent" />
-                        Today's Listening
+            {/* 1. Today Dashboard - Premium stat cards */}
+            <div
+                className="rounded-2xl p-6 border"
+                style={{ background: "linear-gradient(135deg, #0A0F1A 0%, #0D111A 100%)", borderColor: "#1B2332" }}
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-1 h-5 rounded-full bg-[#D1F26D]" />
+                        Today's Listening Session
                     </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4">
-                            <div className="text-[10px] font-bold text-theme-text-muted uppercase mb-1">Songs Played</div>
-                            <div className="text-3xl font-black text-white">{todaySongsCount}</div>
-                        </div>
-                        
-                        <div className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4">
-                            <div className="text-[10px] font-bold text-theme-text-muted uppercase mb-1">Average Energy</div>
-                            <div className="text-3xl font-black text-white">{avgTodayEng.toFixed(2)}</div>
-                        </div>
+                    <span className="text-[10px] font-bold text-[#8293B4] bg-[#1B2332]/60 px-3 py-1.5 rounded-full uppercase tracking-widest">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                </div>
 
-                        <div className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4 col-span-1 md:col-span-2 flex items-center">
-                            <div className="w-full">
-                                <div className="text-[10px] font-bold text-theme-text-muted uppercase mb-2">Mood Breakdown</div>
-                                <div className="flex gap-1 w-full h-4 rounded-full overflow-hidden mb-2 bg-[#1B2332]/40">
-                                    <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${todaySongsCount ? (positive/todaySongsCount)*100 : 33}%` }}></div>
-                                    <div className="bg-yellow-500 h-full transition-all duration-500" style={{ width: `${todaySongsCount ? (neutral/todaySongsCount)*100 : 34}%` }}></div>
-                                    <div className="bg-red-500 h-full transition-all duration-500" style={{ width: `${todaySongsCount ? (negative/todaySongsCount)*100 : 33}%` }}></div>
-                                </div>
-                                <div className="flex justify-between text-[10px] font-bold text-theme-text-muted">
-                                    <span className="text-green-500">{todaySongsCount ? Math.round((positive/todaySongsCount)*100) : 0}% Positive</span>
-                                    <span className="text-yellow-500">{todaySongsCount ? Math.round((neutral/todaySongsCount)*100) : 0}% Neutral</span>
-                                    <span className="text-red-500">{todaySongsCount ? Math.round((negative/todaySongsCount)*100) : 0}% Negative</span>
-                                </div>
-                            </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Songs Played */}
+                    <div className="relative rounded-2xl p-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
+                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #D1F26D, #84cc16)" }} />
+                        <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Songs Today</div>
+                        <div className="text-4xl font-black text-white">{todaySongsCount}</div>
+                        <div className="text-[10px] text-[#D1F26D] mt-2 font-semibold">tracks played</div>
+                    </div>
+
+                    {/* Avg Energy */}
+                    <div className="relative rounded-2xl p-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
+                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #8B5CF6, #a78bfa)" }} />
+                        <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Avg Energy</div>
+                        <div className="text-4xl font-black text-white">{(avgTodayEng * 100).toFixed(0)}<span className="text-lg text-[#8293B4] font-bold">%</span></div>
+                        <div className="text-[10px] text-[#8B5CF6] mt-2 font-semibold">audio arousal</div>
+                    </div>
+
+                    {/* Mood breakdown - spans 2 cols */}
+                    <div className="relative rounded-2xl p-5 overflow-hidden col-span-2" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
+                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #3B82F6, #60a5fa, #F59E0B)" }} />
+                        <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Mood Breakdown</div>
+                        <div className="flex gap-1 w-full h-3 rounded-full overflow-hidden mb-3" style={{ background: "#1B2332" }}>
+                            <div className="h-full transition-all duration-700 rounded-l-full" style={{ width: `${todaySongsCount ? (positive / todaySongsCount) * 100 : 33}%`, background: "linear-gradient(90deg,#22c55e,#84cc16)" }} />
+                            <div className="h-full transition-all duration-700" style={{ width: `${todaySongsCount ? (neutral / todaySongsCount) * 100 : 34}%`, background: "#F59E0B" }} />
+                            <div className="h-full transition-all duration-700 rounded-r-full" style={{ width: `${todaySongsCount ? (negative / todaySongsCount) * 100 : 33}%`, background: "#EF4444" }} />
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-400">
+                                <div className="w-2 h-2 rounded-full bg-green-400" />
+                                {todaySongsCount ? Math.round((positive / todaySongsCount) * 100) : 0}% Positive
+                            </span>
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-yellow-400">
+                                <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                                {todaySongsCount ? Math.round((neutral / todaySongsCount) * 100) : 0}% Neutral
+                            </span>
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400">
+                                <div className="w-2 h-2 rounded-full bg-red-400" />
+                                {todaySongsCount ? Math.round((negative / todaySongsCount) * 100) : 0}% Neg
+                            </span>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 2. Time Of Day Analysis */}
-                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-theme-accent" />
-                            Time of Day Analysis
-                        </h3>
-                        <div className="space-y-4">
-                            {Object.entries(todBins).map(([key, data]) => {
-                                const avg = data.count > 0 ? data.val / data.count : 0.5;
-                                return (
-                                    <div key={key} className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4 flex justify-between items-center group hover:border-[#1B2332] transition-colors">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 2. Time Of Day Analysis - premium rows */}
+                <div
+                    className="rounded-2xl p-6 border"
+                    style={{ background: "#080B12", borderColor: "#1B2332" }}
+                >
+                    <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <div className="w-1 h-5 rounded-full bg-[#3B82F6]" />
+                        Time of Day Analysis
+                    </h3>
+                    <div className="space-y-3">
+                        {Object.entries(todBins).map(([key, data], idx) => {
+                            const avg = data.count > 0 ? data.val / data.count : 0.5;
+                            const colors = ["#F59E0B", "#3B82F6", "#8B5CF6", "#1E293B"];
+                            const labels = ["Morning", "Afternoon", "Evening", "Night"];
+                            const c = colors[idx % colors.length];
+                            const fillPct = Math.round(avg * 100);
+                            return (
+                                <div key={key} className="relative rounded-xl p-4 border overflow-hidden group hover:border-white/10 transition-all duration-300" style={{ background: "#0A0F1A", borderColor: "#1B2332" }}>
+                                    <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl" style={{ background: c }} />
+                                    <div className="flex justify-between items-center pl-2">
                                         <div>
                                             <div className="text-xs font-bold text-white">{data.name}</div>
-                                            <div className="text-[10px] text-theme-text-muted mt-1 uppercase tracking-wider">{getMoodString(avg)} <span className="text-theme-accent ml-1">{(avg*100).toFixed(0)}%</span></div>
+                                            <div className="text-[10px] text-[#8293B4] mt-1">{getMoodString(avg)}</div>
                                         </div>
-                                        <div className="text-[10px] font-bold text-theme-accent bg-theme-accent/10 border border-theme-accent/20 px-3 py-1.5 rounded-md">
-                                            {data.count} plays
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* 3. Listening History Timeline */}
-                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-theme-accent" />
-                            Behavioral Timeline
-                        </h3>
-                        <div className="space-y-6 h-[300px] overflow-y-auto scrollbar-thin pr-4">
-                            {Object.keys(timeline).length > 0 ? (
-                                Object.entries(timeline).map(([day, periods]) => (
-                                    <div key={day} className="mb-4 relative">
-                                        <div className="text-xs font-bold text-theme-accent mb-3 bg-[#0D111A] inline-block pr-4 relative z-10">{day}</div>
-                                        <div className="absolute left-[3px] top-4 bottom-0 w-[2px] bg-[#1B2332] -z-0"></div>
-                                        <div className="space-y-3 pl-5 relative z-10">
-                                            {Object.entries(periods as any).map(([period, vals]) => {
-                                                const vArray = vals as number[];
-                                                if (vArray.length === 0) return null;
-                                                const pAvg = vArray.reduce((a,b)=>a+b,0) / vArray.length;
-                                                return (
-                                                    <div key={period} className="text-[11px] font-bold flex justify-between items-center bg-[#070A0F] border border-[#1B2332]/40 p-2.5 rounded-lg">
-                                                        <span className="text-theme-text-muted flex items-center gap-2">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-theme-accent"></div>
-                                                            {period}
-                                                        </span>
-                                                        <span className="text-white flex items-center gap-2 uppercase tracking-wider">
-                                                            <ArrowRight className="w-3 h-3 text-theme-text-muted" />
-                                                            {getMoodString(pAvg)}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right">
+                                                <div className="text-lg font-black" style={{ color: c }}>{fillPct}%</div>
+                                                <div className="text-[9px] text-[#8293B4] uppercase">valence</div>
+                                            </div>
+                                            <div className="text-[10px] font-bold px-3 py-1.5 rounded-full border" style={{ color: c, borderColor: `${c}30`, background: `${c}10` }}>
+                                                {data.count} plays
+                                            </div>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-theme-text-muted text-sm flex h-full items-center justify-center">No timeline data available.</div>
-                            )}
-                        </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-
+                {/* 3. Behavioral Timeline */}
+                <div
+                    className="rounded-2xl p-6 border"
+                    style={{ background: "#080B12", borderColor: "#1B2332" }}
+                >
+                    <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <div className="w-1 h-5 rounded-full bg-[#D1F26D]" />
+                        Behavioral Timeline
+                    </h3>
+                    <div className="space-y-4 h-[300px] overflow-y-auto scrollbar-thin pr-2">
+                        {Object.keys(timeline).length > 0 ? (
+                            Object.entries(timeline).map(([day, periods]) => (
+                                <div key={day} className="mb-4 relative">
+                                    <div className="text-[11px] font-black text-[#D1F26D] mb-3 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-4 h-[1px] bg-[#D1F26D]/40" />
+                                        {day}
+                                    </div>
+                                    <div className="space-y-2 pl-3">
+                                        {Object.entries(periods as any).map(([period, vals]) => {
+                                            const vArray = vals as number[];
+                                            if (vArray.length === 0) return null;
+                                            const pAvg = vArray.reduce((a, b) => a + b, 0) / vArray.length;
+                                            const pColor = pAvg > 0.6 ? "#22c55e" : pAvg < 0.4 ? "#EF4444" : "#F59E0B";
+                                            return (
+                                                <div key={period} className="flex justify-between items-center rounded-xl p-3 border" style={{ background: "#0A0F1A", borderColor: "#1B2332" }}>
+                                                    <span className="text-[11px] font-bold text-[#8293B4] flex items-center gap-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: pColor }} />
+                                                        {period}
+                                                    </span>
+                                                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full" style={{ color: pColor, background: `${pColor}15` }}>
+                                                        {getMoodString(pAvg)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-[#8293B4] text-sm flex h-full items-center justify-center">No timeline data available.</div>
+                        )}
+                    </div>
+                </div>
+            </div>
             </div>
         );
     };
@@ -375,83 +417,81 @@ export default function AnalyticsHubPage() {
 
         return (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Audio Features Radar */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[450px] relative">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                        <Sliders className="w-4 h-4 text-theme-accent" />
-                        Audio Characteristics Radar
-                    </h3>
-                    <div className="flex-1 w-full min-h-0">
-                        {hasHistory ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                                    <PolarGrid stroke="#1B2332" />
-                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#8293B4', fontSize: 11 }} />
-                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                    <Radar name="User" dataKey="A" stroke="var(--theme-accent)" strokeWidth={2} fill="var(--theme-accent)" fillOpacity={0.15} />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-theme-text-muted">
-                                No history records logged.
-                            </div>
-                        )}
-                    </div>
+            {/* Audio Features Radar - premium panel */}
+            <div
+                className="rounded-2xl p-6 flex flex-col h-[450px] relative border overflow-hidden"
+                style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
+            >
+                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #8B5CF6, #3B82F6, #D1F26D)" }} />
+                <div className="flex items-center gap-2 mb-6">
+                    <Sliders className="w-4 h-4 text-[#8B5CF6]" />
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Audio Characteristics Radar</h3>
                 </div>
-
-                {/* Genre Distributions */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col justify-between">
-                    <div>
-                        <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Top Genre Distributions</h3>
-                        <p className="text-[11px] text-theme-text-muted mb-6">Relative percentages derived from your top artists list</p>
-                    </div>
-
-                    {topGenres.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-4 flex-1">
-                            {topGenres.map((genre, idx) => {
-                                const chartData = [
-                                    { name: genre.name, value: genre.value },
-                                    { name: 'Other', value: Math.max(1, totalGenreTags - genre.value) }
-                                ];
-                                const color = COLORS[idx % COLORS.length];
-
-                                return (
-                                    <div key={idx} className="bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden group">
-                                        <div className="absolute top-2 left-3 text-[10px] font-bold text-white uppercase tracking-wider">{genre.name}</div>
-                                        
-                                        <div className="w-full h-24 flex items-center justify-center relative mt-2">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={chartData}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={28}
-                                                        outerRadius={38}
-                                                        paddingAngle={3}
-                                                        dataKey="value"
-                                                        stroke="none"
-                                                    >
-                                                        <Cell fill={color} />
-                                                        <Cell fill="#1B2332" />
-                                                    </Pie>
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                            <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                                <span className="text-sm font-black text-white font-mono">{genre.percentage}%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                <div className="flex-1 w-full min-h-0">
+                    {hasHistory ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                                <PolarGrid stroke="#1B2332" strokeDasharray="4 4" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#8293B4', fontSize: 11, fontWeight: 700 }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                <Radar name="User" dataKey="A" stroke="#8B5CF6" strokeWidth={2.5} fill="#8B5CF6" fillOpacity={0.12} dot={{ fill: '#8B5CF6', r: 3 }} />
+                            </RadarChart>
+                        </ResponsiveContainer>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-xs text-theme-text-muted">
-                            No genre distributions available. Syncing profile...
-                        </div>
+                        <div className="flex h-full items-center justify-center text-sm text-[#8293B4]">No history records logged.</div>
                     )}
                 </div>
             </div>
+
+            {/* Genre Distributions - premium card grid */}
+            <div
+                className="rounded-2xl p-6 flex flex-col justify-between border overflow-hidden"
+                style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
+            >
+                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #F59E0B, #EC4899)" }} />
+                <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest mb-1">Top Genre Distributions</h3>
+                    <p className="text-[11px] text-[#8293B4] mb-6">Relative percentages derived from your top artists list</p>
+                </div>
+
+                {topGenres.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4 flex-1">
+                        {topGenres.map((genre, idx) => {
+                            const chartData = [
+                                { name: genre.name, value: genre.value },
+                                { name: 'Other', value: Math.max(1, totalGenreTags - genre.value) }
+                            ];
+                            const color = COLORS[idx % COLORS.length];
+
+                            return (
+                                <div key={idx} className="rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden border hover:border-white/10 transition-all group" style={{ background: "#0A0F1A", borderColor: `${color}20` }}>
+                                    <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${color}60, transparent)` }} />
+                                    <div className="absolute top-2 left-3 text-[10px] font-black text-white uppercase tracking-wider">{genre.name}</div>
+
+                                    <div className="w-full h-24 flex items-center justify-center relative mt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={chartData} cx="50%" cy="50%" innerRadius={28} outerRadius={38} paddingAngle={3} dataKey="value" stroke="none">
+                                                    <Cell fill={color} />
+                                                    <Cell fill="#1B2332" />
+                                                </Pie>
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                            <span className="text-sm font-black text-white font-mono">{genre.percentage}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex-1 flex items-center justify-center text-xs text-[#8293B4]">
+                        No genre distributions available. Syncing profile...
+                    </div>
+                )}
+            </div>
+        </div>
         );
     };
 
@@ -492,38 +532,47 @@ export default function AnalyticsHubPage() {
 
         return (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Line Chart */}
-                <div className="lg:col-span-2 bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[420px] relative">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                            <Smile className="w-5 h-5 text-theme-accent" />
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Mood Correlation Wave</h3>
-                        </div>
-                        <span className="text-[10px] text-theme-text-muted">Valence vs Energy of recent plays</span>
+            {/* Line Chart - premium wide panel */}
+            <div
+                className="lg:col-span-2 rounded-2xl p-6 flex flex-col h-[420px] relative border overflow-hidden"
+                style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
+            >
+                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #D1F26D, #8B5CF6)" }} />
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                        <Smile className="w-5 h-5 text-[#3B82F6]" />
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Mood Correlation Wave</h3>
                     </div>
-                    
-                    <div className="flex-1 w-full min-h-0 mt-4">
-                        {hasHistory ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={lineData} margin={{ top: 10, right: 20, left: -20, bottom: 10 }}>
-                                    <XAxis dataKey="index" tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#0D111A', borderColor: '#1B2332', borderRadius: '12px' }}
-                                        labelStyle={{ color: 'white', fontWeight: 'bold' }}
-                                        itemStyle={{ fontSize: '12px' }}
-                                    />
-                                    <Line type="monotone" name="Valence" dataKey="valence" stroke="var(--theme-accent)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--theme-accent)' }} />
-                                    <Line type="monotone" name="Energy" dataKey="energy" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-theme-text-muted">
-                                No listening history found.
-                            </div>
-                        )}
+                    <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#8293B4]">
+                            <div className="w-3 h-0.5 rounded bg-[#D1F26D]" /> Valence
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#8293B4]">
+                            <div className="w-3 h-0.5 rounded bg-[#8B5CF6]" /> Energy
+                        </span>
                     </div>
                 </div>
+
+                <div className="flex-1 w-full min-h-0 mt-2">
+                    {hasHistory ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={lineData} margin={{ top: 10, right: 20, left: -20, bottom: 10 }}>
+                                <XAxis dataKey="index" tick={{ fill: '#4B5563', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fill: '#4B5563', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#080B12', borderColor: '#1B2332', borderRadius: '12px', fontSize: '12px' }}
+                                    labelStyle={{ color: 'white', fontWeight: 'bold' }}
+                                    itemStyle={{ fontSize: '12px' }}
+                                />
+                                <Line type="monotone" name="Valence" dataKey="valence" stroke="#D1F26D" strokeWidth={2.5} dot={{ r: 3, fill: '#D1F26D' }} />
+                                <Line type="monotone" name="Energy" dataKey="energy" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-[#8293B4]">No listening history found.</div>
+                    )}
+                </div>
+            </div>
 
                 {/* Logging & predicted state */}
                 <div className="flex flex-col gap-6">
@@ -761,9 +810,9 @@ export default function AnalyticsHubPage() {
     const renderDeepTab = () => {
         if (!deepInsights) {
             return (
-                <div className="flex h-[400px] items-center justify-center text-sm text-theme-text-muted">
-                    <Loader2 className="w-8 h-8 text-theme-accent animate-spin mr-3" />
-                    Crunching deep psychological metrics...
+                <div className="flex h-[400px] items-center justify-center flex-col gap-4">
+                    <div className="w-12 h-12 rounded-full border-2 border-[#EC4899]/30 border-t-[#EC4899] animate-spin" />
+                    <p className="text-sm font-bold text-[#8293B4] uppercase tracking-widest">Crunching deep psychological metrics...</p>
                 </div>
             );
         }
@@ -773,11 +822,12 @@ export default function AnalyticsHubPage() {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* 1. Cognitive Load Radar */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[300px]">
+                <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden" style={{ background: "#080B12", borderColor: "#1B2332" }}>
+                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #8B5CF6, #EC4899)" }} />
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
-                            <BrainCircuit className="w-5 h-5 text-purple-400" />
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Lyrical Load</h3>
+                            <BrainCircuit className="w-5 h-5 text-[#8B5CF6]" />
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Lyrical Load</h3>
                         </div>
                     </div>
                     <div className="flex-1 w-full relative">
@@ -786,11 +836,12 @@ export default function AnalyticsHubPage() {
                 </div>
 
                 {/* 2. Attention Decay Horizon */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[300px]">
+                <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden" style={{ background: "#080B12", borderColor: "#1B2332" }}>
+                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #3B82F6, #06b6d4)" }} />
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-blue-400" />
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Skip Horizon</h3>
+                            <Clock className="w-5 h-5 text-[#3B82F6]" />
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Skip Horizon</h3>
                         </div>
                     </div>
                     <div className="flex-1 w-full relative">
@@ -799,12 +850,16 @@ export default function AnalyticsHubPage() {
                 </div>
 
                 {/* 3. Emotional Volatility Globe */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col h-[300px] md:col-span-2 lg:col-span-1">
+                <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden md:col-span-2 lg:col-span-1" style={{ background: "#080B12", borderColor: "#1B2332" }}>
+                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #EF4444, #F59E0B)" }} />
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
-                            <Activity className="w-5 h-5 text-red-400" />
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Volatility</h3>
+                            <Activity className="w-5 h-5 text-[#EF4444]" />
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Volatility</h3>
                         </div>
+                        <span className="text-[10px] font-black px-3 py-1 rounded-full" style={{ color: data.emotional_volatility > 0.5 ? "#EF4444" : "#22c55e", background: data.emotional_volatility > 0.5 ? "#EF444415" : "#22c55e15" }}>
+                            {data.emotional_volatility > 0.5 ? "High" : "Low"} Volatility
+                        </span>
                     </div>
                     <div className="flex-1 w-full relative">
                         <MoodVolatilityGlobe volatility={data.emotional_volatility} />
@@ -846,24 +901,26 @@ export default function AnalyticsHubPage() {
 
     // Navigation Tab configs
     const tabsConfig = [
-        { id: "history" as const, label: "History & Habits", icon: Clock },
-        { id: "features" as const, label: "Audio Features", icon: Sliders },
-        { id: "mood" as const, label: "Mood Explorer", icon: Smile },
-        { id: "neural" as const, label: "Neural Model", icon: BrainCircuit },
-        { id: "deep" as const, label: "Deep Psych", icon: Activity },
+        { id: "history" as const, label: "History & Habits", icon: Clock, color: "#D1F26D" },
+        { id: "features" as const, label: "Audio Features", icon: Sliders, color: "#8B5CF6" },
+        { id: "mood" as const, label: "Mood Explorer", icon: Smile, color: "#3B82F6" },
+        { id: "neural" as const, label: "Neural Model", icon: BrainCircuit, color: "#F59E0B" },
+        { id: "deep" as const, label: "Deep Psych", icon: Activity, color: "#EC4899" },
     ];
+
+    const activeTabColor = tabsConfig.find(t => t.id === activeTab)?.color ?? "#D1F26D";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
                 <div>
-                    <h2 className="text-2xl font-black tracking-tight text-white uppercase">Analytics Hub</h2>
-                    <p className="text-sm text-theme-text-muted mt-1">Consolidated listening patterns, emotional mapping, and inference models.</p>
+                    <h2 className="text-3xl font-black tracking-tight text-white">Analytics Hub</h2>
+                    <p className="text-sm text-[#8293B4] mt-1.5">Consolidated listening patterns, emotional mapping &amp; inference models.</p>
                 </div>
 
-                {/* Tab selector buttons */}
-                <div className="flex items-center gap-1.5 bg-[#0D111A] border border-[#1B2332] p-1 rounded-xl shrink-0">
+                {/* Premium pill tab selector */}
+                <div className="flex items-center gap-1 bg-[#080B12] border border-[#1B2332] p-1 rounded-2xl shrink-0 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
                     {tabsConfig.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -871,10 +928,11 @@ export default function AnalyticsHubPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                                style={isActive ? { background: `${tab.color}18`, borderColor: `${tab.color}40`, color: tab.color } : {}}
+                                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
                                     isActive
-                                        ? "bg-theme-accent text-black shadow-[0_0_12px_rgba(34,197,94,0.15)]"
-                                        : "text-theme-text-muted hover:text-white hover:bg-white/5"
+                                        ? "border shadow-lg"
+                                        : "text-[#8293B4] border-transparent hover:text-white hover:bg-white/5"
                                 }`}
                             >
                                 <Icon className="w-3.5 h-3.5" />
