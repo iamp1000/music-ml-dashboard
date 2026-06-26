@@ -396,7 +396,94 @@ export default function ListeningHistoryPage() {
                                         <span className="text-[var(--theme-accent)]">Currently under development.</span>
                                     </p>
                                 </div>
-                            ) : (
+                            ) : timelineGrouping === "Artist" || timelineGrouping === "Context" ? (
+                            <div className="flex-1 flex flex-col mt-4">
+                                {/* X-Axis Header (Continuous 7 Days) */}
+                                <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[100px] sm:ml-[140px]">
+                                    {(daysOffset || []).map((d, i) => (
+                                        <div key={i} className="flex-1 text-center text-xs text-gray-500 font-medium">{formatDayLabel(d)}</div>
+                                    ))}
+                                </div>
+                                
+                                <div className="relative flex-1 min-h-[600px] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                                    {/* Y-Axis (Group Names) & Horizontal Grid Lines */}
+                                    <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
+                                        {groups.map((groupName, i) => (
+                                            <div key={i} className="flex-1 flex items-center relative group border-t border-[var(--theme-border)]/30">
+                                                <div className="absolute left-0 w-[90px] sm:w-[130px] text-[10px] text-gray-400 font-medium text-right pr-4 truncate">
+                                                    {groupName}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Vertical Day Separators */}
+                                    <div className="absolute inset-0 ml-[100px] sm:ml-[140px] flex pointer-events-none z-0">
+                                        {(daysOffset || []).map((_, i) => (
+                                            <div key={i} className="flex-1 border-l border-[var(--theme-border)] opacity-10"></div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Sessions Data Container */}
+                                    <div className="absolute inset-0 ml-[100px] sm:ml-[140px] z-10">
+                                        {sessions.map(session => {
+                                            // Calculate left and width based on continuous 7-day timeline
+                                            const minDate = daysOffset[0].getTime();
+                                            const maxDate = daysOffset[daysOffset.length - 1].getTime() + (24 * 60 * 60 * 1000); // end of last day
+                                            const totalDuration = maxDate - minDate;
+                                            
+                                            // Make sure we cap bounds
+                                            const sessionStart = Math.max(minDate, session.startTime.getTime());
+                                            const sessionEnd = Math.min(maxDate, session.endTime.getTime() + (15 * 60 * 1000)); // Add 15 mins to make visible
+                                            
+                                            const leftPercent = ((sessionStart - minDate) / totalDuration) * 100;
+                                            const widthPercent = Math.max(0.5, ((sessionEnd - sessionStart) / totalDuration) * 100);
+                                            
+                                            // Y position based on group index
+                                            const topPercent = (session.groupIndex / groups.length) * 100;
+                                            const heightPercent = (1 / groups.length) * 100;
+                                            
+                                            const color = GENRE_COLORS[session.groupIndex % GENRE_COLORS.length];
+                                            
+                                            return (
+                                                <div 
+                                                    key={session.id}
+                                                    className="absolute rounded-md cursor-pointer transition-all hover:brightness-125 z-20 shadow-sm flex items-center justify-center"
+                                                    style={{ 
+                                                        left: `${leftPercent}%`,
+                                                        width: `${widthPercent}%`,
+                                                        top: `calc(${topPercent}% + 10px)`, // center within row
+                                                        height: `calc(${heightPercent}% - 20px)`,
+                                                        backgroundColor: color,
+                                                        opacity: hoveredSession && hoveredSession.id !== session.id ? 0.3 : 0.8
+                                                    }}
+                                                    onMouseEnter={() => setHoveredSession(session)}
+                                                    onMouseLeave={() => setHoveredSession(null)}
+                                                    onClick={() => { setEditingSession(session); setContextInput(session.tracks[0]?.context || session.tracks[0]?.ml_features?.context_tag || ""); }}
+                                                >
+                                                    {hoveredSession?.id === session.id && (
+                                                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 shadow-2xl z-50">
+                                                            <div className="flex gap-3 mb-3 border-b border-[#2D2D3A] pb-3">
+                                                                <div className="min-w-0">
+                                                                    <div className="text-white font-bold text-sm truncate leading-tight">{session.tracks[0]?.track_name || "Unknown Track"}</div>
+                                                                    <div className="text-gray-400 text-xs mt-1">{session.tracks.length} Tracks</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Group Event:</div>
+                                                                <div className="flex items-center gap-2 text-[10px] text-gray-300">
+                                                                    <span>Group: {session.groupName}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
                             <div className="flex-1 flex flex-col mt-4">
                                 {/* X-Axis Header (Days) */}
                                 <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[60px] sm:ml-[80px]">
