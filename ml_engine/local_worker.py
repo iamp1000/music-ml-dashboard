@@ -10,6 +10,11 @@ import asyncio
 import httpx
 import logging
 import torch
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import numpy as np
 # Patch numpy deprecated aliases for madmom compatibility

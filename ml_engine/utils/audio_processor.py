@@ -1,6 +1,7 @@
 import torch
 import torchaudio
 import torchaudio.transforms as T
+torchaudio.set_audio_backend("soundfile")
 
 class AudioProcessor:
     def __init__(self, sample_rate=22050, n_fft=2048, hop_length=512, n_mels=128):
