@@ -1,3 +1,4 @@
+import threading
 import numpy as np
 import madmom
 from madmom.features.beats import RNNBeatProcessor, DBNBeatTrackingProcessor
@@ -12,6 +13,7 @@ class BeatTracker:
         print("Loading madmom RNN Beat Processor...")
         self.processor = RNNBeatProcessor()
         self.tracker = DBNBeatTrackingProcessor(fps=100)
+        self.lock = threading.Lock()
 
     def analyze_audio(self, audio_file_path: str):
         """
@@ -19,12 +21,13 @@ class BeatTracker:
         Returns a dict with BPM, beat array, beat count, and rhythm regularity.
         """
         try:
-            # Generate beat activation function using RNN
-            act = self.processor(audio_file_path)
-            
-            # Extract beat timestamps using Dynamic Bayesian Network
-            beats = self.tracker(act)
-            
+            with self.lock:
+                # Generate beat activation function using RNN
+                act = self.processor(audio_file_path)
+                
+                # Extract beat timestamps using Dynamic Bayesian Network
+                beats = self.tracker(act)
+                
             if len(beats) < 2:
                 return {
                     "bpm": 0.0,

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { fetchWithRateLimit } from "@/utils/api";
 import { ArrowLeft, Loader2, ChevronDown, CheckCircle2, Star, Music, Search } from "lucide-react";
 import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
-
+import EmotionalScatterPlot from "@/components/EmotionalScatterPlot";
+import ArtistBarChart from "@/components/visualizations/ArtistBarChart";
+import ListeningActivityChart from "@/components/visualizations/ListeningActivityChart";
+import MoodPieChart from "@/components/visualizations/MoodPieChart";
 const MOOD_COLORS: Record<string, string> = {
     "High Energy": "#F97316", // Orange
     "Chill": "#3B82F6", // Blue
@@ -179,13 +182,64 @@ export default function ListeningHistoryPage() {
             daysOffset.push(d);
         }
 
+        const startDateStr = daysOffset[0].toISOString().split('T')[0];
+        const endDateStr = daysOffset[6].toISOString().split('T')[0];
+
+        // Filter history to current week
+        const weekHistory = history.filter(t => {
+            const logicalDate = new Date(new Date(t.time).getTime() - LOGICAL_DAY_START_HOUR * 60 * 60 * 1000);
+            const logicalDateStr = logicalDate.toISOString().split('T')[0];
+            return logicalDateStr >= startDateStr && logicalDateStr <= endDateStr;
+        });
+
+        const artistCounts: Record<string, number> = {};
+        const moodCounts: Record<string, number> = {};
+        const contextCounts: Record<string, number> = {};
+        const listeningData: any[] = [];
+
+        weekHistory.forEach(t => {
+            const artist = t.artist_name || "Unknown Artist";
+            artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+            
+            const mood = t.ai_mood || t.mood_category || "Unknown Mood";
+            moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+            
+            const ctx = t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context";
+            contextCounts[ctx] = (contextCounts[ctx] || 0) + 1;
+            
+            const logicalDate = new Date(new Date(t.time).getTime() - LOGICAL_DAY_START_HOUR * 60 * 60 * 1000);
+            const logicalDateStr = logicalDate.toISOString().split('T')[0];
+            const dayIndex = daysOffset.findIndex(d => d.toISOString().split('T')[0] === logicalDateStr);
+            
+            if (dayIndex !== -1) {
+                const dateObj = new Date(t.time);
+                const timeOfDay = dateObj.getHours() + (dateObj.getMinutes() / 60);
+                listeningData.push({
+                    dayIndex,
+                    timeOfDay,
+                    size: 60,
+                    trackName: t.track_name || t.name,
+                    artistName: artist,
+                    originalTime: t.time
+                });
+            }
+        });
+
+        const artistData = Object.entries(artistCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 15);
+        const moodData = Object.entries(moodCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+        const contextData = Object.entries(contextCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 10);
+
         return {
             groups: topGroups,
             sessions: sessionsByGroup,
             minLogicalHour,
             maxLogicalHour,
             daysOffset,
-            LOGICAL_DAY_START_HOUR
+            LOGICAL_DAY_START_HOUR,
+            artistData,
+            moodData,
+            contextData,
+            listeningData
         };
     }, [history, timelineGrouping, weekOffset]);
 
@@ -208,7 +262,7 @@ export default function ListeningHistoryPage() {
         return Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     }, [history]);
 
-    const { groups, sessions, minLogicalHour, maxLogicalHour, daysOffset, LOGICAL_DAY_START_HOUR } = processedTimelineData;
+    const { groups, sessions, minLogicalHour, maxLogicalHour, daysOffset, LOGICAL_DAY_START_HOUR, artistData, moodData, contextData, listeningData } = processedTimelineData;
     const timeSpanHours = (maxLogicalHour || 24) - (minLogicalHour || 0);
 
     const getLogicalTime = (time: Date) => {
@@ -407,208 +461,22 @@ export default function ListeningHistoryPage() {
                                 No listening history found for this period.
                             </div>
                         ) : timelineGrouping === "Mood" ? (
-                                <div className="flex-1 flex flex-col justify-center items-center bg-[#1C1C24] rounded-3xl border-2 border-dashed border-[#2D2D3A] m-4 p-8 relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-[var(--theme-accent)]/5 to-transparent pointer-events-none"></div>
-                                    <div className="w-16 h-16 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center mb-6 shadow-lg shadow-[var(--theme-accent)]/10">
-                                        <div className="w-8 h-8 rounded-full bg-[var(--theme-accent)]/20 animate-pulse"></div>
-                                    </div>
-                                    <h3 className="text-2xl font-bold tracking-tight text-white mb-4">TBD: 3D Mood Analytics</h3>
-                                    <p className="text-sm text-gray-400 text-center max-w-lg leading-relaxed">
-                                        This section will feature an interactive 3D graph showing how your listening activity takes a dip when you listen to sad songs, goes up with heavy metal, and stays positive with happy songs. 
-                                        <br/><br/>
-                                        <span className="text-[var(--theme-accent)]">Currently under development.</span>
-                                    </p>
+                                <div className="flex-1 flex flex-col justify-center items-center bg-[#1C1C24] rounded-3xl border border-[#2D2D3A] p-4 relative overflow-hidden h-[500px]">
+                                    <EmotionalScatterPlot />
                                 </div>
-                            ) : timelineGrouping === "Artist" || timelineGrouping === "Context" ? (
-                            <div className="flex-1 flex flex-col mt-4">
-                                {/* X-Axis Header (Continuous 7 Days) */}
-                                <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[100px] sm:ml-[140px]">
-                                    {(daysOffset || []).map((d, i) => (
-                                        <div key={i} className="flex-1 text-center text-xs text-gray-500 font-medium">{formatDayLabel(d)}</div>
-                                    ))}
+                            ) : timelineGrouping === "Artist" ? (
+                                <div className="flex-1 flex flex-col mt-4">
+                                    <ArtistBarChart data={artistData} />
                                 </div>
-                                
-                                <div className="relative flex-1 min-h-[600px] overflow-y-auto overflow-x-hidden scrollbar-hide">
-                                    {/* Y-Axis (Group Names) & Horizontal Grid Lines */}
-                                    <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
-                                        {groups.map((groupName, i) => (
-                                            <div key={i} className="flex-1 flex items-center relative group border-t border-[var(--theme-border)]/30">
-                                                <div className="absolute left-0 w-[90px] sm:w-[130px] text-[10px] text-gray-400 font-medium text-right pr-4 truncate">
-                                                    {groupName}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    
-                                    {/* Vertical Day Separators */}
-                                    <div className="absolute inset-0 ml-[100px] sm:ml-[140px] flex pointer-events-none z-0">
-                                        {(daysOffset || []).map((_, i) => (
-                                            <div key={i} className="flex-1 border-l border-[var(--theme-border)] opacity-10"></div>
-                                        ))}
-                                    </div>
-                                    
-                                    {/* Sessions Data Container */}
-                                    <div className="absolute inset-0 ml-[100px] sm:ml-[140px] z-10">
-                                        {sessions.map(session => {
-                                            const safeDaysOffset = daysOffset || [];
-                                            if (safeDaysOffset.length === 0) return null;
-                                            
-                                            // Calculate left and width based on continuous 7-day timeline
-                                            const minDate = safeDaysOffset[0].getTime();
-                                            const maxDate = safeDaysOffset[safeDaysOffset.length - 1].getTime() + (24 * 60 * 60 * 1000); // end of last day
-                                            
-                                            // Check bounds
-                                            const isOverlapping = session.endTime.getTime() >= minDate && session.startTime.getTime() <= maxDate;
-                                            if (!isOverlapping) return null;
-                                            
-                                            const totalDuration = maxDate - minDate;
-                                            
-                                            // Make sure we cap bounds
-                                            const sessionStart = Math.max(minDate, session.startTime.getTime());
-                                            const sessionEnd = Math.min(maxDate, session.endTime.getTime() + (15 * 60 * 1000)); // Add 15 mins to make visible
-                                            
-                                            const leftPercent = ((sessionStart - minDate) / totalDuration) * 100;
-                                            const widthPercent = Math.max(0.5, ((sessionEnd - sessionStart) / totalDuration) * 100);
-                                            
-                                            // Y position based on group index
-                                            const topPercent = (session.groupIndex / groups.length) * 100;
-                                            const heightPercent = (1 / groups.length) * 100;
-                                            
-                                            const color = GENRE_COLORS[session.groupIndex % GENRE_COLORS.length];
-                                            
-                                            return (
-                                                <div 
-                                                    key={session.id}
-                                                    className="absolute rounded-md cursor-pointer transition-all hover:brightness-125 z-20 shadow-sm flex items-center justify-center"
-                                                    style={{ 
-                                                        left: `${leftPercent}%`,
-                                                        width: `${widthPercent}%`,
-                                                        top: `calc(${topPercent}% + 10px)`, // center within row
-                                                        height: `calc(${heightPercent}% - 20px)`,
-                                                        backgroundColor: color,
-                                                        opacity: hoveredSession && hoveredSession.id !== session.id ? 0.3 : 0.8
-                                                    }}
-                                                    onMouseEnter={() => setHoveredSession(session)}
-                                                    onMouseLeave={() => setHoveredSession(null)}
-                                                    onClick={() => { setEditingSession(session); setContextInput(session.tracks[0]?.context || session.tracks[0]?.ml_features?.context_tag || ""); }}
-                                                >
-                                                    {hoveredSession?.id === session.id && (
-                                                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 shadow-2xl z-50">
-                                                            <div className="flex gap-3 mb-3 border-b border-[#2D2D3A] pb-3">
-                                                                <div className="min-w-0">
-                                                                    <div className="text-white font-bold text-sm truncate leading-tight">{session.tracks[0]?.track_name || "Unknown Track"}</div>
-                                                                    <div className="text-gray-400 text-xs mt-1">{session.tracks.length} Tracks</div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Group Event:</div>
-                                                                <div className="flex items-center gap-2 text-[10px] text-gray-300">
-                                                                    <span>Group: {session.groupName}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                            ) : timelineGrouping === "Context" ? (
+                                <div className="flex-1 flex flex-col mt-4">
+                                    <ArtistBarChart data={contextData} />
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="flex-1 flex flex-col mt-4">
-                                {/* X-Axis Header (Days) */}
-                                <div className="flex border-b border-[var(--theme-border)] pb-2 mb-4 ml-[60px] sm:ml-[80px]">
-                                    {(daysOffset || []).map((d, i) => (
-                                        <div key={i} className="flex-1 text-center text-xs text-gray-500 font-medium">{formatDayLabel(d)}</div>
-                                    ))}
+                            ) : timelineGrouping === "Listening Activity" ? (
+                                <div className="flex-1 flex flex-col mt-4">
+                                    <ListeningActivityChart data={listeningData} daysOffset={daysOffset} />
                                 </div>
-
-                                {/* Calendar Grid Body */}
-                                <div className="relative flex-1 min-h-[600px] overflow-y-auto overflow-x-hidden scrollbar-hide">
-                                    
-                                    {/* Y-Axis (Time Labels) & Horizontal Grid Lines */}
-                                    <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
-                                        {yAxisLabels.map((label, i) => (
-                                            <div key={i} className="flex-1 flex items-start relative group">
-                                                <div className="absolute inset-x-0 top-0 border-t border-[var(--theme-border)] opacity-30"></div>
-                                                <div className="absolute -top-2.5 left-0 w-[50px] sm:w-[70px] text-[10px] text-gray-400 font-medium text-right pr-2">
-                                                    {label.display}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Vertical Column Separators */}
-                                    <div className="absolute inset-0 ml-[60px] sm:ml-[80px] flex pointer-events-none z-0">
-                                        {(daysOffset || []).map((_, i) => (
-                                            <div key={i} className="flex-1 border-l border-[var(--theme-border)] opacity-10"></div>
-                                        ))}
-                                    </div>
-
-                                    {/* Sessions Data Container */}
-                                    <div className="absolute inset-0 ml-[60px] sm:ml-[80px] flex z-10">
-                                        {(daysOffset || []).map((_, colIndex) => (
-                                            <div key={colIndex} className="flex-1 relative h-full border-r border-transparent">
-                                                {sessions.map(session => {
-                                                    const col = getSessionColumn(session.startTime);
-                                                    if (col !== colIndex) return null;
-                                                    
-                                                    const top = getTopPercent(session.startTime);
-                                                    const height = getHeightPercent(session.startTime, session.endTime);
-                                                    const color = timelineGrouping === "Mood" ? getMoodColor(session.mood) : GENRE_COLORS[session.groupIndex % GENRE_COLORS.length];
-
-                                                    return (
-                                                        <div 
-                                                            key={session.id}
-                                                            className="absolute left-1 right-1 rounded-md cursor-pointer transition-all hover:brightness-125 z-20 shadow-sm"
-                                                            style={{ 
-                                                                top: `${top}%`,
-                                                                height: `${height}%`, 
-                                                                backgroundColor: color,
-                                                                opacity: hoveredSession && hoveredSession.id !== session.id ? 0.3 : 0.8
-                                                            }}
-                                                            onMouseEnter={() => setHoveredSession(session)}
-                                                            onMouseLeave={() => setHoveredSession(null)}
-                                                            onClick={() => { setEditingSession(session); setContextInput(session.tracks[0]?.context || session.tracks[0]?.ml_features?.context_tag || ""); }}
-                                                        >
-                                                            {/* Hover Tooltip perfectly matching image */}
-                                                            {hoveredSession?.id === session.id && (
-                                                                <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 w-64 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 shadow-2xl z-50">
-                                                                    <div className="flex gap-3 mb-3 border-b border-[#2D2D3A] pb-3">
-                                                                        <div className="w-12 h-12 bg-[#101014] rounded shadow-inner shrink-0 flex items-center justify-center">
-                                                                            <span className="text-[8px] text-gray-500 uppercase">Cover</span>
-                                                                        </div>
-                                                                        <div className="min-w-0">
-                                                                            <div className="text-white font-bold text-sm truncate leading-tight">{session.tracks[0]?.track_name || "Unknown Track"}</div>
-                                                                            <div className="text-gray-400 text-xs mt-1">{session.tracks.length} Tracks</div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Group Event:</div>
-                                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
-                                                                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#22C55E' }}></div>
-                                                                            <span>{session.mood} Listen</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
-                                                                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#F97316' }}></div>
-                                                                            <span>AI Analysis Fired</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2 text-[10px] text-gray-300">
-                                                                            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#A855F7' }}></div>
-                                                                            <span>Group: {session.groupName}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            )}
+                            ) : null}
                         
 
                     </div>

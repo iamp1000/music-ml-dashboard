@@ -38,7 +38,11 @@ class AudioFetcher:
         logging.info(f"Downloading audio for: {self.query}")
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.extract_info(f"ytsearch1:{self.query}", download=True)
+                try:
+                    ydl.extract_info(f"ytsearch1:{self.query}", download=True)
+                except Exception as e:
+                    logging.warning(f"YouTube extraction failed for {self.query} ({e}). Falling back to SoundCloud...")
+                    ydl.extract_info(f"scsearch1:{self.query}", download=True)
                 
             # yt-dlp might have added an extension, make sure we return the actual file path
             # The outtmpl above should result in self.temp_file
