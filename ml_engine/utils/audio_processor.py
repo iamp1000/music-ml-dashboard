@@ -1,7 +1,8 @@
 import torch
 import torchaudio
 import torchaudio.transforms as T
-torchaudio.set_audio_backend("soundfile")
+import librosa
+import numpy as np
 
 class AudioProcessor:
     def __init__(self, sample_rate=22050, n_fft=2048, hop_length=512, n_mels=128):
@@ -20,7 +21,10 @@ class AudioProcessor:
         Loads an audio file and converts it to a log-scaled Mel-spectrogram.
         Returns a tensor of shape [1, n_mels, time_steps]
         """
-        waveform, sr = torchaudio.load(file_path)
+        y, sr = librosa.load(file_path, sr=None, mono=False)
+        if y.ndim == 1:
+            y = y.reshape(1, -1)
+        waveform = torch.from_numpy(y)
         
         # Resample if necessary
         if sr != self.sample_rate:

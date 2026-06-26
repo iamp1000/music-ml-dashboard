@@ -21,6 +21,8 @@ class AudioFetcher:
         ydl_opts = {
             'format': 'bestaudio/best',
             'ffmpeg_location': r'C:\Users\pranav\AppData\Local\Microsoft\WinGet\Links',
+            'external_downloader': 'aria2c',
+            'external_downloader_args': ['-j', '16', '-s', '16', '-x', '16', '-k', '1M'],
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',

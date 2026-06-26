@@ -466,15 +466,15 @@ export default function ListeningHistoryPage() {
                                 </div>
                             ) : timelineGrouping === "Artist" ? (
                                 <div className="flex-1 flex flex-col mt-4">
-                                    <ArtistBarChart data={artistData} />
+                                    <ArtistBarChart data={artistData || []} />
                                 </div>
                             ) : timelineGrouping === "Context" ? (
                                 <div className="flex-1 flex flex-col mt-4">
-                                    <ArtistBarChart data={contextData} />
+                                    <ArtistBarChart data={contextData || []} />
                                 </div>
                             ) : timelineGrouping === "Listening Activity" ? (
                                 <div className="flex-1 flex flex-col mt-4">
-                                    <ListeningActivityChart data={listeningData} daysOffset={daysOffset} />
+                                    <ListeningActivityChart data={listeningData || []} daysOffset={daysOffset || []} />
                                 </div>
                             ) : null}
                         

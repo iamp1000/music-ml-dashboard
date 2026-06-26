@@ -341,8 +341,11 @@ export default function DashboardOverviewPage() {
     // Format top 5 genres for Stacked Bar Legend
     const top5GenresList = sortedGenres.slice(0, 5).map((g: any) => g[0]);
 
-    // Sparkline random data
-    const sparklineData = history.slice(-10).map((h, i) => ({ val: Math.random() * 100, i }));
+    // Sparkline real data based on track energy and duration
+    const sparklineData = history.slice(-10).map((h, i) => ({ 
+        val: h.energy !== undefined ? h.energy * 100 : (h.duration_ms ? Math.min(100, (h.duration_ms / 300000) * 100) : 50),
+        i 
+    }));
 
     if (loading) {
         return (
@@ -368,7 +371,17 @@ export default function DashboardOverviewPage() {
         );
     }
 
-    const availableYears = ["1 Year", "2024", "2023", "All Time"]; // Mock years
+    const availableYears = useMemo(() => {
+        const years = new Set<string>();
+        history.forEach(h => {
+            if (h.time) {
+                const dateStr = h.time.substring(0,4);
+                if (!isNaN(Number(dateStr))) years.add(dateStr);
+            }
+        });
+        const sorted = Array.from(years).sort((a,b) => Number(b) - Number(a));
+        return ["1 Year", ...sorted, "All Time"];
+    }, [history]);
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 bg-[var(--theme-bg)] min-h-screen text-white scrollbar-hide">
