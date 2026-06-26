@@ -427,9 +427,12 @@ export default function ListeningHistoryPage() {
                                     {/* Sessions Data Container */}
                                     <div className="absolute inset-0 ml-[100px] sm:ml-[140px] z-10">
                                         {sessions.map(session => {
+                                            const safeDaysOffset = daysOffset || [];
+                                            if (safeDaysOffset.length === 0) return null;
+                                            
                                             // Calculate left and width based on continuous 7-day timeline
-                                            const minDate = daysOffset[0].getTime();
-                                            const maxDate = daysOffset[daysOffset.length - 1].getTime() + (24 * 60 * 60 * 1000); // end of last day
+                                            const minDate = safeDaysOffset[0].getTime();
+                                            const maxDate = safeDaysOffset[safeDaysOffset.length - 1].getTime() + (24 * 60 * 60 * 1000); // end of last day
                                             const totalDuration = maxDate - minDate;
                                             
                                             // Make sure we cap bounds
