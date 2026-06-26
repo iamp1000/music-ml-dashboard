@@ -376,8 +376,9 @@ export default function ListeningHistoryPage() {
                                     {/* Y-Axis (Time Labels) & Horizontal Grid Lines */}
                                     <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
                                         {yAxisLabels.map((label, i) => (
-                                            <div key={i} className="flex-1 flex items-start border-t border-[var(--theme-border)] opacity-30 relative group">
-                                                <div className="absolute -top-2.5 left-0 w-[50px] sm:w-[70px] text-[10px] text-gray-500 text-right pr-2">
+                                            <div key={i} className="flex-1 flex items-start relative group">
+                                                <div className="absolute inset-x-0 top-0 border-t border-[var(--theme-border)] opacity-30"></div>
+                                                <div className="absolute -top-2.5 left-0 w-[50px] sm:w-[70px] text-[10px] text-gray-400 font-medium text-right pr-2">
                                                     {label.display}
                                                 </div>
                                             </div>
