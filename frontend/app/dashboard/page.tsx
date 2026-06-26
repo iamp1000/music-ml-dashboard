@@ -117,7 +117,7 @@ export default function DashboardOverviewPage() {
                 // Fetch Gemini Status
                 const fetchGeminiStatus = async () => {
                     try {
-                        const res = await fetch("https://music-ml-server.onrender.com/api/telemetry/gemini_status");
+                        const res = await fetch("https://music-ml-dashboard.onrender.com/api/telemetry/gemini_status");
                         const data = await res.json();
                         setGeminiFailing(data.is_failing || false);
                     } catch (e) {
