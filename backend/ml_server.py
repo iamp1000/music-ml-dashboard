@@ -10,6 +10,14 @@ load_dotenv()
 
 app = FastAPI(title="Google Cloud ML Server - Affective Music")
 
+@app.get("/")
+async def root():
+    return {"status": "online", "service": "music-ml-server"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 class AnalyzeHistoryRequest(BaseModel):
     history: list
 
