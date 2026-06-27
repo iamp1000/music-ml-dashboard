@@ -383,11 +383,10 @@ export default function ListeningHistoryPage() {
                     
                     {/* Main Chart Container - Premium */}
                     <div
-                        className="relative rounded-3xl lg:col-span-2 xl:col-span-3 overflow-hidden flex flex-col border"
-                        style={{ background: "#080B12", borderColor: "#1B2332" }}
+                        className="relative rounded-3xl lg:col-span-2 xl:col-span-3 overflow-hidden flex flex-col border bg-[var(--theme-panel)] border-[var(--theme-border)]"
                     >
                         {/* Gradient top-border accent */}
-                        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #A855F7, #D1F26D, #3B82F6)" }} />
+                        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "var(--theme-gradient, linear-gradient(90deg, var(--theme-accent), #D1F26D, #3B82F6))" }} />
 
                         <div className="p-6">
                             {/* Controls Row */}
@@ -395,26 +394,24 @@ export default function ListeningHistoryPage() {
                                 {/* Group By pill */}
                                 <div className="relative">
                                     <div
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-full border cursor-pointer hover:border-[#D1F26D]/40 transition-all duration-200 select-none"
-                                        style={{ background: "#0D111A", borderColor: "#1B2332" }}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-[var(--theme-border)] bg-[var(--theme-bg)] cursor-pointer hover:border-[var(--theme-accent)]/40 transition-all duration-200 select-none"
                                         onClick={() => setTimelineGroupingOpen(!timelineGroupingOpen)}
                                     >
-                                        <span className="text-xs font-bold text-white tracking-wide">Group By: <span className="text-[#D1F26D]">{timelineGrouping}</span></span>
-                                        <ChevronDown className={`w-3.5 h-3.5 text-[#8293B4] transition-transform duration-200 ${timelineGroupingOpen ? 'rotate-180' : ''}`} />
+                                        <span className="text-xs font-bold text-white tracking-wide">Group By: <span className="text-[var(--theme-accent)]">{timelineGrouping}</span></span>
+                                        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${timelineGroupingOpen ? 'rotate-180' : ''}`} />
                                     </div>
                                     {timelineGroupingOpen && (
-                                        <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl border overflow-hidden z-50 shadow-[0_8px_32px_rgba(0,0,0,0.6)]" style={{ background: "#0A0F1A", borderColor: "#1B2332" }}>
+                                        <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-panel)] overflow-hidden z-50 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
                                             {['Artist', 'Mood', 'Listening Activity', 'Context'].map((option) => (
                                                 <div
                                                     key={option}
-                                                    className="flex items-center gap-3 px-4 py-3 text-xs font-bold cursor-pointer hover:bg-[#D1F26D]/5 transition-colors"
-                                                    style={{ color: timelineGrouping === option ? '#D1F26D' : '#8293B4' }}
+                                                    className={`flex items-center gap-3 px-4 py-3 text-xs font-bold cursor-pointer hover:bg-[var(--theme-accent)]/10 transition-colors ${timelineGrouping === option ? 'text-[var(--theme-accent)]' : 'text-gray-400'}`}
                                                     onClick={() => {
                                                         setTimelineGrouping(option);
                                                         setTimelineGroupingOpen(false);
                                                     }}
                                                 >
-                                                    {timelineGrouping === option && <div className="w-1.5 h-1.5 rounded-full bg-[#D1F26D] shrink-0" />}
+                                                    {timelineGrouping === option && <div className="w-1.5 h-1.5 rounded-full bg-[var(--theme-accent)] shrink-0" />}
                                                     Group by {option}
                                                 </div>
                                             ))}
@@ -423,11 +420,10 @@ export default function ListeningHistoryPage() {
                                 </div>
 
                                 {/* Week navigation - pill style like reference image */}
-                                <div className="flex items-center rounded-full border overflow-hidden" style={{ background: "#0D111A", borderColor: "#1B2332" }}>
+                                <div className="flex items-center rounded-full border border-[var(--theme-border)] bg-[var(--theme-bg)] overflow-hidden">
                                     <button
                                         onClick={() => setWeekOffset(w => w + 1)}
-                                        className="px-3 py-2 text-[#8293B4] hover:text-white hover:bg-[#D1F26D]/5 transition-all border-r"
-                                        style={{ borderColor: "#1B2332" }}
+                                        className="px-3 py-2 text-gray-400 hover:text-white hover:bg-[var(--theme-accent)]/10 transition-all border-r border-[var(--theme-border)]"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                                     </button>
@@ -437,8 +433,7 @@ export default function ListeningHistoryPage() {
                                     <button
                                         onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
                                         disabled={weekOffset === 0}
-                                        className="px-3 py-2 text-[#8293B4] hover:text-white hover:bg-[#D1F26D]/5 transition-all border-l disabled:opacity-25 disabled:cursor-not-allowed"
-                                        style={{ borderColor: "#1B2332" }}
+                                        className="px-3 py-2 text-gray-400 hover:text-white hover:bg-[var(--theme-accent)]/10 transition-all border-l border-[var(--theme-border)] disabled:opacity-25 disabled:cursor-not-allowed"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                                     </button>
@@ -469,11 +464,11 @@ export default function ListeningHistoryPage() {
                         {/* Chart area */}
                         {loading ? (
                             <div className="flex-1 flex flex-col justify-center items-center gap-4 py-16">
-                                <div className="w-10 h-10 rounded-full border-2 border-[#D1F26D]/20 border-t-[#D1F26D] animate-spin" />
-                                <p className="text-[#8293B4] text-xs font-bold uppercase tracking-widest">Loading history...</p>
+                                <div className="w-10 h-10 rounded-full border-2 border-[var(--theme-accent)]/20 border-t-[var(--theme-accent)] animate-spin" />
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Loading history...</p>
                             </div>
                         ) : groups.length === 0 ? (
-                            <div className="flex-1 flex justify-center items-center text-[#8293B4] text-sm pb-16">
+                            <div className="flex-1 flex justify-center items-center text-gray-400 text-sm pb-16">
                                 No listening history found for this period.
                             </div>
                         ) : timelineGrouping === "Mood" ? (
@@ -523,14 +518,14 @@ export default function ListeningHistoryPage() {
                                 {topArtistsList.map(([artist, count], i) => (
                                     <div key={i} className="flex justify-between items-center">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-[#1C1C24] border border-[#2D2D3A] rounded-full flex items-center justify-center">
-                                                <Star className="w-3 h-3 text-white" />
+                                            <div className="w-8 h-8 bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-full flex items-center justify-center">
+                                                <Star className="w-3 h-3 text-[var(--theme-accent)]" />
                                             </div>
                                             <div>
                                                 <div className="text-xs text-white font-bold flex items-center gap-1">
-                                                    {artist} <CheckCircle2 className="w-3 h-3 text-[#22C55E]" />
+                                                    {artist} <CheckCircle2 className="w-3 h-3 text-[var(--theme-accent)]" />
                                                 </div>
-                                                <div className="text-[10px] text-gray-500">Listening</div>
+                                                <div className="text-[10px] text-gray-400">Listening</div>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -554,7 +549,7 @@ export default function ListeningHistoryPage() {
                         </div>
                         <div className="space-y-4">
                             <div className="flex gap-3 items-start">
-                                <div className="w-6 h-6 rounded-md bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center shrink-0 mt-0.5">
+                                <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
                                     <Music className="w-3 h-3 text-gray-400" />
                                 </div>
                                 <div>
@@ -563,7 +558,7 @@ export default function ListeningHistoryPage() {
                                 </div>
                             </div>
                             <div className="flex gap-3 items-start">
-                                <div className="w-6 h-6 rounded-md bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center shrink-0 mt-0.5">
+                                <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
                                     <Music className="w-3 h-3 text-gray-400" />
                                 </div>
                                 <div>
@@ -572,7 +567,7 @@ export default function ListeningHistoryPage() {
                                 </div>
                             </div>
                             <div className="flex gap-3 items-start">
-                                <div className="w-6 h-6 rounded-md bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center shrink-0 mt-0.5">
+                                <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
                                     <Music className="w-3 h-3 text-gray-400" />
                                 </div>
                                 <div>
@@ -591,20 +586,20 @@ export default function ListeningHistoryPage() {
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center">
-                                    <Music className="w-3 h-3 text-[#22C55E]" />
+                                <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
+                                    <Music className="w-3 h-3 text-[var(--theme-accent)]" />
                                 </div>
                                 <span className="text-xs text-white">Shared Playlist</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
                                     <Music className="w-3 h-3 text-gray-400" />
                                 </div>
                                 <span className="text-xs text-white">Shared Playlist</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-[#1C1C24] border border-[#2D2D3A] flex items-center justify-center">
-                                    <Music className="w-3 h-3 text-[#A855F7]" />
+                                <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
+                                    <Music className="w-3 h-3 text-[var(--theme-accent)]" />
                                 </div>
                                 <span className="text-xs text-white">Shared Playlist</span>
                             </div>
@@ -618,15 +613,15 @@ export default function ListeningHistoryPage() {
                             <span className="text-gray-500 text-xs">...</span>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 flex flex-col justify-between">
+                            <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl p-3 flex flex-col justify-between">
                                 <div className="text-[10px] text-gray-400 leading-tight">Total Group<br/>Listening Time</div>
                                 <div className="text-lg font-bold text-white mt-2">3:37m</div>
                             </div>
-                            <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 flex flex-col justify-between">
+                            <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl p-3 flex flex-col justify-between">
                                 <div className="text-[10px] text-gray-400 leading-tight">Unique<br/>Tracks</div>
                                 <div className="text-lg font-bold text-white mt-2">383</div>
                             </div>
-                            <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-xl p-3 flex flex-col justify-between">
+                            <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl p-3 flex flex-col justify-between">
                                 <div className="text-[10px] text-gray-400 leading-tight">Favorite<br/>Genre</div>
                                 <div className="text-lg font-bold text-white mt-2">34+</div>
                             </div>
@@ -638,7 +633,7 @@ export default function ListeningHistoryPage() {
             
             {editingSession && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-                    <div className="bg-[#1C1C24] border border-[#2D2D3A] rounded-2xl p-6 w-96 shadow-2xl relative">
+                    <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-2xl p-6 w-96 shadow-2xl relative">
                         <h3 className="text-xl font-bold text-white mb-4">Set Session Context</h3>
                         <p className="text-xs text-gray-400 mb-4">Apply a context tag to all {editingSession.tracks.length} tracks in this listening session. This will trigger a re-analysis.</p>
                         
@@ -650,14 +645,14 @@ export default function ListeningHistoryPage() {
                                     placeholder="e.g. Gym, Studying, Driving"
                                     value={contextInput}
                                     onChange={(e) => setContextInput(e.target.value)}
-                                    className="w-full bg-[#101014] border border-[#2D2D3A] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-accent)] transition-colors"
+                                    className="w-full bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-accent)] transition-colors"
                                     autoFocus
                                     onKeyDown={e => e.key === 'Enter' && handleUpdateContext()}
                                 />
                             </div>
                             <div className="flex gap-2 flex-wrap">
                                 {["Gym", "Studying", "Driving", "Work", "Party", "Sleep"].map(tag => (
-                                    <span key={tag} onClick={() => setContextInput(tag)} className="text-xs bg-[#2D2D3A]/50 hover:bg-[#2D2D3A] text-gray-300 px-3 py-1 rounded-full cursor-pointer transition-colors border border-[#2D2D3A]">
+                                    <span key={tag} onClick={() => setContextInput(tag)} className="text-xs bg-[var(--theme-bg)] hover:bg-[var(--theme-bg)]/80 text-gray-300 px-3 py-1 rounded-full cursor-pointer transition-colors border border-[var(--theme-border)]">
                                         {tag}
                                     </span>
                                 ))}

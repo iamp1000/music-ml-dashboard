@@ -35,8 +35,8 @@ export default function SettingsPage() {
             </div>
 
             {/* Theme & Aesthetics Settings */}
-            <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl overflow-hidden mt-6">
-                <div className="p-6 border-b border-[#1B2332]/50">
+            <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-2xl overflow-hidden mt-6">
+                <div className="p-6 border-b border-[var(--theme-border)]">
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                         <Palette className="w-5 h-5 text-theme-accent" />
                         Theme & Aesthetics
@@ -50,7 +50,7 @@ export default function SettingsPage() {
                     <button 
                         onClick={() => setTheme('theme-olive')}
                         className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all duration-300 ${
-                            theme === 'theme-olive' ? "bg-theme-bg/50 border-theme-accent shadow-[0_0_15px_rgba(34,197,94,0.15)]" : "border-theme-border/50 hover:bg-theme-bg/50"
+                            theme === 'theme-olive' ? "bg-[var(--theme-bg)]/50 border-[var(--theme-accent)] shadow-[0_0_15px_rgba(34,197,94,0.15)]" : "border-[var(--theme-border)]/50 hover:bg-[var(--theme-bg)]/50"
                         }`}
                     >
                         <div className="w-8 h-8 rounded-full bg-[#1a201b] border-2 border-[#86A789] shrink-0"></div>
@@ -63,7 +63,7 @@ export default function SettingsPage() {
                     <button 
                         onClick={() => setTheme('theme-cyan')}
                         className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all duration-300 ${
-                            theme === 'theme-cyan' ? "bg-theme-bg/50 border-theme-accent shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-theme-border/50 hover:bg-theme-bg/50"
+                            theme === 'theme-cyan' ? "bg-[var(--theme-bg)]/50 border-[var(--theme-accent)] shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-[var(--theme-border)]/50 hover:bg-[var(--theme-bg)]/50"
                         }`}
                     >
                         <div className="w-8 h-8 rounded-full bg-[#0f172a] border-2 border-[#06b6d4] shrink-0"></div>
@@ -77,7 +77,7 @@ export default function SettingsPage() {
                         <div 
                             onClick={() => setTheme('theme-glass')}
                             className={`w-full flex flex-col gap-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer ${
-                                theme === 'theme-glass' ? "bg-theme-bg/50 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "border-theme-border/50 hover:bg-theme-bg/50"
+                                theme === 'theme-glass' ? "bg-[var(--theme-bg)]/50 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "border-[var(--theme-border)]/50 hover:bg-[var(--theme-bg)]/50"
                             }`}
                         >
                             <div className="flex items-center gap-4 w-full">
@@ -92,7 +92,7 @@ export default function SettingsPage() {
                             </div>
 
                             {theme === 'theme-glass' && (
-                                <div className="w-full space-y-3 pt-3 border-t border-theme-border/50" onClick={(e) => e.stopPropagation()}>
+                                <div className="w-full space-y-3 pt-3 border-t border-[var(--theme-border)]/50" onClick={(e) => e.stopPropagation()}>
                                     <p className="text-[10px] text-theme-text-muted text-left">Custom Gradient Colors (2-3)</p>
                                     <div className="flex flex-col gap-2">
                                         {gradientColors.map((color, idx) => (
