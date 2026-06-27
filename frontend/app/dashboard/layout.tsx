@@ -74,28 +74,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div 
-            className={`${theme} min-h-screen bg-[var(--theme-bg)] text-[var(--theme-text)] transition-colors duration-500 font-sans flex overflow-hidden`}
+            className={`${theme} min-h-screen bg-[var(--theme-bg)] text-[var(--theme-text)] transition-colors duration-500 font-sans flex overflow-hidden relative`}
             style={glassStyle}
         >
+            {/* OS Background Elements */}
+            <div className="os-background" />
+            <div className="os-noise" />
             
             {/* ═══ Sidebar ═══ */}
-            <aside className="w-[220px] border-r border-[var(--theme-border)] bg-[var(--theme-panel)] flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
+            <aside className="group w-[90px] hover:w-[260px] border-r border-[var(--theme-border)] bg-[var(--theme-panel)]/80 backdrop-blur-xl flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0 transition-all duration-400 ease-out z-50">
                 
                 {/* Gradient accent line at top */}
 
 
                 {/* Branding */}
-                <div className="px-5 pt-6 pb-4">
+                <div className="px-5 pt-6 pb-4 overflow-hidden whitespace-nowrap">
                     <div className="flex items-center gap-3">
                         {/* Equalizer bars logo */}
-                        <div className="flex items-end gap-[3px] h-7">
+                        <div className="flex items-end gap-[3px] h-7 shrink-0">
                             <span className="w-[3px] rounded-full h-3" style={{ background: "#8B5CF6" }} />
                             <span className="w-[3px] rounded-full h-5" style={{ background: "#3B82F6" }} />
                             <span className="w-[3px] rounded-full h-7 animate-pulse" style={{ background: "#22C55E" }} />
                             <span className="w-[3px] rounded-full h-4" style={{ background: "#EAB308" }} />
                             <span className="w-[3px] rounded-full h-2" style={{ background: "#F97316" }} />
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <span className="text-[15px] font-black tracking-wider text-white leading-none">SonicLens</span>
                             <span className="text-[9px] text-[var(--theme-text-muted)] mt-1 font-semibold uppercase tracking-[0.15em]">for Spotify</span>
                         </div>
@@ -103,8 +106,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
 
                 {/* Section label */}
-                <div className="px-5 pt-4 pb-2">
-                    <span className="text-[9px] font-bold text-[var(--theme-text-muted)] uppercase tracking-[0.2em]">Menu</span>
+                <div className="px-5 pt-4 pb-2 overflow-hidden whitespace-nowrap">
+                    <span className="text-[9px] font-bold text-[var(--theme-text-muted)] uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity duration-300">Menu</span>
                 </div>
 
                 {/* Navigation */}
@@ -127,19 +130,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 )}
                                 
                                 {/* Icon container */}
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isActive ? "pl-2" : ""}`}>
-                                    <item.icon className="w-[18px] h-[18px] text-[#8293B4] group-hover:text-white transition-colors" />
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isActive ? "bg-white/10" : "bg-transparent group-hover:bg-white/5"}`}>
+                                    <item.icon className={`w-5 h-5 ${isActive ? "text-white" : "text-[#8293B4] group-hover:text-white"} transition-colors`} />
                                 </div>
                                 
-                                <span className={`text-[13px] tracking-wide ${isActive ? "text-white" : ""}`}>{item.label}</span>
+                                <span className={`text-[13px] tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isActive ? "text-white" : ""}`}>{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
                 {/* Sidebar Player */}
-                <div className="p-3 border-t border-[var(--theme-border)]">
-                    <LiveSyncPlayer />
+                <div className="p-3 border-t border-[var(--theme-border)] overflow-hidden">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap min-w-[230px]">
+                        <LiveSyncPlayer />
+                    </div>
                 </div>
             </aside>
 

@@ -1,3 +1,5 @@
+@import url('./ADVANCED_CSS_EFFECTS.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,16 +11,16 @@
    ═══════════════════════════════════════════════════════ */
 
 :root {
-  --theme-bg: #060910;
-  --theme-panel: #0D111A;
-  --theme-border: #1B2332;
-  --theme-text: #E2E8F0;
-  --theme-text-muted: #64748B;
-  --theme-accent: #D1F26D;
-  --theme-accent-hover: #BDE05A;
-  --theme-chart-1: #D1F26D;
-  --theme-chart-2: #A855F7;
-  --theme-chart-3: #3B82F6;
+  --theme-bg: #030305;
+  --theme-panel: rgba(20, 20, 25, 0.4);
+  --theme-border: rgba(255, 255, 255, 0.03);
+  --theme-text: #F8FAFC;
+  --theme-text-muted: #94A3B8;
+  --theme-accent: #A855F7; /* Soft purple */
+  --theme-accent-hover: #C084FC;
+  --theme-chart-1: #A855F7;
+  --theme-chart-2: #3B82F6;
+  --theme-chart-3: #22C55E;
 }
 
 .theme-olive {
@@ -65,14 +67,34 @@
    ═══════════════════════════════════════════════════════ */
 
 body {
-  background-color: #060910;
-  color: #E2E8F0;
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
   margin: 0;
   padding: 0;
   overflow-x: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Background animated mesh and noise */
+.os-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(168, 85, 247, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%);
+}
+
+.os-noise {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
 /* Scrollbar hide */
@@ -93,13 +115,32 @@ body {
    UTILITY CLASSES
    ═══════════════════════════════════════════════════════ */
 
-/* Premium card with gradient top accent */
-.card-premium {
+/* 6-Layer Depth Glass Card */
+.os-card {
+  position: relative;
+  border-radius: 32px;
   background: var(--theme-panel);
   border: 1px solid var(--theme-border);
-  border-radius: 20px;
-  position: relative;
+  box-shadow: 
+    0 4px 24px -1px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.os-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+/* Maintain legacy class so things don't break immediately while we refactor */
+.card-premium {
+  @extend .os-card;
 }
 
 

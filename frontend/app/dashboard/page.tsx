@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
-import { 
-    Clock, Music, Users, Disc, Info, Calendar, Shield, Settings, ChevronRight, ChevronDown, Loader2, AlertCircle, X, MoreVertical, Plus, PlayCircle, Filter, Search, Bell
-} from "lucide-react";
-import { 
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-    BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, Legend
-} from "recharts";
+import { Loader2, Search, X, Bell, Clock, Music, Users } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from "recharts";
 import { fetchWithRateLimit } from "@/utils/api";
+
 import SonicGenreTopology from "@/components/visualizations/SonicGenreTopology";
 import TopTracksList from "@/components/visualizations/TopTracksList";
+import EmotionalScatterPlot from "@/components/visualizations/EmotionalScatterPlot";
+import BioOptimizationGraph from "@/components/visualizations/BioOptimizationGraph";
+
+import { BentoCard } from "@/components/effects/BentoCard";
+import { AIInsightHero } from "@/components/visualizations/AIInsightHero";
+import { AnimatedCounter } from "@/components/effects/AnimatedCounter";
 
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
@@ -20,20 +21,13 @@ export default function DashboardOverviewPage() {
     const [fullHistoryLoaded, setFullHistoryLoaded] = useState(false);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [expandedMetric, setExpandedMetric] = useState<"time" | "tracks" | "artists" | "genres" | null>(null);
-    const [filterYear, setFilterYear] = useState<string>("1 Year");
-    
+    const [geminiFailing, setGeminiFailing] = useState(false);
     const [searchExpanded, setSearchExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [searchLoading, setSearchLoading] = useState(false);
-    const [geminiFailing, setGeminiFailing] = useState(false);
 
-    const [activityFilter, setActivityFilter] = useState<"7D" | "30D" | "All Time">("30D");
-
-    // Poll data every 10 seconds for live updates
+    // Setup fetching logic
     useEffect(() => {
         let isMounted = true;
-
         const loadDashboardData = async () => {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -53,7 +47,6 @@ export default function DashboardOverviewPage() {
                     try {
                         const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/auth/profile");
                         if (data && isMounted) {
-                            // Support both { data: {...} } and direct object returns
                             setProfile(data.data || data);
                             return true;
                         }
@@ -63,37 +56,20 @@ export default function DashboardOverviewPage() {
                     return false;
                 };
 
-                const fetchHistoryData = async (isBackground = false) => {
+                const fetchHistoryData = async () => {
                     try {
-                        if (!isBackground) {
-                            const cached = sessionStorage.getItem("dashboard_history");
-                            if (cached) {
-                                const parsed = JSON.parse(cached);
-                                setHistory(parsed);
-                                if (parsed.length > 500) setFullHistoryLoaded(true);
-                            }
+                        const cached = sessionStorage.getItem("dashboard_history");
+                        if (cached) {
+                            const parsed = JSON.parse(cached);
+                            setHistory(parsed);
                         }
-
-                        const limit = isBackground ? 1 : (fullHistoryLoaded ? 10000 : 15);
-                        const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=${limit}`);
+                        const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=15`);
                         if (historyData && isMounted) {
-                            if (isBackground && historyData.data && historyData.data.length > 0) {
-                                setHistory(prev => {
-                                    const newId = historyData.data[0].id;
-                                    if (prev.some((t: any) => t.id === newId)) return prev;
-                                    const newHistory = [historyData.data[0], ...prev].slice(0, 10000);
-                                    sessionStorage.setItem("dashboard_history", JSON.stringify(newHistory));
-                                    return newHistory;
-                                });
-                            } else if (!isBackground) {
-                                const data = historyData.data || historyData || [];
-                                setHistory(data);
-                                sessionStorage.setItem("dashboard_history", JSON.stringify(data));
-                            }
+                            const data = historyData.data || historyData || [];
+                            setHistory(data);
+                            sessionStorage.setItem("dashboard_history", JSON.stringify(data));
                         }
-                    } catch (e: any) {
-                        console.error("Failed to load history", e);
-                    }
+                    } catch (e: any) {}
                 };
 
                 const fetchAggregates = async () => {
@@ -102,7 +78,6 @@ export default function DashboardOverviewPage() {
                         if (cached && isMounted) {
                             setAggregates(JSON.parse(cached));
                         }
-
                         const aggData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/aggregates");
                         if (aggData && isMounted) {
                             setAggregates(aggData.data);
@@ -114,36 +89,19 @@ export default function DashboardOverviewPage() {
                 const success = await fetchProfileOnce();
                 if (success) {
                     await fetchAggregates();
-                    await fetchHistoryData(false);
+                    await fetchHistoryData();
                 }
                 
-                // Fetch Gemini Status
                 const fetchGeminiStatus = async () => {
                     try {
                         const res = await fetch("https://music-ml-dashboard.onrender.com/api/telemetry/gemini_status");
                         const data = await res.json();
                         setGeminiFailing(data.is_failing || false);
-                    } catch (e) {
-                        // Ignore silent errors
-                    }
+                    } catch (e) {}
                 };
                 fetchGeminiStatus();
-                const intervalId = setInterval(fetchGeminiStatus, 10000);
                 
                 if (isMounted) setLoading(false);
-
-                // Polling for live updates every 15 minutes (900000ms), only if the tab is visible
-                const pollInterval = setInterval(async () => {
-                    if (isMounted && profile && document.visibilityState === "visible") {
-                        await fetchHistoryData(true);
-                    }
-                }, 900000);
-
-                return () => {
-                    isMounted = false;
-                    clearInterval(pollInterval);
-                    clearInterval(intervalId);
-                };
             } catch (err: any) {
                 if(isMounted) {
                     setErrorMsg(err.message);
@@ -156,628 +114,206 @@ export default function DashboardOverviewPage() {
         return () => { isMounted = false; };
     }, []);
 
+    // Derived Metrics
+    const tracksPlayedCount = aggregates ? aggregates.total_tracks_played : history.length;
+    const totalListeningTime = aggregates ? aggregates.total_listening_time_mins : Math.round(history.reduce((sum, item) => sum + ((item.duration_ms || 204000) / 60000), 0));
+    const artistsDiscoveredCount = aggregates ? aggregates.artists_discovered : new Set(history.map(item => item.artist_name)).size;
+    const genresExploredCount = aggregates ? aggregates.genres_explored : 0;
     
-    // Load full history if user searches or changes filter
-    useEffect(() => {
-        if (!fullHistoryLoaded && (searchQuery.trim() !== "" || filterYear !== "1 Year" || activityFilter !== "30D")) {
-            const loadFull = async () => {
-                setSearchLoading(true);
-                try {
-                    const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=10000");
-                    if (data && data.data) {
-                        setHistory(data.data);
-                        setFullHistoryLoaded(true);
-                    }
-                } catch(e) {}
-                setSearchLoading(false);
-            };
-            loadFull();
-        }
-    }, [searchQuery, filterYear, activityFilter, fullHistoryLoaded]);
-
-    // Derived Metrics & Filters
-    const filteredHistory = useMemo(() => {
-        let result = history;
-        // Search Logic
-        if (searchQuery.trim() !== "") {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(item => 
-                (item.track_name && item.track_name.toLowerCase().includes(query)) ||
-                (item.artist_name && item.artist_name.toLowerCase().includes(query))
-            );
-        }
-        
-        // Year filter for expanded view logic
-        if (expandedMetric && filterYear !== "1 Year" && filterYear !== "All Time") {
-            const yearStr = filterYear;
-            result = result.filter(item => {
-                const date = new Date(item.time);
-                return date.getFullYear().toString() === yearStr;
-            });
-        }
-        
-        return result;
-    }, [history, searchQuery, expandedMetric, filterYear]);
-
-
-    const isDefaultView = filterYear === "1 Year" && searchQuery.trim() === "";
-
-    // Metrics based on filtered data OR aggregates
-    const tracksPlayedCount = (isDefaultView && aggregates) ? aggregates.total_tracks_played : filteredHistory.length;
-    const totalListeningTime = (isDefaultView && aggregates) ? aggregates.total_listening_time_mins : Math.round(filteredHistory.reduce((sum, item) => sum + ((item.duration_ms || 204000) / 60000), 0));
-    const uniqueArtists = new Set(filteredHistory.map(item => item.artist_name));
-    const artistsDiscoveredCount = (isDefaultView && aggregates) ? aggregates.artists_discovered : uniqueArtists.size;
-    
-    // For Top Genres / Genres Explored
-    const genreCounts: Record<string, number> = {};
-    if (!isDefaultView || !aggregates) {
-        filteredHistory.forEach(item => {
-            if (item.genre) {
-                genreCounts[item.genre] = (genreCounts[item.genre] || 0) + 1;
-            } else if (item.mood_category) {
-                genreCounts[item.mood_category] = (genreCounts[item.mood_category] || 0) + 1;
-            }
-        });
-    }
-    const genresExploredCount = (isDefaultView && aggregates) ? aggregates.genres_explored : (Object.keys(genreCounts).length || 1);
-    const sortedGenres = (isDefaultView && aggregates && aggregates.top_genres_json) ? aggregates.top_genres_json.map((g:any) => [g.name, g.value]) : Object.entries(genreCounts).sort((a,b) => b[1] - a[1]);
-
-    // Top Tracks Processing
-    const trackCounts: Record<string, { name: string; artist: string; count: number; image: string; time: number }> = {};
-    if (!isDefaultView || !aggregates) {
-        filteredHistory.forEach(item => {
-            const key = `${item.track_name} - ${item.artist_name}`;
-            if (!trackCounts[key]) {
-                trackCounts[key] = { name: item.track_name, artist: item.artist_name, count: 0, image: item.album_image_url, time: 0 };
-            }
-            trackCounts[key].count += 1;
-            trackCounts[key].time += ((item.duration_ms || 204000) / 60000);
-        });
-    }
-
-    const displayTracks = (isDefaultView && aggregates && aggregates.top_artists_json && aggregates.top_artists_json.length > 0) 
-        ? aggregates.top_artists_json.map((t:any, idx:number) => ({
-            rank: idx + 1, name: t.name, artist: t.artist, plays: t.count, time: t.count*3, image: undefined
-        })) 
-        : Object.values(trackCounts).sort((a, b) => b.count - a.count).slice(0, 5).map((t, idx) => ({
-            rank: idx + 1, name: t.name, artist: t.artist, plays: t.count, time: Math.round(t.time), image: t.image
-        }));
-
-    
-    const dummyTracks = [
-        { rank: 1, name: "Ode To The Mets", artist: "The Strokes", plays: 2, time: 10, image: undefined },
-        { rank: 2, name: "Sweet Momo", artist: "The Walters", plays: 2, time: 8, image: undefined },
-        { rank: 3, name: "Saigal Blues", artist: "Ram Sampath", plays: 2, time: 7, image: undefined },
-        { rank: 4, name: "Earthmover", artist: "Have A Nice Life", plays: 2, time: 6, image: undefined },
-        { rank: 5, name: "Red Light", artist: "The Strokes", plays: 2, time: 5, image: undefined },
-    ];
-    const finalTracks = displayTracks.length > 0 ? displayTracks : dummyTracks;
-
-    // Activity Manager Chart Processing
-    const activityChartData = useMemo(() => {
-        const dateCounts: Record<string, { time: number, valence: number, energy: number, count: number }> = {};
-        const sourceData = history; // base it off full history for the chart
-        
-        let cutoffDate = new Date();
-        if (activityFilter === "7D") cutoffDate.setDate(cutoffDate.getDate() - 7);
-        else if (activityFilter === "30D") cutoffDate.setDate(cutoffDate.getDate() - 30);
-        else cutoffDate.setFullYear(2000);
-
-        sourceData.forEach(item => {
-            const itemDate = new Date(item.time);
-            if (itemDate >= cutoffDate) {
-                const dateStr = itemDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                if (!dateCounts[dateStr]) dateCounts[dateStr] = { time: 0, valence: 0, energy: 0, count: 0 };
-                dateCounts[dateStr].time += ((item.duration_ms || 204000) / 60000);
-                dateCounts[dateStr].valence += (item.valence || 0.5);
-                dateCounts[dateStr].energy += (item.energy || 0.5);
-                dateCounts[dateStr].count += 1;
-            }
-        });
-
-        const data = Object.entries(dateCounts).map(([date, d]) => ({
-            name: date,
-            time: Math.round(d.time),
-            mood: Math.round((d.valence / d.count) * 100),
-            energy: Math.round((d.energy / d.count) * 100)
-        })).reverse();
-
-        if (data.length < 3) {
-            return [
-                { name: "Jun 13", time: 30, mood: 60, energy: 40 },
-                { name: "Jun 14", time: 45, mood: 65, energy: 45 },
-                { name: "Jun 15", time: 60, mood: 70, energy: 50 },
-            ];
-        }
-        return data;
-    }, [history, activityFilter]);
-
-    const artistDonutData = useMemo(() => {
-        if (isDefaultView && aggregates && aggregates.top_artists_json) {
-            return aggregates.top_artists_json.slice(0, 5).map((a: any) => ({ name: a.name, value: a.count }));
-        }
-        const counts: Record<string, number> = {};
-        filteredHistory.forEach(item => {
-            if (item.artist_name) {
-                counts[item.artist_name] = (counts[item.artist_name] || 0) + 1;
-            }
-        });
-        return Object.entries(counts)
-            .sort((a,b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, value]) => ({ name, value }));
-    }, [filteredHistory, isDefaultView, aggregates]);
-
-    const genreTrendData = useMemo(() => {
-        const trend: Record<string, Record<string, number>> = {};
-        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        const today = new Date();
-        
-        // Initialize last 7 days
-        for(let i = 6; i >= 0; i--) {
-            const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-            const dayName = days[d.getDay()];
-            trend[dayName] = {};
-        }
-
-        const top5Genres = sortedGenres.slice(0, 5).map((g: any) => g[0]);
-
-        filteredHistory.forEach(item => {
-            const d = new Date(item.time);
-            if (today.getTime() - d.getTime() <= 7 * 24 * 60 * 60 * 1000) {
-                const dayName = days[d.getDay()];
-                if (trend[dayName]) {
-                    const genre = item.genre || item.mood_category || "Unknown";
-                    if (top5Genres.includes(genre)) {
-                        trend[dayName][genre] = (trend[dayName][genre] || 0) + 1;
-                    }
-                }
-            }
-        });
-
-        return Object.entries(trend).map(([day, genres]) => ({
-            day,
-            ...genres
-        }));
-    }, [filteredHistory, sortedGenres]);
-
-    // Format top 5 genres for Stacked Bar Legend
-    const top5GenresList = sortedGenres.slice(0, 5).map((g: any) => g[0]);
-
-    // Sparkline real data based on track energy and duration
+    // Sparkline real data
     const safeHistory = Array.isArray(history) ? history : [];
     const sparklineData = safeHistory.slice(-10).map((h, i) => ({ 
         val: h?.energy !== undefined ? h.energy * 100 : (h?.duration_ms ? Math.min(100, (h.duration_ms / 300000) * 100) : 50),
         i 
     }));
 
-    // ⚠️ Must be here (before early returns) - React Rules of Hooks
-    const availableYears = useMemo(() => {
-        const years = new Set<string>();
-        if (Array.isArray(history)) {
-            history.forEach(h => {
-                if (h?.time) {
-                    const dateStr = h.time.substring(0,4);
-                    if (!isNaN(Number(dateStr))) years.add(dateStr);
-                }
-            });
-        }
-        const sorted = Array.from(years).sort((a,b) => Number(b) - Number(a));
-        return ["1 Year", ...sorted, "All Time"];
-    }, [history]);
-
+    // Loading State
     if (loading) {
         return (
-            <div className="flex flex-col min-h-screen bg-[var(--theme-bg)] items-center justify-center space-y-6">
-                <Loader2 className="w-12 h-12 text-[#D1F26D] animate-spin" />
-                <p className="text-[#8293B4] text-sm tracking-widest uppercase">Syncing Live Telemetry...</p>
+            <div className="flex flex-col min-h-screen items-center justify-center space-y-6">
+                <Loader2 className="w-12 h-12 text-[var(--theme-accent)] animate-spin" />
+                <p className="text-[var(--theme-text-muted)] text-sm tracking-widest uppercase font-bold">Initializing OS...</p>
             </div>
         );
     }
 
     if (!profile) {
         return (
-            <div className="flex flex-col min-h-screen bg-[var(--theme-bg)] items-center justify-center text-center p-8">
-                <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[40px] p-12 flex flex-col items-center">
-                    <Shield className="w-16 h-16 text-[#8293B4] mb-4 opacity-50" />
-                    <h2 className="text-xl font-bold mb-2 text-white">No Active Session</h2>
-                    <p className="text-[#8293B4] max-w-sm mb-6 text-sm">Please log in to your Spotify account to view your telemetry dashboard.</p>
-                    <a href="https://music-ml-dashboard.onrender.com/api/auth/login" className="px-6 py-3 rounded-full bg-[#D1F26D] text-black font-bold uppercase text-xs tracking-widest hover:scale-105 transition-transform">
-                        Connect Spotify
+            <div className="flex flex-col min-h-screen items-center justify-center p-8">
+                <BentoCard className="flex flex-col items-center justify-center p-12 max-w-md w-full">
+                    <h2 className="text-2xl font-black mb-3">System Locked</h2>
+                    <p className="text-[var(--theme-text-muted)] text-center mb-8 font-medium">Please authenticate via Spotify to access the Intelligence OS.</p>
+                    <a href="https://music-ml-dashboard.onrender.com/api/auth/login" className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-black hover:scale-105 transition-transform shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                        Initialize Session
                     </a>
-                </div>
+                </BentoCard>
             </div>
         );
     }
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 min-h-screen text-white scrollbar-hide">
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 min-h-screen relative z-10 w-full overflow-hidden">
             
-            {/* ═══ Header / Top Bar ═══ */}
-            <div className="flex justify-between items-center px-6 lg:px-8 py-5 sticky top-0 z-40 backdrop-blur-xl bg-[var(--theme-bg)]/80 border-b border-[var(--theme-border)]/30">
-                {/* Left: Greeting */}
-                <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-2xl overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-panel)] flex items-center justify-center font-bold text-sm">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 lg:px-10 py-6 sticky top-0 z-40 bg-[var(--theme-bg)]/40 backdrop-blur-3xl border-b border-white/5">
+                <div className="flex items-center gap-4 group cursor-pointer">
+                    <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-300">
                         {profile?.images?.[0]?.url ? (
                             <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
-                            profile.display_name?.charAt(0).toUpperCase() || "U"
+                            <div className="w-full h-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center text-white font-black text-xl">
+                                {profile.display_name?.charAt(0).toUpperCase() || "U"}
+                            </div>
                         )}
                     </div>
                     <div>
-                        <h1 className="text-lg font-black text-white leading-tight tracking-tight">
+                        <h1 className="text-xl font-black text-white leading-tight tracking-tight">
                             {profile.display_name}
                         </h1>
-                        <p className="text-[11px] text-[var(--theme-text-muted)] font-medium">Welcome back 👋</p>
+                        <p className="text-[12px] text-[var(--theme-accent)] font-bold tracking-widest uppercase">System Online</p>
                     </div>
                 </div>
 
-                {/* Right: Search + Status */}
+                {/* Right controls */}
                 <div className="flex items-center gap-3">
                     {geminiFailing && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/8 border border-red-500/20 rounded-xl cursor-help group relative">
-                            <Bell className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-                            <span className="text-[11px] font-bold text-red-400">AI Pending</span>
-                            <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                                <p className="text-[11px] text-[var(--theme-text-muted)]">
-                                    Gemini AI is currently failing to respond. Tracks are queued and will be processed when the API recovers.
-                                </p>
-                            </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-xl cursor-help group relative">
+                            <Bell className="w-4 h-4 text-red-400 animate-pulse" />
+                            <span className="text-xs font-bold text-red-400">AI Degradation</span>
                         </div>
                     )}
-                    <div className={`flex items-center bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-xl transition-all duration-300 overflow-hidden ${searchExpanded ? "w-72 px-4 py-2.5" : "w-10 h-10 justify-center cursor-pointer hover:border-[var(--theme-accent)]/30"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
-                        <Search className="w-4 h-4 text-[var(--theme-text-muted)] shrink-0" />
+                    <div className={`flex items-center bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl transition-all duration-400 overflow-hidden ${searchExpanded ? "w-80 px-4 py-3" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/10"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
+                        <Search className="w-5 h-5 text-[var(--theme-text-muted)] shrink-0" />
                         {searchExpanded && (
                             <input 
                                 autoFocus
                                 type="text" 
-                                placeholder="Search songs or artists..." 
-                                className="bg-transparent border-none outline-none text-[13px] px-3 flex-1 text-white placeholder:text-[var(--theme-text-muted)]"
+                                placeholder="Search the musical continuum..." 
+                                className="bg-transparent border-none outline-none text-sm px-3 flex-1 text-white placeholder:text-[var(--theme-text-muted)] font-medium"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         )}
                         {searchExpanded && (
-                            <X className="w-3.5 h-3.5 text-[var(--theme-text-muted)] cursor-pointer hover:text-white shrink-0" onClick={(e) => { e.stopPropagation(); setSearchExpanded(false); setSearchQuery(""); }} />
+                            <X className="w-4 h-4 text-[var(--theme-text-muted)] cursor-pointer hover:text-white shrink-0" onClick={(e) => { e.stopPropagation(); setSearchExpanded(false); setSearchQuery(""); }} />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* ═══ Main Content ═══ */}
-            <div className="flex flex-col gap-6 w-full mx-auto max-w-[1500px] px-6 lg:px-8 py-6">
+            {/* Bento Grid Layout */}
+            <div className="p-6 lg:p-10 max-w-[1800px] mx-auto w-full">
                 
-                {/* Fuzzy Search Results - Full Session Timeline */}
-                {searchQuery && (
-                    <div className="w-full rounded-2xl border border-[var(--theme-accent)]/20 overflow-hidden" style={{ background: "var(--theme-panel)" }}>
-                        {/* Search Header */}
-                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--theme-border)]">
-                            <div className="flex items-center gap-2.5">
-                                <Search className="w-4 h-4 text-[var(--theme-accent)]" />
-                                <span className="text-[13px] font-bold text-white">
-                                    Results for <span className="text-[var(--theme-accent)]">"{searchQuery}"</span>
-                                </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-3 py-1 rounded-lg">
-                                {filteredHistory.length} session{filteredHistory.length !== 1 ? "s" : ""}
-                            </span>
-                        </div>
-
-                        {searchLoading ? (
-                            <div className="flex flex-col items-center justify-center py-16 gap-4">
-                                <div className="w-7 h-7 rounded-full border-2 border-[var(--theme-accent)]/20 border-t-[var(--theme-accent)] animate-spin" />
-                                <p className="text-[var(--theme-text-muted)] text-[11px] font-bold uppercase tracking-widest">Loading history...</p>
-                            </div>
-                        ) : filteredHistory.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 gap-3">
-                                <Music className="w-10 h-10 text-[var(--theme-border)]" />
-                                <p className="text-[var(--theme-text-muted)] text-sm font-bold">No matches for "{searchQuery}"</p>
-                                <p className="text-[var(--theme-text-muted)]/60 text-xs">Try a different song name or artist</p>
-                            </div>
-                        ) : (() => {
-                            const grouped: Record<string, { name: string; artist: string; image: string; sessions: any[] }> = {};
-                            filteredHistory.forEach(item => {
-                                const key = `${item.track_name} - ${item.artist_name}`;
-                                if (!grouped[key]) {
-                                    grouped[key] = { name: item.track_name || "Unknown", artist: item.artist_name || "Unknown Artist", image: item.album_image_url || "", sessions: [] };
-                                }
-                                grouped[key].sessions.push(item);
-                            });
-
-                            const formatSessionDate = (timeStr: string) => {
-                                try {
-                                    const d = new Date(timeStr);
-                                    const now = new Date();
-                                    const diffMs = now.getTime() - d.getTime();
-                                    const diffDays = Math.floor(diffMs / 86400000);
-                                    if (diffDays === 0) return `Today at ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-                                    if (diffDays === 1) return `Yesterday at ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-                                    if (diffDays < 7) return `${diffDays} days ago · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-                                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ` · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-                                } catch { return timeStr; }
-                            };
-
-                            const getMoodColor = (valence: number) => {
-                                if (!valence) return "#8293B4";
-                                if (valence > 0.65) return "#22c55e";
-                                if (valence < 0.38) return "#EF4444";
-                                return "#F59E0B";
-                            };
-                            const getMoodLabel = (valence: number) => {
-                                if (!valence) return "—";
-                                if (valence > 0.65) return "Positive";
-                                if (valence < 0.38) return "Melancholic";
-                                return "Neutral";
-                            };
-
-                            return (
-                                <div className="divide-y divide-[var(--theme-border)] max-h-[520px] overflow-y-auto scrollbar-hide">
-                                    {Object.values(grouped).map((track, gIdx) => (
-                                        <div key={gIdx} className="p-5">
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <div className="w-11 h-11 rounded-xl bg-[var(--theme-bg)] overflow-hidden shrink-0 flex items-center justify-center">
-                                                    {track.image ? <img src={track.image} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-[var(--theme-text-muted)]" />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-sm font-bold text-white truncate">{track.name}</div>
-                                                    <div className="text-[11px] text-[var(--theme-text-muted)] truncate">{track.artist}</div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1 shrink-0">
-                                                    <span className="text-[11px] font-black text-[var(--theme-accent)]">{track.sessions.length}× played</span>
-                                                    <span className="text-[10px] text-[var(--theme-text-muted)]">{Math.round(track.sessions.reduce((s, i) => s + (i.duration_ms || 204000), 0) / 60000)} min</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-1.5 pl-1">
-                                                {track.sessions
-                                                    .sort((a, b) => new Date(b.time || b.played_at || 0).getTime() - new Date(a.time || a.played_at || 0).getTime())
-                                                    .map((session, sIdx) => {
-                                                        const timeStr = session.time || session.played_at;
-                                                        const valence = session.valence;
-                                                        const energy = session.energy || session.arousal;
-                                                        const moodColor = getMoodColor(valence);
-                                                        const durMin = session.duration_ms ? Math.round(session.duration_ms / 60000) : null;
-
-                                                        return (
-                                                            <div key={sIdx} className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[var(--theme-accent)]/20 transition-colors">
-                                                                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: moodColor }} />
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="text-[11px] font-bold text-white">
-                                                                        {timeStr ? formatSessionDate(timeStr) : "Unknown time"}
-                                                                    </div>
-                                                                    {session.context && (
-                                                                        <div className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">Context: <span className="text-[var(--theme-accent)]">{session.context}</span></div>
-                                                                    )}
-                                                                </div>
-                                                                {valence !== undefined && valence !== null && (
-                                                                    <span className="text-[9px] font-black px-2 py-0.5 rounded-md shrink-0" style={{ color: moodColor, background: `${moodColor}12` }}>
-                                                                        {getMoodLabel(valence)}
-                                                                    </span>
-                                                                )}
-                                                                {energy !== undefined && energy !== null && (
-                                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                                        <div className="w-10 h-1 rounded-full bg-[var(--theme-border)] overflow-hidden">
-                                                                            <div className="h-full rounded-full" style={{ width: `${Math.round(energy * 100)}%`, background: "linear-gradient(90deg, #8B5CF6, var(--theme-accent))" }} />
-                                                                        </div>
-                                                                        <span className="text-[9px] text-[var(--theme-text-muted)]">{Math.round(energy * 100)}%</span>
-                                                                    </div>
-                                                                )}
-                                                                {durMin && (
-                                                                    <span className="text-[9px] font-bold text-[var(--theme-text-muted)] shrink-0">{durMin}m</span>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        })()}
-                    </div>
-                )}
-
-                {/* ═══ 4 Stat Cards ═══ */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
+                {/* Asymmetric Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 auto-rows-[200px]">
                     
-                    {/* Time */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "time" ? null : "time")} className={`card-premium cursor-pointer hover:border-[#D1F26D]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "time" ? "border-[#D1F26D]! shadow-[0_0_20px_rgba(209,242,109,0.1)]" : ""}`}>
-                        <div className="flex justify-between items-start relative z-10">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#D1F26D]/8 text-[#D1F26D]">
-                                <Clock className="w-4 h-4" />
-                            </div>
-                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
-                                {filterYear}
-                            </span>
-                        </div>
-                        <div className="relative z-10 mt-auto">
-                            <p className="text-[11px] text-[var(--theme-text-muted)] mb-1 font-medium">Total Listening Time</p>
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-[28px] font-black leading-none">{totalListeningTime}</span>
-                                <span className="text-[11px] text-[var(--theme-text-muted)] font-medium">min</span>
-                            </div>
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-16 opacity-30 group-hover:opacity-60 transition-opacity">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={sparklineData}>
-                                    <defs>
-                                        <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor="#D1F26D" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="val" stroke="#D1F26D" strokeWidth={1.5} fillOpacity={1} fill="url(#colorTime)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
+                    {/* Hero insight (Spans 3 cols, 2 rows) */}
+                    <div className="md:col-span-2 xl:col-span-3 row-span-2">
+                        <AIInsightHero />
                     </div>
 
-                    {/* Tracks */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "tracks" ? null : "tracks")} className={`card-premium cursor-pointer hover:border-[#A855F7]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "tracks" ? "border-[#A855F7]! shadow-[0_0_20px_rgba(168,85,247,0.1)]" : ""}`}>
-                        <div className="flex justify-between items-start relative z-10">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#A855F7]/8 text-[#A855F7]">
-                                <Music className="w-4 h-4" />
+                    {/* Stat Cards Column */}
+                    <BentoCard className="flex flex-col justify-between group">
+                        <div>
+                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-purple-500/10 text-purple-400 mb-4 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)] group-hover:bg-purple-500/20 transition-colors">
+                                <Clock className="w-5 h-5" />
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
-                                {filterYear}
+                            <p className="text-xs text-[var(--theme-text-muted)] font-bold uppercase tracking-widest mb-2">Immersion Time</p>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black text-white tracking-tighter">
+                                <AnimatedCounter from={0} to={totalListeningTime} />
                             </span>
+                            <span className="text-sm font-bold text-purple-400 uppercase">Min</span>
                         </div>
-                        <div className="relative z-10 mt-auto">
-                            <p className="text-[11px] text-[var(--theme-text-muted)] mb-1 font-medium">Total Tracks Played</p>
-                            <span className="text-[28px] font-black leading-none">{tracksPlayedCount}</span>
+                    </BentoCard>
+
+                    <BentoCard className="flex flex-col justify-between group">
+                        <div>
+                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-blue-500/10 text-blue-400 mb-4 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)] group-hover:bg-blue-500/20 transition-colors">
+                                <Music className="w-5 h-5" />
+                            </div>
+                            <p className="text-xs text-[var(--theme-text-muted)] font-bold uppercase tracking-widest mb-2">Sonic Fragments</p>
                         </div>
-                        <div className="absolute bottom-5 left-5 right-5 h-10 opacity-60 flex items-end justify-between gap-[3px]">
-                            {sparklineData.slice(0,8).map((d,i) => (
-                                <div key={i} className="flex-1 rounded-sm" style={{ height: `${Math.max(20, d.val)}%`, background: `linear-gradient(to top, rgba(168,85,247,0.15), rgba(168,85,247,0.6))` }} />
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black text-white tracking-tighter">
+                                <AnimatedCounter from={0} to={tracksPlayedCount} />
+                            </span>
+                            <span className="text-sm font-bold text-blue-400 uppercase">Tracks</span>
+                        </div>
+                    </BentoCard>
+
+                    {/* Timeline River / BioOptimization (Spans 2 cols, 2 rows) */}
+                    <BentoCard className="md:col-span-2 row-span-2 relative group overflow-hidden">
+                        <div className="absolute top-6 left-6 z-20">
+                            <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                                Bio-Optimization Matrix
+                            </h2>
+                            <p className="text-xs text-[var(--theme-text-muted)] font-medium mt-1">Real-time reward trajectory</p>
+                        </div>
+                        <div className="w-full h-full pt-16">
+                            <BioOptimizationGraph />
+                        </div>
+                    </BentoCard>
+
+                    {/* Emotional Weather (Spans 2 cols, 2 rows) */}
+                    <BentoCard className="md:col-span-2 row-span-2 relative overflow-hidden group">
+                        <div className="absolute top-6 left-6 z-20">
+                            <h2 className="text-lg font-black tracking-tight text-white">Emotional Weather</h2>
+                            <p className="text-xs text-[var(--theme-text-muted)] font-medium mt-1">Affective state space</p>
+                        </div>
+                        <div className="w-full h-full pt-8">
+                            <EmotionalScatterPlot />
+                        </div>
+                    </BentoCard>
+
+                    {/* Music Galaxy / Topology (Spans 3 cols, 3 rows) */}
+                    <BentoCard className="md:col-span-2 xl:col-span-3 row-span-3 relative p-0 overflow-hidden" noPadding={true}>
+                        <div className="absolute top-8 left-8 z-20 pointer-events-none">
+                            <h2 className="text-xl font-black tracking-tight text-white shadow-black drop-shadow-lg">Music Galaxy</h2>
+                            <p className="text-sm text-gray-300 font-medium mt-1 shadow-black drop-shadow-md">Explore your genre clusters</p>
+                        </div>
+                        <div className="w-full h-full scale-110">
+                            <SonicGenreTopology />
+                        </div>
+                    </BentoCard>
+
+                    {/* Top Artists Orbit / List (Spans 1 col, 2 rows) */}
+                    <BentoCard className="row-span-2 flex flex-col relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/20 blur-[60px] pointer-events-none rounded-full" />
+                        <div className="z-10 mb-6">
+                            <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                                <Users className="w-4 h-4 text-green-400" />
+                                Top Entities
+                            </h2>
+                        </div>
+                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto scrollbar-hide z-10">
+                            {aggregates?.top_artists_json?.slice(0, 5).map((artist: any, i: number) => (
+                                <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-500/20 to-blue-500/20 flex items-center justify-center font-bold text-green-300 group-hover:scale-110 transition-transform">
+                                        #{i+1}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-bold text-sm text-white truncate">{artist.name}</h3>
+                                        <p className="text-[11px] text-[var(--theme-text-muted)]">{artist.count} streams</p>
+                                    </div>
+                                </div>
                             ))}
                         </div>
-                    </div>
-
-                    {/* Genre Topology */}
-                    <div className="md:col-span-2 h-[190px]">
-                        <SonicGenreTopology />
-                    </div>
-                </div>
-
-                {/* ═══ Expanded Metrics Panel ═══ */}
-                {expandedMetric && (
-                    <div className="w-full card-premium p-6 lg:p-8 flex flex-col animate-in slide-in-from-top-4 duration-500">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
-                            <h2 className="text-base font-black text-white tracking-tight">
-                                {expandedMetric === "time" && "Listening Time Details"}
-                                {expandedMetric === "tracks" && "Tracks Played Details"}
-                                {expandedMetric === "artists" && "Artists Discovered Details"}
-                                {expandedMetric === "genres" && "Genres Explored Details"}
-                            </h2>
-                            <div className="flex items-center gap-2">
-                                <div className="flex bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl overflow-hidden text-[11px] font-bold p-0.5">
-                                    {availableYears.map(year => (
-                                        <button 
-                                            key={year} 
-                                            onClick={() => setFilterYear(year)}
-                                            className={`px-3 py-1.5 rounded-lg transition-colors ${filterYear === year ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}
-                                        >
-                                            {year}
-                                        </button>
-                                    ))}
-                                </div>
-                                <button onClick={() => setExpandedMetric(null)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5 text-[var(--theme-text-muted)] hover:text-white transition-colors border border-[var(--theme-border)]">
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="w-full max-h-[380px] overflow-y-auto scrollbar-hide">
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                {expandedMetric === "time" && Object.entries(trackCounts).sort((a,b) => b[1].time - a[1].time).slice(0, 30).map(([key, t], idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#D1F26D]/30 transition-colors">
-                                        <div className="font-bold text-white text-sm truncate max-w-[60%]">{t.name}</div>
-                                        <span className="text-[#D1F26D] font-mono font-bold bg-[#D1F26D]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{Math.round(t.time)} min</span>
-                                    </div>
-                                ))}
-
-                                {expandedMetric === "tracks" && Object.values(trackCounts).sort((a,b) => b.count - a.count).slice(0, 30).map((t, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#A855F7]/30 transition-colors">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0">
-                                                {t.image ? <img src={t.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[var(--theme-bg)] flex items-center justify-center border border-[var(--theme-border)] rounded-lg"><Music className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" /></div>}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="font-bold text-white text-[13px] truncate">{t.name}</div>
-                                                <div className="text-[10px] text-[var(--theme-text-muted)] truncate">{t.artist}</div>
-                                            </div>
-                                        </div>
-                                        <span className="text-[#A855F7] font-bold bg-[#A855F7]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{t.count} plays</span>
-                                    </div>
-                                ))}
-
-                                {expandedMetric === "artists" && Array.from(uniqueArtists).map((artist, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#3B82F6]/30 transition-colors">
-                                        <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6] shrink-0">
-                                            <Users className="w-4 h-4" />
-                                        </div>
-                                        <span className="font-bold text-white text-[13px] truncate">{artist as string}</span>
-                                    </div>
-                                ))}
-
-                                {expandedMetric === "genres" && sortedGenres.map(([genre, count]: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#EAB308]/30 transition-colors">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-8 h-8 rounded-lg bg-[#EAB308]/10 flex items-center justify-center text-[#EAB308] shrink-0">
-                                                <Disc className="w-4 h-4" />
-                                            </div>
-                                            <span className="font-bold text-white text-[13px] truncate capitalize">{genre}</span>
-                                        </div>
-                                        <span className="text-[#EAB308] font-bold bg-[#EAB308]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{count} tracks</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ═══ Bottom: Activity Chart + Top Tracks ═══ */}
-                <div className="flex flex-col xl:flex-row gap-5 w-full">
+                    </BentoCard>
                     
-                    {/* Activity Chart */}
-                    <div className="flex-1 card-premium p-5 lg:p-6 flex flex-col h-[380px]">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h4 className="text-sm font-bold text-white">Activity Manager</h4>
-                                <p className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">Listening patterns over time</p>
-                            </div>
-                            <div className="flex bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl overflow-hidden text-[11px] font-bold p-0.5">
-                                <button onClick={() => setActivityFilter("7D")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "7D" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>7D</button>
-                                <button onClick={() => setActivityFilter("30D")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "30D" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>30D</button>
-                                <button onClick={() => setActivityFilter("All Time")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "All Time" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>All</button>
-                            </div>
+                    {/* Neural Confidence / OS Stats (Spans 1 col, 1 row) */}
+                    <BentoCard className="relative overflow-hidden flex flex-col justify-center items-center group cursor-pointer">
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 group-hover:opacity-100 opacity-0 transition-opacity duration-500 pointer-events-none" />
+                        <h2 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-2">Neural Confidence</h2>
+                        <div className="text-4xl font-black text-white tracking-tighter">87.4%</div>
+                        <div className="w-2/3 h-1.5 bg-white/10 rounded-full mt-4 overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full w-[87%]" />
                         </div>
+                    </BentoCard>
 
-                        {/* Legend */}
-                        <div className="flex gap-4 text-[10px] font-bold mb-3">
-                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#D1F26D]" /> Time (m)</div>
-                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" /> Mood</div>
-                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]" /> Energy</div>
-                        </div>
-
-                        <div className="flex-1 w-full relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={activityChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorGreen" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#D1F26D" stopOpacity={0}/>
-                                        </linearGradient>
-                                        <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                                        </linearGradient>
-                                        <linearGradient id="colorPurple" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#A855F7" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#A855F7" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="name" tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} dy={8} />
-                                    <YAxis tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: 'var(--theme-panel)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
-                                        labelStyle={{ color: 'white', fontWeight: 'bold', marginBottom: '6px', fontSize: '12px' }}
-                                        itemStyle={{ fontSize: '11px' }}
-                                    />
-                                    <Area type="monotone" dataKey="time" stroke="#D1F26D" strokeWidth={2} fillOpacity={1} fill="url(#colorGreen)" activeDot={{ r: 4, fill: "#D1F26D", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="mood" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorBlue)" activeDot={{ r: 4, fill: "#3B82F6", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="energy" stroke="#A855F7" strokeWidth={2} fillOpacity={1} fill="url(#colorPurple)" activeDot={{ r: 4, fill: "#A855F7", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Top Tracks */}
-                    <div className="w-full xl:w-[420px] h-[380px]">
-                        <TopTracksList tracks={finalTracks} />
-                    </div>
                 </div>
-
             </div>
         </div>
     );

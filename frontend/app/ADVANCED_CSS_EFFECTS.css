@@ -1,0 +1,725 @@
+/* ============================================
+   ADVANCED CSS EFFECTS & ANIMATIONS
+   Music ML Dashboard Enhancement Guide
+   ============================================ */
+
+/* ============================================
+   1. DESIGN TOKENS & VARIABLES
+   ============================================ */
+
+:root {
+  /* PRIMARY COLORS */
+  --color-primary: #a855f7;      /* Purple */
+  --color-secondary: #3b82f6;    /* Blue */
+  --color-accent: #d1f26d;       /* Lime */
+  --color-success: #22c55e;      /* Green */
+  --color-danger: #ef4444;       /* Red */
+  --color-warning: #f59e0b;      /* Orange */
+  --color-info: #06b6d4;         /* Cyan */
+
+  /* BACKGROUNDS */
+  --bg-primary: #0a0d14;         /* Darkest */
+  --bg-secondary: #1a1f2e;       /* Dark */
+  --bg-tertiary: #25293d;        /* Medium Dark */
+  
+  /* SURFACES */
+  --surface-primary: rgba(26, 31, 46, 0.6);
+  --surface-secondary: rgba(37, 41, 61, 0.4);
+  --surface-glass: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(168, 85, 247, 0.15);
+
+  /* BORDERS */
+  --border-primary: rgba(255, 255, 255, 0.1);
+  --border-secondary: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(168, 85, 247, 0.3);
+
+  /* TEXT */
+  --text-primary: #ffffff;
+  --text-secondary: #a1a5b8;
+  --text-tertiary: #737a8f;
+  --text-muted: #5a5f7a;
+
+  /* EFFECTS */
+  --blur-sm: blur(4px);
+  --blur-md: blur(8px);
+  --blur-lg: blur(16px);
+  --blur-xl: blur(32px);
+
+  /* SHADOWS */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 64px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 25px 100px rgba(0, 0, 0, 0.5);
+
+  /* TRANSITIONS */
+  --transition-fast: 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-base: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-slow: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* GLOWS */
+  --glow-primary: 0 0 20px rgba(168, 85, 247, 0.4), 0 0 40px rgba(168, 85, 247, 0.2);
+  --glow-secondary: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+  --glow-accent: 0 0 20px rgba(209, 242, 109, 0.4), 0 0 40px rgba(209, 242, 109, 0.2);
+}
+
+/* ============================================
+   2. GLASS EFFECT UTILITIES
+   ============================================ */
+
+.glass {
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-lg);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+}
+
+.glass-sm {
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-md);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  border-radius: 0.75rem;
+}
+
+.glass-lg {
+  background: var(--surface-glass);
+  backdrop-filter: var(--blur-xl);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-lg),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-radius: 1.5rem;
+}
+
+.glass-hover {
+  transition: all var(--transition-base);
+}
+
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg),
+              0 0 30px rgba(168, 85, 247, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================
+   3. CARD EFFECTS
+   ============================================ */
+
+.card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+/* Subtle top border glow */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(168, 85, 247, 0.5),
+    transparent
+  );
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.card:hover {
+  background: var(--surface-secondary);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md),
+              0 0 20px rgba(168, 85, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+.card-interactive {
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* Interactive background slide on hover */
+.card-interactive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-primary)/10, var(--color-secondary)/10);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.card-interactive:hover::after {
+  opacity: 1;
+}
+
+/* ============================================
+   4. GLOW & NEON EFFECTS
+   ============================================ */
+
+.glow-primary {
+  box-shadow: var(--glow-primary);
+}
+
+.glow-secondary {
+  box-shadow: var(--glow-secondary);
+}
+
+.glow-accent {
+  box-shadow: var(--glow-accent);
+}
+
+/* Animated glow pulse */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: var(--glow-primary);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), 0 0 60px rgba(168, 85, 247, 0.3);
+  }
+}
+
+.glow-pulse {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* Neon text effect */
+@keyframes neonFlicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow: 0 0 10px var(--color-primary),
+                 0 0 20px var(--color-primary),
+                 0 0 30px var(--color-secondary);
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+  }
+}
+
+.neon-text {
+  color: var(--text-primary);
+  font-weight: bold;
+  animation: neonFlicker 3s infinite alternate;
+}
+
+/* ============================================
+   5. GRADIENT ANIMATIONS
+   ============================================ */
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animated {
+  background: linear-gradient(
+    -45deg,
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-info),
+    var(--color-primary)
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 8s ease infinite;
+}
+
+.gradient-animated-fast {
+  animation: gradientShift 4s ease infinite;
+}
+
+/* Rainbow gradient */
+.gradient-rainbow {
+  background: linear-gradient(
+    90deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #4facfe 75%,
+    #667eea 100%
+  );
+  background-size: 300% 100%;
+}
+
+/* Frost gradient */
+.gradient-frost {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(168, 85, 247, 0.1) 50%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
+}
+
+/* ============================================
+   6. SHIMMER & LOADING EFFECTS
+   ============================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.1) 40%,
+    transparent 100%
+  );
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Skeleton loader */
+@keyframes skeletonLoading {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-primary) 25%,
+    var(--surface-secondary) 50%,
+    var(--surface-primary) 75%
+  );
+  background-size: 1000px 100%;
+  animation: skeletonLoading 2s infinite;
+  border-radius: 0.5rem;
+}
+
+/* ============================================
+   7. MOVEMENT & TRANSFORM EFFECTS
+   ============================================ */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(1deg);
+  }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+.pulse-scale {
+  animation: pulse-scale 2s ease-in-out infinite;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.bounce-in {
+  animation: bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ============================================
+   8. BORDER & OUTLINE EFFECTS
+   ============================================ */
+
+/* Animated border gradient */
+@keyframes borderRotate {
+  0% {
+    border-image-source: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+    border-image-slice: 1;
+  }
+  50% {
+    border-image-source: linear-gradient(180deg, var(--color-secondary), var(--color-info));
+    border-image-slice: 1;
+  }
+  100% {
+    border-image-source: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+    border-image-slice: 1;
+  }
+}
+
+.border-animated {
+  border: 2px solid;
+  animation: borderRotate 3s linear infinite;
+}
+
+/* Gradient border with mask */
+.border-gradient {
+  position: relative;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  background-image: 
+    linear-gradient(var(--bg-primary), var(--bg-primary)),
+    linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* ============================================
+   9. TEXT EFFECTS
+   ============================================ */
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animated gradient text */
+@keyframes textGradient {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 100% center;
+  }
+}
+
+.text-gradient-animated {
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-info),
+    var(--color-primary)
+  );
+  background-size: 200% center;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: textGradient 3s ease infinite;
+}
+
+/* Text shadow glow */
+.text-glow {
+  text-shadow: 
+    0 0 10px rgba(168, 85, 247, 0.5),
+    0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* ============================================
+   10. INTERACTIVE HOVER STATES
+   ============================================ */
+
+/* Button with ripple */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.btn-ripple:active::before {
+  width: 300px;
+  height: 300px;
+  animation: ripple 0.6s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+  }
+}
+
+/* Underline hover effect */
+.underline-hover {
+  position: relative;
+  cursor: pointer;
+}
+
+.underline-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  transition: width var(--transition-base);
+}
+
+.underline-hover:hover::after {
+  width: 100%;
+}
+
+/* ============================================
+   11. PARTICLE & BACKGROUND EFFECTS
+   ============================================ */
+
+@keyframes particleFloat {
+  0%, 100% {
+    transform: translateY(0px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-20px);
+    opacity: 1;
+  }
+}
+
+.particle {
+  animation: particleFloat 6s ease-in-out infinite;
+}
+
+/* Grid background */
+.grid-background {
+  background-image: 
+    linear-gradient(rgba(168, 85, 247, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Dot background */
+.dot-background {
+  background-image: radial-gradient(circle, rgba(168, 85, 247, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* ============================================
+   12. FOCUS & ACCESSIBILITY
+   ============================================ */
+
+.focus-ring {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+.focus-ring:focus {
+  outline: 3px solid var(--color-primary);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .gradient-animated,
+  .shimmer,
+  .float,
+  .pulse-scale {
+    animation: none !important;
+  }
+}
+
+/* ============================================
+   13. LAYER STACKING & DEPTH
+   ============================================ */
+
+.layer-1 {
+  z-index: 100;
+}
+
+.layer-2 {
+  z-index: 200;
+}
+
+.layer-3 {
+  z-index: 300;
+}
+
+.depth-shadow {
+  box-shadow: 
+    0 0 0 1px rgba(226, 232, 240, 0.1),
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.depth-shadow-hover:hover {
+  box-shadow: 
+    0 0 20px rgba(168, 85, 247, 0.3),
+    0 20px 48px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================
+   14. UTILITY CLASSES
+   ============================================ */
+
+/* Transitions */
+.transition-fast {
+  transition: all var(--transition-fast);
+}
+
+.transition-base {
+  transition: all var(--transition-base);
+}
+
+.transition-slow {
+  transition: all var(--transition-slow);
+}
+
+/* Transform utilities */
+.hover-lift {
+  transition: transform var(--transition-base);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.hover-scale {
+  transition: transform var(--transition-base);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-glow {
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.hover-glow:hover {
+  box-shadow: var(--glow-primary);
+  border-color: var(--color-primary);
+}
+
+/* Opacity effects */
+.opacity-hover {
+  opacity: 0.7;
+  transition: opacity var(--transition-base);
+}
+
+.opacity-hover:hover {
+  opacity: 1;
+}
+
+/* Blur effects */
+.blur-on-scroll {
+  backdrop-filter: none;
+  transition: backdrop-filter var(--transition-base);
+}
+
+.blur-on-scroll.scrolled {
+  backdrop-filter: var(--blur-lg);
+}
+
+/* ============================================
+   15. RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  .glass-lg {
+    backdrop-filter: var(--blur-md);
+  }
+
+  .glow-pulse {
+    box-shadow: var(--glow-primary);
+    animation: none;
+  }
+
+  .gradient-animated {
+    animation: none;
+    background-position: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #ffffff;
+    --surface-primary: rgba(26, 31, 46, 0.7);
+  }
+}
+
