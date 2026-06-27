@@ -42,27 +42,10 @@ export default function ListeningActivityChart({
         return points;
     }, []);
 
-    // Custom shape for the scatter dots to add the emojis from the screenshot
     const renderCustomDot = (props: any) => {
-        const { cx, cy, payload } = props;
-        
-        // Randomly assign some emojis to a few points to match screenshot vibe
-        const hash = payload.trackName ? payload.trackName.charCodeAt(0) : 0;
-        let emoji = null;
-        if (hash % 7 === 0) emoji = "☹️";
-        else if (hash % 5 === 0) emoji = "😐";
-        else if (hash % 11 === 0) emoji = "🙂";
-        else if (hash % 13 === 0) emoji = "📈";
-        
+        const { cx, cy } = props;
         return (
-            <g>
-                <circle cx={cx} cy={cy} r={5} fill="#A855F7" fillOpacity={0.8} />
-                {emoji && (
-                    <text x={cx} y={cy} dy={2} textAnchor="middle" fontSize="10" fill="white">
-                        {emoji}
-                    </text>
-                )}
-            </g>
+            <circle cx={cx} cy={cy} r={5} fill="#A855F7" fillOpacity={0.8} />
         );
     };
 
