@@ -9,6 +9,8 @@ import EmotionalScatterPlot from "@/components/EmotionalScatterPlot";
 import ArtistBarChart from "@/components/visualizations/ArtistBarChart";
 import ListeningActivityChart from "@/components/visualizations/ListeningActivityChart";
 import MoodPieChart from "@/components/visualizations/MoodPieChart";
+import DynamicMoodTopology from "@/components/visualizations/DynamicMoodTopology";
+import TopArtistsList from "@/components/visualizations/TopArtistsList";
 const MOOD_COLORS: Record<string, string> = {
     "High Energy": "#F97316", // Orange
     "Chill": "#3B82F6", // Blue
@@ -490,51 +492,16 @@ export default function ListeningHistoryPage() {
                         ) : null}
                     </div>
 
-                    {/* Right Column: Genre Exploration & Top Artists */}
+                    {/* Right Column: Dynamic Mood Topology & Top Artists */}
                     <div className="lg:col-span-1 flex flex-col gap-6">
-                        
-                        {/* Mood 3D Graph Placeholder */}
-                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex flex-col h-[300px] items-center justify-center">
-                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest mb-2">Mood Trends</h3>
-                            <div className="text-gray-500 text-sm text-center">
-                                <p>[TBD: 3D Mood Graph Visualization]</p>
-                                <p className="text-xs mt-2 opacity-70">Will display dynamic trends tracking sad dips, positive highs, and heavy metal intensity.</p>
-                            </div>
+                        {/* Dynamic Mood Topology */}
+                        <div className="h-[300px]">
+                            <DynamicMoodTopology history={history} />
                         </div>
 
-                        {/* Top Artists & Transactions */}
-                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex-1">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Top Artists & Transactions</h3>
-                                <span className="text-gray-500 text-xs">...</span>
-                            </div>
-                            
-                            <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-wider mb-4 border-b border-[var(--theme-border)] pb-2">
-                                <span>Artists</span>
-                                <span>User Contribution</span>
-                            </div>
-
-                            <div className="space-y-4">
-                                {topArtistsList.map(([artist, count], i) => (
-                                    <div key={i} className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-full flex items-center justify-center">
-                                                <Star className="w-3 h-3 text-[var(--theme-accent)]" />
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-white font-bold flex items-center gap-1">
-                                                    {artist} <CheckCircle2 className="w-3 h-3 text-[var(--theme-accent)]" />
-                                                </div>
-                                                <div className="text-[10px] text-gray-400">Listening</div>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xs text-white font-bold">{count}</div>
-                                            <div className="text-[9px] text-gray-500 uppercase">User contribution</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        {/* Top Artists & Play Contributions */}
+                        <div className="flex-1 flex flex-col min-h-[350px]">
+                            <TopArtistsList artists={topArtistsList.map(([name, count]) => ({ name, count, image: null }))} />
                         </div>
                     </div>
                 </div>
