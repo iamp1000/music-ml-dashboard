@@ -386,7 +386,7 @@ export default function ListeningHistoryPage() {
                         className="relative rounded-3xl lg:col-span-2 xl:col-span-3 overflow-hidden flex flex-col border bg-[var(--theme-panel)] border-[var(--theme-border)]"
                     >
                         {/* Gradient top-border accent */}
-                        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "var(--theme-gradient, linear-gradient(90deg, var(--theme-accent), #D1F26D, #3B82F6))" }} />
+
 
                         <div className="p-6">
                             {/* Controls Row */}

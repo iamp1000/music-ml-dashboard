@@ -250,7 +250,7 @@ export default function AnalyticsHubPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {/* Songs Played */}
                     <div className="relative rounded-2xl p-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
-                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #D1F26D, #84cc16)" }} />
+
                         <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Songs Today</div>
                         <div className="text-4xl font-black text-white">{todaySongsCount}</div>
                         <div className="text-[10px] text-[#D1F26D] mt-2 font-semibold">tracks played</div>
@@ -258,7 +258,7 @@ export default function AnalyticsHubPage() {
 
                     {/* Avg Energy */}
                     <div className="relative rounded-2xl p-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
-                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #8B5CF6, #a78bfa)" }} />
+
                         <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Avg Energy</div>
                         <div className="text-4xl font-black text-white">{(avgTodayEng * 100).toFixed(0)}<span className="text-lg text-[#8293B4] font-bold">%</span></div>
                         <div className="text-[10px] text-[#8B5CF6] mt-2 font-semibold">audio arousal</div>
@@ -266,7 +266,7 @@ export default function AnalyticsHubPage() {
 
                     {/* Mood breakdown - spans 2 cols */}
                     <div className="relative rounded-2xl p-5 overflow-hidden col-span-2" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
-                        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #3B82F6, #60a5fa, #F59E0B)" }} />
+
                         <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Mood Breakdown</div>
                         <div className="flex gap-1 w-full h-3 rounded-full overflow-hidden mb-3" style={{ background: "#1B2332" }}>
                             <div className="h-full transition-all duration-700 rounded-l-full" style={{ width: `${todaySongsCount ? (positive / todaySongsCount) * 100 : 33}%`, background: "linear-gradient(90deg,#22c55e,#84cc16)" }} />
@@ -422,7 +422,7 @@ export default function AnalyticsHubPage() {
                 className="rounded-2xl p-6 flex flex-col h-[450px] relative border overflow-hidden"
                 style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
             >
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #8B5CF6, #3B82F6, #D1F26D)" }} />
+
                 <div className="flex items-center gap-2 mb-6">
                     <Sliders className="w-4 h-4 text-[#8B5CF6]" />
                     <h3 className="text-xs font-black text-white uppercase tracking-widest">Audio Characteristics Radar</h3>
@@ -448,7 +448,7 @@ export default function AnalyticsHubPage() {
                 className="rounded-2xl p-6 flex flex-col justify-between border overflow-hidden"
                 style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
             >
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #F59E0B, #EC4899)" }} />
+
                 <div>
                     <h3 className="text-xs font-black text-white uppercase tracking-widest mb-1">Top Genre Distributions</h3>
                     <p className="text-[11px] text-[#8293B4] mb-6">Relative percentages derived from your top artists list</p>
@@ -537,7 +537,7 @@ export default function AnalyticsHubPage() {
                 className="lg:col-span-2 rounded-2xl p-6 flex flex-col h-[420px] relative border overflow-hidden"
                 style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
             >
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: "linear-gradient(90deg, #D1F26D, #8B5CF6)" }} />
+
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2">
                         <Smile className="w-5 h-5 text-[#3B82F6]" />
@@ -823,7 +823,7 @@ export default function AnalyticsHubPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* 1. Cognitive Load Radar */}
                 <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden" style={{ background: "#080B12", borderColor: "#1B2332" }}>
-                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #8B5CF6, #EC4899)" }} />
+
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                             <BrainCircuit className="w-5 h-5 text-[#8B5CF6]" />
@@ -837,7 +837,7 @@ export default function AnalyticsHubPage() {
 
                 {/* 2. Attention Decay Horizon */}
                 <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden" style={{ background: "#080B12", borderColor: "#1B2332" }}>
-                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #3B82F6, #06b6d4)" }} />
+
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                             <Clock className="w-5 h-5 text-[#3B82F6]" />
@@ -851,7 +851,7 @@ export default function AnalyticsHubPage() {
 
                 {/* 3. Emotional Volatility Globe */}
                 <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden md:col-span-2 lg:col-span-1" style={{ background: "#080B12", borderColor: "#1B2332" }}>
-                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, #EF4444, #F59E0B)" }} />
+
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                             <Activity className="w-5 h-5 text-[#EF4444]" />

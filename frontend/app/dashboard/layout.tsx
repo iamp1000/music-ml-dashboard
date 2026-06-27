@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <aside className="w-[220px] border-r border-[var(--theme-border)] bg-[var(--theme-panel)] flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
                 
                 {/* Gradient accent line at top */}
-                <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, var(--theme-accent), var(--theme-chart-2), var(--theme-chart-3))" }} />
+
 
                 {/* Branding */}
                 <div className="px-5 pt-6 pb-4">

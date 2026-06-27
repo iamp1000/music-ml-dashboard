@@ -101,16 +101,7 @@ body {
   position: relative;
   overflow: hidden;
 }
-.card-premium::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--theme-accent), var(--theme-chart-2));
-  opacity: 0.6;
-}
+
 
 /* Pill control */
 .pill {
