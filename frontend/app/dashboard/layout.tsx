@@ -89,11 +89,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="flex items-center gap-3">
                         {/* Equalizer bars logo */}
                         <div className="flex items-end gap-[3px] h-7">
-                            <span className="w-[3px] rounded-full h-3" style={{ background: "var(--theme-accent)" }} />
-                            <span className="w-[3px] rounded-full h-5" style={{ background: "var(--theme-accent)" }} />
-                            <span className="w-[3px] rounded-full h-7 animate-pulse" style={{ background: "var(--theme-accent)" }} />
-                            <span className="w-[3px] rounded-full h-4" style={{ background: "var(--theme-accent)" }} />
-                            <span className="w-[3px] rounded-full h-2" style={{ background: "var(--theme-accent)" }} />
+                            <span className="w-[3px] rounded-full h-3" style={{ background: "#8B5CF6" }} />
+                            <span className="w-[3px] rounded-full h-5" style={{ background: "#3B82F6" }} />
+                            <span className="w-[3px] rounded-full h-7 animate-pulse" style={{ background: "#22C55E" }} />
+                            <span className="w-[3px] rounded-full h-4" style={{ background: "#EAB308" }} />
+                            <span className="w-[3px] rounded-full h-2" style={{ background: "#F97316" }} />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-[15px] font-black tracking-wider text-white leading-none">SonicLens</span>
@@ -117,25 +117,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 href={item.href}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
                                     isActive 
-                                        ? "text-[var(--theme-accent)] font-bold" 
+                                        ? "bg-white/5 text-white font-bold" 
                                         : "text-[var(--theme-text-muted)] hover:text-white"
                                 }`}
                             >
-                                {/* Active indicator bar */}
+                                {/* Active indicator dot */}
                                 {isActive && (
-                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: "var(--theme-accent)" }} />
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full" style={{ background: "#22C55E" }} />
                                 )}
                                 
                                 {/* Icon container */}
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                                    isActive 
-                                        ? "bg-[var(--theme-accent)]/10" 
-                                        : "bg-transparent group-hover:bg-white/5"
-                                }`}>
-                                    <item.icon className="w-[18px] h-[18px]" />
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isActive ? "pl-2" : ""}`}>
+                                    <item.icon className="w-[18px] h-[18px] text-[#8293B4] group-hover:text-white transition-colors" />
                                 </div>
                                 
-                                <span className="text-[13px] tracking-wide">{item.label}</span>
+                                <span className={`text-[13px] tracking-wide ${isActive ? "text-white" : ""}`}>{item.label}</span>
                             </Link>
                         );
                     })}

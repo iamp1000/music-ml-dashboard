@@ -10,6 +10,10 @@ import {
     BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, Legend
 } from "recharts";
 import { fetchWithRateLimit } from "@/utils/api";
+import SonicPerformanceChart from "@/components/visualizations/SonicPerformanceChart";
+import SonicGenreTopology from "@/components/visualizations/SonicGenreTopology";
+import DailySonicActivity from "@/components/visualizations/DailySonicActivity";
+import TopTracksList from "@/components/visualizations/TopTracksList";
 
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
@@ -575,289 +579,21 @@ export default function DashboardOverviewPage() {
                     </div>
                 )}
 
-                {/* ═══ 4 Stat Cards ═══ */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
-                    
-                    {/* Time */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "time" ? null : "time")} className={`card-premium cursor-pointer hover:border-[#D1F26D]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "time" ? "border-[#D1F26D]! shadow-[0_0_20px_rgba(209,242,109,0.1)]" : ""}`}>
-                        <div className="flex justify-between items-start relative z-10">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#D1F26D]/8 text-[#D1F26D]">
-                                <Clock className="w-4 h-4" />
-                            </div>
-                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
-                                {filterYear}
-                            </span>
-                        </div>
-                        <div className="relative z-10 mt-auto">
-                            <p className="text-[11px] text-[var(--theme-text-muted)] mb-1 font-medium">Total Listening Time</p>
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-[28px] font-black leading-none">{totalListeningTime}</span>
-                                <span className="text-[11px] text-[var(--theme-text-muted)] font-medium">min</span>
-                            </div>
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-16 opacity-30 group-hover:opacity-60 transition-opacity">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={sparklineData}>
-                                    <defs>
-                                        <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor="#D1F26D" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="val" stroke="#D1F26D" strokeWidth={1.5} fillOpacity={1} fill="url(#colorTime)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Tracks */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "tracks" ? null : "tracks")} className={`card-premium cursor-pointer hover:border-[#A855F7]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "tracks" ? "border-[#A855F7]! shadow-[0_0_20px_rgba(168,85,247,0.1)]" : ""}`}>
-                        <div className="flex justify-between items-start relative z-10">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#A855F7]/8 text-[#A855F7]">
-                                <Music className="w-4 h-4" />
-                            </div>
-                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
-                                {filterYear}
-                            </span>
-                        </div>
-                        <div className="relative z-10 mt-auto">
-                            <p className="text-[11px] text-[var(--theme-text-muted)] mb-1 font-medium">Total Tracks Played</p>
-                            <span className="text-[28px] font-black leading-none">{tracksPlayedCount}</span>
-                        </div>
-                        <div className="absolute bottom-5 left-5 right-5 h-10 opacity-60 flex items-end justify-between gap-[3px]">
-                            {sparklineData.slice(0,8).map((d,i) => (
-                                <div key={i} className="flex-1 rounded-sm" style={{ height: `${Math.max(20, d.val)}%`, background: `linear-gradient(to top, rgba(168,85,247,0.15), rgba(168,85,247,0.6))` }} />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Artists */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`card-premium cursor-pointer hover:border-[#3B82F6]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "artists" ? "border-[#3B82F6]! shadow-[0_0_20px_rgba(59,130,246,0.1)]" : ""}`}>
-                        <div className="w-full flex justify-between items-start relative z-10">
-                            <p className="text-[12px] font-bold text-white tracking-wide">Artists Discovered</p>
-                        </div>
-
-                        <div className="flex-1 flex items-center mt-1 relative">
-                            <div className="absolute inset-0 flex items-center justify-center -ml-16">
-                                <span className="text-[28px] font-black text-white relative z-10">{artistsDiscoveredCount}</span>
-                                <ResponsiveContainer width={120} height={120} className="absolute inset-0 m-auto">
-                                    <PieChart>
-                                        <Pie data={artistDonutData} innerRadius={40} outerRadius={52} paddingAngle={3} dataKey="value" stroke="none">
-                                            {artistDonutData.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} />
-                                            ))}
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 pr-1">
-                                {artistDonutData.map((entry: any, index: number) => (
-                                    <div key={index} className="flex items-center gap-1.5 text-[10px] text-[var(--theme-text-muted)]">
-                                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}} />
-                                        <span className="truncate max-w-[70px]">{entry.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Genres */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "genres" ? null : "genres")} className={`card-premium cursor-pointer hover:border-[#EAB308]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "genres" ? "border-[#EAB308]! shadow-[0_0_20px_rgba(234,179,8,0.1)]" : ""}`}>
-                        <div className="flex justify-between items-start relative z-10">
-                            <p className="text-[12px] font-bold text-white tracking-wide">Genres Explored</p>
-                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
-                                {filterYear}
-                            </span>
-                        </div>
-                        <div className="text-[10px] text-[var(--theme-text-muted)] mb-1">7-day trend</div>
-
-                        <div className="flex-1 w-full relative z-10 -ml-3">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart layout="vertical" data={genreTrendData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={6}>
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--theme-text-muted)', fontSize: 9}} width={32} />
-                                    {top5GenresList.map((genre: any, index: number) => (
-                                        <Bar key={genre} dataKey={genre} stackId="a" fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} radius={[0, 3, 3, 0]} />
-                                    ))}
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                            {top5GenresList.map((genre: any, index: number) => (
-                                <div key={index} className="flex items-center gap-1 text-[9px] text-[var(--theme-text-muted)]">
-                                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}} />
-                                    <span className="truncate max-w-[50px] capitalize">{genre}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                {/* ═══ 4 Quadrant Dashboard Layout ═══ */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-[350px]">
+                    <SonicPerformanceChart 
+                        listeningTime={totalListeningTime} 
+                        tracksPlayed={tracksPlayedCount} 
+                    />
+                    <SonicGenreTopology />
                 </div>
-
-                {/* ═══ Expanded Metrics Panel ═══ */}
-                {expandedMetric && (
-                    <div className="w-full card-premium p-6 lg:p-8 flex flex-col animate-in slide-in-from-top-4 duration-500">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
-                            <h2 className="text-base font-black text-white tracking-tight">
-                                {expandedMetric === "time" && "Listening Time Details"}
-                                {expandedMetric === "tracks" && "Tracks Played Details"}
-                                {expandedMetric === "artists" && "Artists Discovered Details"}
-                                {expandedMetric === "genres" && "Genres Explored Details"}
-                            </h2>
-                            <div className="flex items-center gap-2">
-                                <div className="flex bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl overflow-hidden text-[11px] font-bold p-0.5">
-                                    {availableYears.map(year => (
-                                        <button 
-                                            key={year} 
-                                            onClick={() => setFilterYear(year)}
-                                            className={`px-3 py-1.5 rounded-lg transition-colors ${filterYear === year ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}
-                                        >
-                                            {year}
-                                        </button>
-                                    ))}
-                                </div>
-                                <button onClick={() => setExpandedMetric(null)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5 text-[var(--theme-text-muted)] hover:text-white transition-colors border border-[var(--theme-border)]">
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="w-full max-h-[380px] overflow-y-auto scrollbar-hide">
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                {expandedMetric === "time" && Object.entries(trackCounts).sort((a,b) => b[1].time - a[1].time).slice(0, 30).map(([key, t], idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#D1F26D]/30 transition-colors">
-                                        <div className="font-bold text-white text-sm truncate max-w-[60%]">{t.name}</div>
-                                        <span className="text-[#D1F26D] font-mono font-bold bg-[#D1F26D]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{Math.round(t.time)} min</span>
-                                    </div>
-                                ))}
-
-                                {expandedMetric === "tracks" && Object.values(trackCounts).sort((a,b) => b.count - a.count).slice(0, 30).map((t, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#A855F7]/30 transition-colors">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0">
-                                                {t.image ? <img src={t.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[var(--theme-bg)] flex items-center justify-center border border-[var(--theme-border)] rounded-lg"><Music className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" /></div>}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="font-bold text-white text-[13px] truncate">{t.name}</div>
-                                                <div className="text-[10px] text-[var(--theme-text-muted)] truncate">{t.artist}</div>
-                                            </div>
-                                        </div>
-                                        <span className="text-[#A855F7] font-bold bg-[#A855F7]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{t.count} plays</span>
-                                    </div>
-                                ))}
-
-                                {expandedMetric === "artists" && Array.from(uniqueArtists).map((artist, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#3B82F6]/30 transition-colors">
-                                        <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6] shrink-0">
-                                            <Users className="w-4 h-4" />
-                                        </div>
-                                        <span className="font-bold text-white text-[13px] truncate">{artist as string}</span>
-                                    </div>
-                                ))}
-
-                                {expandedMetric === "genres" && sortedGenres.map(([genre, count]: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#EAB308]/30 transition-colors">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-8 h-8 rounded-lg bg-[#EAB308]/10 flex items-center justify-center text-[#EAB308] shrink-0">
-                                                <Disc className="w-4 h-4" />
-                                            </div>
-                                            <span className="font-bold text-white text-[13px] truncate capitalize">{genre}</span>
-                                        </div>
-                                        <span className="text-[#EAB308] font-bold bg-[#EAB308]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{count} tracks</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 w-full h-[350px]">
+                    <div className="xl:col-span-8 h-full">
+                        <DailySonicActivity />
                     </div>
-                )}
-
-                {/* ═══ Bottom: Activity Chart + Top Tracks ═══ */}
-                <div className="flex flex-col xl:flex-row gap-5 w-full">
-                    
-                    {/* Activity Chart */}
-                    <div className="flex-1 card-premium p-5 lg:p-6 flex flex-col h-[380px]">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h4 className="text-sm font-bold text-white">Activity Manager</h4>
-                                <p className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">Listening patterns over time</p>
-                            </div>
-                            <div className="flex bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl overflow-hidden text-[11px] font-bold p-0.5">
-                                <button onClick={() => setActivityFilter("7D")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "7D" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>7D</button>
-                                <button onClick={() => setActivityFilter("30D")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "30D" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>30D</button>
-                                <button onClick={() => setActivityFilter("All Time")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "All Time" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>All</button>
-                            </div>
-                        </div>
-
-                        {/* Legend */}
-                        <div className="flex gap-4 text-[10px] font-bold mb-3">
-                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#D1F26D]" /> Time (m)</div>
-                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" /> Mood</div>
-                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]" /> Energy</div>
-                        </div>
-
-                        <div className="flex-1 w-full relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={activityChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorGreen" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#D1F26D" stopOpacity={0}/>
-                                        </linearGradient>
-                                        <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                                        </linearGradient>
-                                        <linearGradient id="colorPurple" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#A855F7" stopOpacity={0.15}/>
-                                            <stop offset="95%" stopColor="#A855F7" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="name" tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} dy={8} />
-                                    <YAxis tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: 'var(--theme-panel)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
-                                        labelStyle={{ color: 'white', fontWeight: 'bold', marginBottom: '6px', fontSize: '12px' }}
-                                        itemStyle={{ fontSize: '11px' }}
-                                    />
-                                    <Area type="monotone" dataKey="time" stroke="#D1F26D" strokeWidth={2} fillOpacity={1} fill="url(#colorGreen)" activeDot={{ r: 4, fill: "#D1F26D", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="mood" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorBlue)" activeDot={{ r: 4, fill: "#3B82F6", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="energy" stroke="#A855F7" strokeWidth={2} fillOpacity={1} fill="url(#colorPurple)" activeDot={{ r: 4, fill: "#A855F7", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Top Tracks */}
-                    <div className="w-full xl:w-[420px] card-premium p-5 lg:p-6 flex flex-col h-[380px]">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h4 className="text-sm font-bold text-white">Top Tracks</h4>
-                                <p className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">All time favorites</p>
-                            </div>
-                            <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl px-3 py-1.5 text-[11px] font-bold text-white flex items-center gap-1.5 cursor-pointer hover:border-[var(--theme-accent)]/30 transition-colors">
-                                by Plays <ChevronDown className="w-3 h-3" />
-                            </div>
-                        </div>
-
-                        <div className="flex-1 space-y-2 overflow-y-auto scrollbar-hide">
-                            {finalTracks.map((track: any) => (
-                                <div key={track.rank} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/3 transition-colors cursor-pointer group">
-                                    <div className="w-10 h-10 rounded-xl bg-[var(--theme-bg)] overflow-hidden flex items-center justify-center shrink-0 border border-[var(--theme-border)] group-hover:border-[var(--theme-accent)]/20 transition-colors">
-                                        {track.image ? (
-                                            <img src={track.image} alt={track.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <Music className="w-4 h-4 text-[var(--theme-text-muted)]" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-[13px] font-bold text-white truncate">{track.name}</div>
-                                        <div className="text-[10px] text-[var(--theme-text-muted)] truncate">{track.artist}</div>
-                                    </div>
-                                    <span className="text-[10px] font-black text-[var(--theme-accent)] bg-[var(--theme-accent)]/8 px-2 py-1 rounded-lg shrink-0">{track.plays}</span>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="xl:col-span-4 h-full">
+                        <TopTracksList tracks={finalTracks} />
                     </div>
                 </div>
 
