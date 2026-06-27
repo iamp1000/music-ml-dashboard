@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import LiveSyncPlayer from "@/components/LiveSyncPlayer";
+import { ParticleCanvas } from "@/components/effects/ParticleCanvas";
 import { 
     LayoutDashboard, Activity, Compass, Settings, Clock
 } from "lucide-react";
@@ -80,6 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* OS Background Elements */}
             <div className="os-background" />
             <div className="os-noise" />
+            <ParticleCanvas />
             
             {/* ═══ Sidebar ═══ */}
             <aside className="group w-[90px] hover:w-[260px] border-r border-[var(--theme-border)] bg-[var(--theme-panel)]/80 backdrop-blur-xl flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0 transition-all duration-400 ease-out z-50">

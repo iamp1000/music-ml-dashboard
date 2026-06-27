@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Loader2, Search, X, Bell, Clock, Music, Users } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from "recharts";
+import { motion } from "framer-motion";
 import { fetchWithRateLimit } from "@/utils/api";
 
 import SonicGenreTopology from "@/components/visualizations/SonicGenreTopology";
@@ -13,6 +14,7 @@ import BioOptimizationGraph from "@/components/visualizations/BioOptimizationGra
 import { BentoCard } from "@/components/effects/BentoCard";
 import { AIInsightHero } from "@/components/visualizations/AIInsightHero";
 import { AnimatedCounter } from "@/components/effects/AnimatedCounter";
+import TopArtistsList from "@/components/visualizations/TopArtistsList";
 
 export default function DashboardOverviewPage() {
     const [profile, setProfile] = useState<any>(null);
@@ -201,19 +203,28 @@ export default function DashboardOverviewPage() {
                 </div>
             </div>
 
-            {/* Bento Grid Layout */}
-            <div className="p-6 lg:p-10 max-w-[1800px] mx-auto w-full">
+            {/* Narrative Flow Layout */}
+            <div className="p-6 lg:p-12 max-w-[1200px] mx-auto w-full flex flex-col gap-24 pb-32">
                 
-                {/* Asymmetric Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 auto-rows-[200px]">
-                    
-                    {/* Hero insight (Spans 3 cols, 2 rows) */}
-                    <div className="md:col-span-2 xl:col-span-3 row-span-2">
-                        <AIInsightHero />
-                    </div>
+                {/* Hero section */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                >
+                    <AIInsightHero />
+                </motion.div>
 
-                    {/* Stat Cards Column */}
-                    <BentoCard className="flex flex-col justify-between group">
+                {/* Stats Row */}
+                <motion.div 
+                    className="flex flex-col md:flex-row gap-6"
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
+                >
+                    <BentoCard className="flex-1 flex flex-col justify-between group h-[200px]">
                         <div>
                             <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-purple-500/10 text-purple-400 mb-4 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)] group-hover:bg-purple-500/20 transition-colors">
                                 <Clock className="w-5 h-5" />
@@ -228,7 +239,7 @@ export default function DashboardOverviewPage() {
                         </div>
                     </BentoCard>
 
-                    <BentoCard className="flex flex-col justify-between group">
+                    <BentoCard className="flex-1 flex flex-col justify-between group h-[200px]">
                         <div>
                             <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-blue-500/10 text-blue-400 mb-4 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)] group-hover:bg-blue-500/20 transition-colors">
                                 <Music className="w-5 h-5" />
@@ -242,9 +253,16 @@ export default function DashboardOverviewPage() {
                             <span className="text-sm font-bold text-blue-400 uppercase">Tracks</span>
                         </div>
                     </BentoCard>
+                </motion.div>
 
-                    {/* Timeline River / BioOptimization (Spans 2 cols, 2 rows) */}
-                    <BentoCard className="md:col-span-2 row-span-2 relative group overflow-hidden">
+                {/* BioOptimization Matrix */}
+                <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                    <BentoCard className="relative group overflow-hidden h-[500px]">
                         <div className="absolute top-6 left-6 z-20">
                             <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -256,9 +274,16 @@ export default function DashboardOverviewPage() {
                             <BioOptimizationGraph />
                         </div>
                     </BentoCard>
+                </motion.div>
 
-                    {/* Emotional Weather (Spans 2 cols, 2 rows) */}
-                    <BentoCard className="md:col-span-2 row-span-2 relative overflow-hidden group">
+                {/* Emotional Weather */}
+                <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                    <BentoCard className="relative overflow-hidden group h-[500px]">
                         <div className="absolute top-6 left-6 z-20">
                             <h2 className="text-lg font-black tracking-tight text-white">Emotional Weather</h2>
                             <p className="text-xs text-[var(--theme-text-muted)] font-medium mt-1">Affective state space</p>
@@ -267,44 +292,39 @@ export default function DashboardOverviewPage() {
                             <EmotionalScatterPlot />
                         </div>
                     </BentoCard>
+                </motion.div>
 
-                    {/* Music Galaxy / Topology (Spans 3 cols, 3 rows) */}
-                    <BentoCard className="md:col-span-2 xl:col-span-3 row-span-3 relative p-0 overflow-hidden" noPadding={true}>
+                {/* Music Galaxy */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                >
+                    <BentoCard className="relative p-0 overflow-hidden h-[700px]" noPadding={true}>
                         <div className="absolute top-8 left-8 z-20 pointer-events-none">
-                            <h2 className="text-xl font-black tracking-tight text-white shadow-black drop-shadow-lg">Music Galaxy</h2>
+                            <h2 className="text-2xl font-black tracking-tight text-white shadow-black drop-shadow-lg">Music Galaxy</h2>
                             <p className="text-sm text-gray-300 font-medium mt-1 shadow-black drop-shadow-md">Explore your genre clusters</p>
                         </div>
-                        <div className="w-full h-full scale-110">
+                        <div className="w-full h-full scale-105">
                             <SonicGenreTopology />
                         </div>
                     </BentoCard>
+                </motion.div>
 
-                    {/* Top Artists Orbit / List (Spans 1 col, 2 rows) */}
-                    <BentoCard className="row-span-2 flex flex-col relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/20 blur-[60px] pointer-events-none rounded-full" />
-                        <div className="z-10 mb-6">
-                            <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2">
-                                <Users className="w-4 h-4 text-green-400" />
-                                Top Entities
-                            </h2>
-                        </div>
-                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto scrollbar-hide z-10">
-                            {aggregates?.top_artists_json?.slice(0, 5).map((artist: any, i: number) => (
-                                <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-500/20 to-blue-500/20 flex items-center justify-center font-bold text-green-300 group-hover:scale-110 transition-transform">
-                                        #{i+1}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="font-bold text-sm text-white truncate">{artist.name}</h3>
-                                        <p className="text-[11px] text-[var(--theme-text-muted)]">{artist.count} streams</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </BentoCard>
+                {/* Bottom Row */}
+                <motion.div 
+                    className="flex flex-col md:flex-row gap-6 h-[400px]"
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                >
+                    {/* Top Artists Orbit / List */}
+                    <TopArtistsList artists={aggregates?.top_artists_json?.slice(0, 5) || []} />
                     
-                    {/* Neural Confidence / OS Stats (Spans 1 col, 1 row) */}
-                    <BentoCard className="relative overflow-hidden flex flex-col justify-center items-center group cursor-pointer">
+                    {/* Neural Confidence */}
+                    <BentoCard className="flex-1 relative overflow-hidden flex flex-col justify-center items-center group cursor-pointer">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 group-hover:opacity-100 opacity-0 transition-opacity duration-500 pointer-events-none" />
                         <h2 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-2">Neural Confidence</h2>
                         <div className="text-4xl font-black text-white tracking-tighter">87.4%</div>
@@ -312,8 +332,8 @@ export default function DashboardOverviewPage() {
                             <div className="h-full bg-indigo-500 rounded-full w-[87%]" />
                         </div>
                     </BentoCard>
+                </motion.div>
 
-                </div>
             </div>
         </div>
     );

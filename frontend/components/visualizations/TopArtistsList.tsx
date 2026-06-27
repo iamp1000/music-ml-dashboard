@@ -2,6 +2,8 @@
 
 import React from "react";
 import { Star } from "lucide-react";
+import { motion } from "framer-motion";
+import { AnimationPresets } from "@/lib/animations";
 
 export default function TopArtistsList({ artists }: { artists: any[] }) {
     // Sparkline helper
@@ -31,11 +33,26 @@ export default function TopArtistsList({ artists }: { artists: any[] }) {
                 </div>
             </div>
 
-            <div className="space-y-3 overflow-y-auto scrollbar-thin pr-2 h-[260px]">
+            <motion.div 
+                className="space-y-3 overflow-y-auto scrollbar-thin pr-2 h-full"
+                variants={AnimationPresets.container}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+            >
                 {artists.map((artist, i) => (
-                    <div key={i} className="flex justify-between items-center bg-[#080B12] border border-[var(--theme-border)] rounded-xl p-3">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-[var(--theme-border)] shrink-0">
+                    <motion.div 
+                        key={i} 
+                        variants={AnimationPresets.itemSlideRight}
+                        whileHover={{ scale: 1.03 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="relative flex justify-between items-center bg-[#080B12] border border-[var(--theme-border)] rounded-xl p-3 cursor-pointer overflow-hidden group"
+                    >
+                        {/* Gradient background slide on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-[var(--theme-border)] shrink-0 shadow-lg shadow-black/50 group-hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all">
                                 {artist.image ? (
                                     <img src={artist.image} alt={artist.name} className="w-full h-full object-cover" />
                                 ) : (
@@ -45,29 +62,38 @@ export default function TopArtistsList({ artists }: { artists: any[] }) {
                                 )}
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-sm font-bold text-white leading-tight">{artist.name}</span>
+                                <span className="text-sm font-bold text-white leading-tight group-hover:text-purple-400 transition-colors">{artist.name}</span>
                                 <span className="text-[10px] text-gray-500">{artist.count * 15} plays</span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-6">
-                            <span className="text-sm font-black text-white w-4 text-center">{artist.count}</span>
+                        <div className="flex items-center gap-6 relative z-10">
+                            <motion.span 
+                                className="text-sm font-black text-white w-4 text-center group-hover:text-purple-400 transition-colors"
+                                whileHover={{ scale: 1.2 }}
+                            >
+                                {artist.count}
+                            </motion.span>
                             <div className="w-16 h-6">
                                 <svg width="100%" height="100%" viewBox="0 0 72 20" preserveAspectRatio="none">
-                                    <polyline
+                                    <motion.polyline
+                                        initial={{ pathLength: 0 }}
+                                        whileInView={{ pathLength: 1 }}
+                                        transition={{ duration: 1.5, ease: "easeInOut" }}
                                         points={generateSparkline(artist.name)}
                                         fill="none"
-                                        stroke="#D1F26D"
+                                        stroke="#A855F7"
                                         strokeWidth="2"
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
+                                        className="opacity-50 group-hover:opacity-100 transition-opacity"
                                     />
                                 </svg>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
-            </div>
+            </motion.div>
         </div>
     );
 }
