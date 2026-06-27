@@ -57,7 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [router]);
 
     if (!mounted || !isAuth) {
-        return <div className="min-h-screen bg-[#111827]"></div>;
+        return <div className="min-h-screen bg-[#060910]"></div>;
     }
 
     const navItems = [
@@ -74,63 +74,86 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div 
-            className={`${theme} min-h-screen bg-[#0A0D14] text-theme-text transition-colors duration-500 font-sans flex overflow-hidden`}
+            className={`${theme} min-h-screen bg-[var(--theme-bg)] text-[var(--theme-text)] transition-colors duration-500 font-sans flex overflow-hidden`}
             style={glassStyle}
         >
             
-            {/* Sidebar */}
-            <aside className="w-56 border-r border-[var(--theme-border)]/30 bg-[var(--theme-bg)]/80 backdrop-blur-xl flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
-                {/* Branding Logo Block */}
-                <div className="p-6 pb-2">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="flex items-end gap-1.5 h-6">
-                            <span className="w-1 bg-theme-accent h-3 rounded-full shadow-[0_0_8px_var(--theme-accent)]"></span>
-                            <span className="w-1 bg-theme-accent h-5 rounded-full shadow-[0_0_8px_var(--theme-accent)]"></span>
-                            <span className="w-1 bg-theme-accent h-6 rounded-full shadow-[0_0_8px_var(--theme-accent)] animate-[pulse_1.5s_infinite]"></span>
-                            <span className="w-1 bg-theme-accent h-4 rounded-full shadow-[0_0_8px_var(--theme-accent)]"></span>
-                            <span className="w-1 bg-theme-accent h-2.5 rounded-full shadow-[0_0_8px_var(--theme-accent)]"></span>
+            {/* ═══ Sidebar ═══ */}
+            <aside className="w-[220px] border-r border-[var(--theme-border)] bg-[var(--theme-panel)] flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
+                
+                {/* Gradient accent line at top */}
+                <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, var(--theme-accent), var(--theme-chart-2), var(--theme-chart-3))" }} />
+
+                {/* Branding */}
+                <div className="px-5 pt-6 pb-4">
+                    <div className="flex items-center gap-3">
+                        {/* Equalizer bars logo */}
+                        <div className="flex items-end gap-[3px] h-7">
+                            <span className="w-[3px] rounded-full h-3" style={{ background: "var(--theme-accent)" }} />
+                            <span className="w-[3px] rounded-full h-5" style={{ background: "var(--theme-accent)" }} />
+                            <span className="w-[3px] rounded-full h-7 animate-pulse" style={{ background: "var(--theme-accent)" }} />
+                            <span className="w-[3px] rounded-full h-4" style={{ background: "var(--theme-accent)" }} />
+                            <span className="w-[3px] rounded-full h-2" style={{ background: "var(--theme-accent)" }} />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-base font-black tracking-wider text-white leading-none">SonicLens</span>
-                            <span className="text-[10px] text-theme-text-muted mt-1 font-medium uppercase tracking-wide">for Spotify</span>
+                            <span className="text-[15px] font-black tracking-wider text-white leading-none">SonicLens</span>
+                            <span className="text-[9px] text-[var(--theme-text-muted)] mt-1 font-semibold uppercase tracking-[0.15em]">for Spotify</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar Navigation */}
-                <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto scrollbar-thin scrollbar-thumb-theme-border">
+                {/* Section label */}
+                <div className="px-5 pt-4 pb-2">
+                    <span className="text-[9px] font-bold text-[var(--theme-text-muted)] uppercase tracking-[0.2em]">Menu</span>
+                </div>
+
+                {/* Navigation */}
+                <nav className="flex-1 px-3 space-y-1 overflow-y-auto scrollbar-hide">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
                             <Link prefetch={false} 
                                 key={item.href} 
                                 href={item.href}
-                                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-300 border ${
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
                                     isActive 
-                                        ? "bg-theme-accent/5 border-theme-accent/20 text-theme-accent font-semibold shadow-[0_0_20px_var(--theme-accent)/0.02]" 
-                                        : "hover:bg-white/2 text-theme-text-muted hover:text-white border-transparent"
+                                        ? "text-[var(--theme-accent)] font-bold" 
+                                        : "text-[var(--theme-text-muted)] hover:text-white"
                                 }`}
                             >
-                                <item.icon className="w-5 h-5 shrink-0" />
-                                <span className="text-sm tracking-wide">{item.label}</span>
+                                {/* Active indicator bar */}
+                                {isActive && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: "var(--theme-accent)" }} />
+                                )}
+                                
+                                {/* Icon container */}
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                                    isActive 
+                                        ? "bg-[var(--theme-accent)]/10" 
+                                        : "bg-transparent group-hover:bg-white/5"
+                                }`}>
+                                    <item.icon className="w-[18px] h-[18px]" />
+                                </div>
+                                
+                                <span className="text-[13px] tracking-wide">{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
-                {/* Sidebar Player Bottom */}
-                <div className="p-4 border-t border-[var(--theme-border)]/50">
+                {/* Sidebar Player */}
+                <div className="p-3 border-t border-[var(--theme-border)]">
                     <LiveSyncPlayer />
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto h-screen relative bg-theme-bg/90">
-                <div className="w-full max-w-[1400px] mx-auto p-6 md:p-8 min-h-full flex flex-col justify-between">
+            {/* ═══ Main Content ═══ */}
+            <main className="flex-1 overflow-y-auto h-screen relative">
+                <div className="w-full max-w-[1500px] mx-auto min-h-full flex flex-col">
                     <div className="flex-1">
                         {children}
                     </div>
-                    <div className="mt-8 text-center text-[10px] text-theme-text-muted/40 uppercase tracking-widest font-semibold pb-4">
+                    <div className="py-6 text-center text-[9px] text-[var(--theme-text-muted)]/30 uppercase tracking-[0.25em] font-bold">
                         SonicLens Dashboard v2.0
                     </div>
                 </div>

@@ -389,13 +389,13 @@ export default function DashboardOverviewPage() {
     }
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 bg-[var(--theme-bg)] min-h-screen text-white scrollbar-hide">
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 min-h-screen text-white scrollbar-hide">
             
-            {/* Header / Top Bar */}
-            <div className="flex justify-between items-center bg-[var(--theme-bg)] p-6 lg:px-8 border-b border-[var(--theme-border)]/50 sticky top-0 z-40 backdrop-blur-xl">
-                {/* Left: User Profile */}
-                <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-panel)] flex items-center justify-center font-bold">
+            {/* ═══ Header / Top Bar ═══ */}
+            <div className="flex justify-between items-center px-6 lg:px-8 py-5 sticky top-0 z-40 backdrop-blur-xl bg-[var(--theme-bg)]/80 border-b border-[var(--theme-border)]/30">
+                {/* Left: Greeting */}
+                <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-2xl overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-panel)] flex items-center justify-center font-bold text-sm">
                         {profile?.images?.[0]?.url ? (
                             <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
@@ -403,79 +403,76 @@ export default function DashboardOverviewPage() {
                         )}
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-white leading-tight tracking-tight">
+                        <h1 className="text-lg font-black text-white leading-tight tracking-tight">
                             {profile.display_name}
                         </h1>
-                        <p className="text-xs text-[#8293B4]">Music Dashboard</p>
+                        <p className="text-[11px] text-[var(--theme-text-muted)] font-medium">Welcome back 👋</p>
                     </div>
                 </div>
 
-                {/* Right: Expandable Fuzzy Search & Status */}
-                <div className="flex items-center gap-4">
+                {/* Right: Search + Status */}
+                <div className="flex items-center gap-3">
                     {geminiFailing && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full cursor-help group relative">
-                            <Bell className="w-4 h-4 text-red-400 animate-pulse" />
-                            <span className="text-xs font-semibold text-red-400">Gemini Pending</span>
-                            
-                            {/* Hover Tooltip */}
-                            <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-[#1C1C24] border border-[#2D2D3A] rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                                <p className="text-xs text-gray-300">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/8 border border-red-500/20 rounded-xl cursor-help group relative">
+                            <Bell className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+                            <span className="text-[11px] font-bold text-red-400">AI Pending</span>
+                            <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                <p className="text-[11px] text-[var(--theme-text-muted)]">
                                     Gemini AI is currently failing to respond. Tracks are queued and will be processed when the API recovers.
                                 </p>
                             </div>
                         </div>
                     )}
-                    <div className={`flex items-center bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full transition-all duration-300 overflow-hidden ${searchExpanded ? "w-64 px-4 py-2" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/5"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
-                        <Search className="w-5 h-5 text-[#8293B4] shrink-0" />
+                    <div className={`flex items-center bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-xl transition-all duration-300 overflow-hidden ${searchExpanded ? "w-72 px-4 py-2.5" : "w-10 h-10 justify-center cursor-pointer hover:border-[var(--theme-accent)]/30"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
+                        <Search className="w-4 h-4 text-[var(--theme-text-muted)] shrink-0" />
                         {searchExpanded && (
                             <input 
                                 autoFocus
                                 type="text" 
                                 placeholder="Search songs or artists..." 
-                                className="bg-transparent border-none outline-none text-sm px-3 flex-1 text-white placeholder:text-[#8293B4]"
+                                className="bg-transparent border-none outline-none text-[13px] px-3 flex-1 text-white placeholder:text-[var(--theme-text-muted)]"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         )}
                         {searchExpanded && (
-                            <X className="w-4 h-4 text-[#8293B4] cursor-pointer hover:text-white shrink-0" onClick={(e) => { e.stopPropagation(); setSearchExpanded(false); setSearchQuery(""); }} />
+                            <X className="w-3.5 h-3.5 text-[var(--theme-text-muted)] cursor-pointer hover:text-white shrink-0" onClick={(e) => { e.stopPropagation(); setSearchExpanded(false); setSearchQuery(""); }} />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Main Content Wrapper - No padding to touch edges if needed, but keeping standard padding for interior layout */}
-            <div className="p-0 flex flex-col gap-6 w-full mx-auto max-w-[1600px] mt-6 px-6">
+            {/* ═══ Main Content ═══ */}
+            <div className="flex flex-col gap-6 w-full mx-auto max-w-[1500px] px-6 lg:px-8 py-6">
                 
                 {/* Fuzzy Search Results - Full Session Timeline */}
                 {searchQuery && (
-                    <div className="w-full rounded-[32px] border border-[#D1F26D]/30 overflow-hidden shadow-[0_0_40px_rgba(209,242,109,0.08)]" style={{ background: "#080C14" }}>
+                    <div className="w-full rounded-2xl border border-[var(--theme-accent)]/20 overflow-hidden" style={{ background: "var(--theme-panel)" }}>
                         {/* Search Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1B2332]">
-                            <div className="flex items-center gap-3">
-                                <Search className="w-4 h-4 text-[#D1F26D]" />
-                                <span className="text-sm font-black text-white tracking-wider">
-                                    Search: <span className="text-[#D1F26D]">"{searchQuery}"</span>
+                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--theme-border)]">
+                            <div className="flex items-center gap-2.5">
+                                <Search className="w-4 h-4 text-[var(--theme-accent)]" />
+                                <span className="text-[13px] font-bold text-white">
+                                    Results for <span className="text-[var(--theme-accent)]">"{searchQuery}"</span>
                                 </span>
                             </div>
-                            <span className="text-[10px] font-bold text-[#8293B4] bg-[#1B2332] px-3 py-1 rounded-full uppercase tracking-widest">
-                                {filteredHistory.length} session{filteredHistory.length !== 1 ? "s" : ""} found
+                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-3 py-1 rounded-lg">
+                                {filteredHistory.length} session{filteredHistory.length !== 1 ? "s" : ""}
                             </span>
                         </div>
 
                         {searchLoading ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-4">
-                                <div className="w-8 h-8 rounded-full border-2 border-[#D1F26D]/20 border-t-[#D1F26D] animate-spin" />
-                                <p className="text-[#8293B4] text-xs font-bold uppercase tracking-widest">Loading your full history...</p>
+                                <div className="w-7 h-7 rounded-full border-2 border-[var(--theme-accent)]/20 border-t-[var(--theme-accent)] animate-spin" />
+                                <p className="text-[var(--theme-text-muted)] text-[11px] font-bold uppercase tracking-widest">Loading history...</p>
                             </div>
                         ) : filteredHistory.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-3">
-                                <Music className="w-10 h-10 text-[#1B2332]" />
-                                <p className="text-[#8293B4] text-sm font-bold">No tracks or artists matching "{searchQuery}"</p>
-                                <p className="text-[#8293B4]/60 text-xs">Try a different song name or artist</p>
+                                <Music className="w-10 h-10 text-[var(--theme-border)]" />
+                                <p className="text-[var(--theme-text-muted)] text-sm font-bold">No matches for "{searchQuery}"</p>
+                                <p className="text-[var(--theme-text-muted)]/60 text-xs">Try a different song name or artist</p>
                             </div>
                         ) : (() => {
-                            // Group matching sessions by track name for the timeline view
                             const grouped: Record<string, { name: string; artist: string; image: string; sessions: any[] }> = {};
                             filteredHistory.forEach(item => {
                                 const key = `${item.track_name} - ${item.artist_name}`;
@@ -512,26 +509,24 @@ export default function DashboardOverviewPage() {
                             };
 
                             return (
-                                <div className="divide-y divide-[#1B2332] max-h-[520px] overflow-y-auto scrollbar-hide">
+                                <div className="divide-y divide-[var(--theme-border)] max-h-[520px] overflow-y-auto scrollbar-hide">
                                     {Object.values(grouped).map((track, gIdx) => (
                                         <div key={gIdx} className="p-5">
-                                            {/* Track Header */}
                                             <div className="flex items-center gap-4 mb-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-[#1B2332] overflow-hidden shrink-0 flex items-center justify-center">
-                                                    {track.image ? <img src={track.image} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-[#8293B4]" />}
+                                                <div className="w-11 h-11 rounded-xl bg-[var(--theme-bg)] overflow-hidden shrink-0 flex items-center justify-center">
+                                                    {track.image ? <img src={track.image} alt="" className="w-full h-full object-cover" /> : <Music className="w-5 h-5 text-[var(--theme-text-muted)]" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="text-base font-black text-white truncate">{track.name}</div>
-                                                    <div className="text-xs text-[#8293B4] truncate">{track.artist}</div>
+                                                    <div className="text-sm font-bold text-white truncate">{track.name}</div>
+                                                    <div className="text-[11px] text-[var(--theme-text-muted)] truncate">{track.artist}</div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1 shrink-0">
-                                                    <span className="text-xs font-black text-[#D1F26D]">{track.sessions.length}× played</span>
-                                                    <span className="text-[10px] text-[#8293B4]">{Math.round(track.sessions.reduce((s, i) => s + (i.duration_ms || 204000), 0) / 60000)} min total</span>
+                                                    <span className="text-[11px] font-black text-[var(--theme-accent)]">{track.sessions.length}× played</span>
+                                                    <span className="text-[10px] text-[var(--theme-text-muted)]">{Math.round(track.sessions.reduce((s, i) => s + (i.duration_ms || 204000), 0) / 60000)} min</span>
                                                 </div>
                                             </div>
 
-                                            {/* Session Timeline */}
-                                            <div className="space-y-2 pl-2">
+                                            <div className="space-y-1.5 pl-1">
                                                 {track.sessions
                                                     .sort((a, b) => new Date(b.time || b.played_at || 0).getTime() - new Date(a.time || a.played_at || 0).getTime())
                                                     .map((session, sIdx) => {
@@ -542,40 +537,31 @@ export default function DashboardOverviewPage() {
                                                         const durMin = session.duration_ms ? Math.round(session.duration_ms / 60000) : null;
 
                                                         return (
-                                                            <div key={sIdx} className="flex items-center gap-3 rounded-2xl px-4 py-3 border border-[#1B2332] hover:border-[#D1F26D]/20 transition-colors" style={{ background: "#0A0F1A" }}>
-                                                                {/* Timeline dot */}
-                                                                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: moodColor }} />
-
-                                                                {/* Date/time */}
+                                                            <div key={sIdx} className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[var(--theme-accent)]/20 transition-colors">
+                                                                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: moodColor }} />
                                                                 <div className="flex-1 min-w-0">
-                                                                    <div className="text-xs font-bold text-white">
+                                                                    <div className="text-[11px] font-bold text-white">
                                                                         {timeStr ? formatSessionDate(timeStr) : "Unknown time"}
                                                                     </div>
                                                                     {session.context && (
-                                                                        <div className="text-[10px] text-[#8293B4] mt-0.5">Context: <span className="text-[#D1F26D]">{session.context}</span></div>
+                                                                        <div className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">Context: <span className="text-[var(--theme-accent)]">{session.context}</span></div>
                                                                     )}
                                                                 </div>
-
-                                                                {/* Mood pill */}
                                                                 {valence !== undefined && valence !== null && (
-                                                                    <span className="text-[9px] font-black px-2.5 py-1 rounded-full shrink-0" style={{ color: moodColor, background: `${moodColor}18` }}>
+                                                                    <span className="text-[9px] font-black px-2 py-0.5 rounded-md shrink-0" style={{ color: moodColor, background: `${moodColor}12` }}>
                                                                         {getMoodLabel(valence)}
                                                                     </span>
                                                                 )}
-
-                                                                {/* Energy bar */}
                                                                 {energy !== undefined && energy !== null && (
                                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                                        <div className="w-12 h-1.5 rounded-full bg-[#1B2332] overflow-hidden">
-                                                                            <div className="h-full rounded-full" style={{ width: `${Math.round(energy * 100)}%`, background: "linear-gradient(90deg, #8B5CF6, #D1F26D)" }} />
+                                                                        <div className="w-10 h-1 rounded-full bg-[var(--theme-border)] overflow-hidden">
+                                                                            <div className="h-full rounded-full" style={{ width: `${Math.round(energy * 100)}%`, background: "linear-gradient(90deg, #8B5CF6, var(--theme-accent))" }} />
                                                                         </div>
-                                                                        <span className="text-[9px] text-[#8293B4]">{Math.round(energy * 100)}%</span>
+                                                                        <span className="text-[9px] text-[var(--theme-text-muted)]">{Math.round(energy * 100)}%</span>
                                                                     </div>
                                                                 )}
-
-                                                                {/* Duration */}
                                                                 {durMin && (
-                                                                    <span className="text-[9px] font-bold text-[#8293B4] shrink-0">{durMin}m</span>
+                                                                    <span className="text-[9px] font-bold text-[var(--theme-text-muted)] shrink-0">{durMin}m</span>
                                                                 )}
                                                             </div>
                                                         );
@@ -589,86 +575,74 @@ export default function DashboardOverviewPage() {
                     </div>
                 )}
 
-                {/* Full Width 4 Stat Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                {/* ═══ 4 Stat Cards ═══ */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
                     
                     {/* Time */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "time" ? null : "time")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "time" ? "border-[#D1F26D]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#D1F26D]/50 transition-colors h-[200px] relative overflow-hidden group`}>
-                        <div className="flex justify-between items-start mb-2 relative z-10">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#D1F26D]/10 text-[#D1F26D]">
+                    <div onClick={() => setExpandedMetric(expandedMetric === "time" ? null : "time")} className={`card-premium cursor-pointer hover:border-[#D1F26D]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "time" ? "border-[#D1F26D]! shadow-[0_0_20px_rgba(209,242,109,0.1)]" : ""}`}>
+                        <div className="flex justify-between items-start relative z-10">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#D1F26D]/8 text-[#D1F26D]">
                                 <Clock className="w-4 h-4" />
                             </div>
-                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
-                                {filterYear} <ChevronDown className="w-3 h-3"/>
-                            </div>
+                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
+                                {filterYear}
+                            </span>
                         </div>
                         <div className="relative z-10 mt-auto">
-                            <h3 className="text-xs text-[#8293B4] mb-1">Total Listening Time</h3>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-bold">{totalListeningTime}</span>
-                                <span className="text-xs text-[#8293B4]">min</span>
+                            <p className="text-[11px] text-[var(--theme-text-muted)] mb-1 font-medium">Total Listening Time</p>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-[28px] font-black leading-none">{totalListeningTime}</span>
+                                <span className="text-[11px] text-[var(--theme-text-muted)] font-medium">min</span>
                             </div>
                         </div>
-                        {/* Sparkline */}
-                        <div className="absolute bottom-0 left-0 right-0 h-20 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-0 left-0 right-0 h-16 opacity-30 group-hover:opacity-60 transition-opacity">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={sparklineData}>
                                     <defs>
                                         <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.3}/>
+                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.4}/>
                                             <stop offset="95%" stopColor="#D1F26D" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
-                                    <Area type="monotone" dataKey="val" stroke="#D1F26D" strokeWidth={2} fillOpacity={1} fill="url(#colorTime)" />
+                                    <Area type="monotone" dataKey="val" stroke="#D1F26D" strokeWidth={1.5} fillOpacity={1} fill="url(#colorTime)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
                     {/* Tracks */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "tracks" ? null : "tracks")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "tracks" ? "border-[#A855F7]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#A855F7]/50 transition-colors h-[200px] relative overflow-hidden group`}>
-                        <div className="flex justify-between items-start mb-2 relative z-10">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#A855F7]/10 text-[#A855F7]">
+                    <div onClick={() => setExpandedMetric(expandedMetric === "tracks" ? null : "tracks")} className={`card-premium cursor-pointer hover:border-[#A855F7]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "tracks" ? "border-[#A855F7]! shadow-[0_0_20px_rgba(168,85,247,0.1)]" : ""}`}>
+                        <div className="flex justify-between items-start relative z-10">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#A855F7]/8 text-[#A855F7]">
                                 <Music className="w-4 h-4" />
                             </div>
-                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
-                                {filterYear} <ChevronDown className="w-3 h-3"/>
-                            </div>
+                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
+                                {filterYear}
+                            </span>
                         </div>
                         <div className="relative z-10 mt-auto">
-                            <h3 className="text-xs text-[#8293B4] mb-1">Total Tracks Played</h3>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-bold">{tracksPlayedCount}</span>
-                            </div>
+                            <p className="text-[11px] text-[var(--theme-text-muted)] mb-1 font-medium">Total Tracks Played</p>
+                            <span className="text-[28px] font-black leading-none">{tracksPlayedCount}</span>
                         </div>
-                        {/* Sparkline */}
-                        <div className="absolute bottom-6 left-6 right-6 h-12 opacity-80 group-hover:opacity-100 transition-opacity flex items-end justify-between gap-1">
+                        <div className="absolute bottom-5 left-5 right-5 h-10 opacity-60 flex items-end justify-between gap-[3px]">
                             {sparklineData.slice(0,8).map((d,i) => (
-                                <div key={i} className="flex-1 bg-gradient-to-t from-[#A855F7]/20 to-[#A855F7] rounded-sm" style={{ height: `${Math.max(20, d.val)}%` }}></div>
+                                <div key={i} className="flex-1 rounded-sm" style={{ height: `${Math.max(20, d.val)}%`, background: `linear-gradient(to top, rgba(168,85,247,0.15), rgba(168,85,247,0.6))` }} />
                             ))}
                         </div>
                     </div>
 
                     {/* Artists */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "artists" ? "border-[#3B82F6]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#3B82F6]/50 transition-colors h-[200px] relative overflow-hidden group`}>
-                        <div className="w-full flex justify-between items-start mb-0 relative z-10">
-                            <h3 className="text-sm font-bold text-white tracking-wider">Artists Discovered</h3>
+                    <div onClick={() => setExpandedMetric(expandedMetric === "artists" ? null : "artists")} className={`card-premium cursor-pointer hover:border-[#3B82F6]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "artists" ? "border-[#3B82F6]! shadow-[0_0_20px_rgba(59,130,246,0.1)]" : ""}`}>
+                        <div className="w-full flex justify-between items-start relative z-10">
+                            <p className="text-[12px] font-bold text-white tracking-wide">Artists Discovered</p>
                         </div>
 
-                        <div className="flex-1 flex items-center justify-center mt-2 relative">
-                            {/* Inner Donut + Text */}
-                            <div className="absolute inset-0 flex items-center justify-center -ml-20">
-                                <span className="text-3xl font-bold text-white relative z-10">{artistsDiscoveredCount}</span>
-                                <ResponsiveContainer width={140} height={140} className="absolute inset-0 m-auto">
+                        <div className="flex-1 flex items-center mt-1 relative">
+                            <div className="absolute inset-0 flex items-center justify-center -ml-16">
+                                <span className="text-[28px] font-black text-white relative z-10">{artistsDiscoveredCount}</span>
+                                <ResponsiveContainer width={120} height={120} className="absolute inset-0 m-auto">
                                     <PieChart>
-                                        <Pie 
-                                            data={artistDonutData} 
-                                            innerRadius={45} 
-                                            outerRadius={60} 
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
+                                        <Pie data={artistDonutData} innerRadius={40} outerRadius={52} paddingAngle={3} dataKey="value" stroke="none">
                                             {artistDonutData.map((entry: any, index: number) => (
                                                 <Cell key={`cell-${index}`} fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} />
                                             ))}
@@ -677,123 +651,120 @@ export default function DashboardOverviewPage() {
                                 </ResponsiveContainer>
                             </div>
                             
-                            {/* Legend on the right */}
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1 pr-2">
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 pr-1">
                                 {artistDonutData.map((entry: any, index: number) => (
-                                    <div key={index} className="flex items-center gap-2 text-[10px] text-gray-300">
-                                        <div className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}}></div>
-                                        <span className="truncate max-w-[80px]">{entry.name}</span>
+                                    <div key={index} className="flex items-center gap-1.5 text-[10px] text-[var(--theme-text-muted)]">
+                                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}} />
+                                        <span className="truncate max-w-[70px]">{entry.name}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Genres Explored */}
-                    <div onClick={() => setExpandedMetric(expandedMetric === "genres" ? null : "genres")} className={`bg-[var(--theme-panel)] border ${expandedMetric === "genres" ? "border-[#EAB308]" : "border-[var(--theme-border)]"} rounded-[32px] p-6 flex flex-col cursor-pointer hover:border-[#EAB308]/50 transition-colors h-[200px] relative overflow-hidden group`}>
-                        <div className="flex justify-between items-start mb-0 relative z-10">
-                            <h3 className="text-sm font-bold text-white tracking-wider">Genres Explored</h3>
-                            <div className="rounded-full bg-[var(--theme-panel)] px-3 py-1.5 text-[10px] font-bold flex items-center gap-1 border border-[var(--theme-border)]">
-                                {filterYear} <ChevronDown className="w-3 h-3"/>
-                            </div>
+                    {/* Genres */}
+                    <div onClick={() => setExpandedMetric(expandedMetric === "genres" ? null : "genres")} className={`card-premium cursor-pointer hover:border-[#EAB308]/40 transition-all h-[190px] p-5 flex flex-col ${expandedMetric === "genres" ? "border-[#EAB308]! shadow-[0_0_20px_rgba(234,179,8,0.1)]" : ""}`}>
+                        <div className="flex justify-between items-start relative z-10">
+                            <p className="text-[12px] font-bold text-white tracking-wide">Genres Explored</p>
+                            <span className="text-[10px] font-bold text-[var(--theme-text-muted)] bg-[var(--theme-bg)] px-2.5 py-1 rounded-lg border border-[var(--theme-border)]">
+                                {filterYear}
+                            </span>
                         </div>
-                        <div className="text-xs text-[#8293B4] mb-2">7 day trend</div>
+                        <div className="text-[10px] text-[var(--theme-text-muted)] mb-1">7-day trend</div>
 
-                        <div className="flex-1 w-full relative z-10 -ml-4">
+                        <div className="flex-1 w-full relative z-10 -ml-3">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart layout="vertical" data={genreTrendData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={8}>
+                                <BarChart layout="vertical" data={genreTrendData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={6}>
                                     <XAxis type="number" hide />
-                                    <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: '#8293B4', fontSize: 10}} width={40} />
+                                    <YAxis dataKey="day" type="category" axisLine={false} tickLine={false} tick={{fill: 'var(--theme-text-muted)', fontSize: 9}} width={32} />
                                     {top5GenresList.map((genre: any, index: number) => (
-                                        <Bar key={genre} dataKey={genre} stackId="a" fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} />
+                                        <Bar key={genre} dataKey={genre} stackId="a" fill={["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]} radius={[0, 3, 3, 0]} />
                                     ))}
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                         
-                        <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                             {top5GenresList.map((genre: any, index: number) => (
-                                <div key={index} className="flex items-center gap-1 text-[10px] text-gray-300">
-                                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}}></div>
+                                <div key={index} className="flex items-center gap-1 text-[9px] text-[var(--theme-text-muted)]">
+                                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: ["#3B82F6", "#EAB308", "#22C55E", "#06B6D4", "#D946EF"][index % 5]}} />
                                     <span className="truncate max-w-[50px] capitalize">{genre}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
-
                 </div>
 
-                {/* IN-LINE EXPANDED METRICS VIEW */}
+                {/* ═══ Expanded Metrics Panel ═══ */}
                 {expandedMetric && (
-                    <div className="w-full bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[32px] p-6 lg:p-8 flex flex-col animate-in slide-in-from-top-4 duration-500">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-                            <h2 className="text-xl font-bold text-white tracking-tight uppercase">
+                    <div className="w-full card-premium p-6 lg:p-8 flex flex-col animate-in slide-in-from-top-4 duration-500">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
+                            <h2 className="text-base font-black text-white tracking-tight">
                                 {expandedMetric === "time" && "Listening Time Details"}
                                 {expandedMetric === "tracks" && "Tracks Played Details"}
                                 {expandedMetric === "artists" && "Artists Discovered Details"}
                                 {expandedMetric === "genres" && "Genres Explored Details"}
                             </h2>
-                            <div className="flex items-center gap-3">
-                                {/* Year Filters */}
-                                <div className="flex bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full overflow-hidden text-xs font-medium p-1">
+                            <div className="flex items-center gap-2">
+                                <div className="flex bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl overflow-hidden text-[11px] font-bold p-0.5">
                                     {availableYears.map(year => (
                                         <button 
                                             key={year} 
                                             onClick={() => setFilterYear(year)}
-                                            className={`px-4 py-1.5 rounded-full transition-colors ${filterYear === year ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}
+                                            className={`px-3 py-1.5 rounded-lg transition-colors ${filterYear === year ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}
                                         >
                                             {year}
                                         </button>
                                     ))}
                                 </div>
-                                <button onClick={() => setExpandedMetric(null)} className="w-8 h-8 flex items-center justify-center bg-[var(--theme-panel)] rounded-full hover:bg-white/10 text-white transition-colors border border-[var(--theme-border)]">
-                                    <X className="w-4 h-4" />
+                                <button onClick={() => setExpandedMetric(null)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5 text-[var(--theme-text-muted)] hover:text-white transition-colors border border-[var(--theme-border)]">
+                                    <X className="w-3.5 h-3.5" />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="w-full max-h-[400px] overflow-y-auto scrollbar-hide">
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div className="w-full max-h-[380px] overflow-y-auto scrollbar-hide">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {expandedMetric === "time" && Object.entries(trackCounts).sort((a,b) => b[1].time - a[1].time).slice(0, 30).map(([key, t], idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#D1F26D]/50 transition-colors">
-                                        <div className="font-bold text-white truncate max-w-[60%]">{t.name}</div>
-                                        <span className="text-[#D1F26D] font-mono font-bold bg-[#D1F26D]/10 px-3 py-1 rounded-full text-xs shrink-0">{Math.round(t.time)} mins</span>
+                                    <div key={idx} className="flex justify-between items-center p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#D1F26D]/30 transition-colors">
+                                        <div className="font-bold text-white text-sm truncate max-w-[60%]">{t.name}</div>
+                                        <span className="text-[#D1F26D] font-mono font-bold bg-[#D1F26D]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{Math.round(t.time)} min</span>
                                     </div>
                                 ))}
 
                                 {expandedMetric === "tracks" && Object.values(trackCounts).sort((a,b) => b.count - a.count).slice(0, 30).map((t, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#A855F7]/50 transition-colors">
+                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#A855F7]/30 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-[12px] overflow-hidden shrink-0">
-                                                {t.image ? <img src={t.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#2A364D] flex items-center justify-center"><Music className="w-4 h-4 text-[#8293B4]" /></div>}
+                                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0">
+                                                {t.image ? <img src={t.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[var(--theme-bg)] flex items-center justify-center border border-[var(--theme-border)] rounded-lg"><Music className="w-3.5 h-3.5 text-[var(--theme-text-muted)]" /></div>}
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="font-bold text-white text-sm truncate">{t.name}</div>
-                                                <div className="text-[10px] text-[#8293B4] truncate">{t.artist}</div>
+                                                <div className="font-bold text-white text-[13px] truncate">{t.name}</div>
+                                                <div className="text-[10px] text-[var(--theme-text-muted)] truncate">{t.artist}</div>
                                             </div>
                                         </div>
-                                        <span className="text-[#A855F7] font-bold bg-[#A855F7]/10 px-3 py-1.5 rounded-full border border-[#A855F7]/20 text-xs shrink-0">{t.count} plays</span>
+                                        <span className="text-[#A855F7] font-bold bg-[#A855F7]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{t.count} plays</span>
                                     </div>
                                 ))}
 
                                 {expandedMetric === "artists" && Array.from(uniqueArtists).map((artist, idx) => (
-                                    <div key={idx} className="flex items-center gap-4 p-4 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#3B82F6]/50 transition-colors">
-                                        <div className="w-10 h-10 rounded-full bg-[#3B82F6]/20 flex items-center justify-center text-[#3B82F6] shrink-0 border border-[#3B82F6]/30">
-                                            <Users className="w-5 h-5" />
+                                    <div key={idx} className="flex items-center gap-3 p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#3B82F6]/30 transition-colors">
+                                        <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center text-[#3B82F6] shrink-0">
+                                            <Users className="w-4 h-4" />
                                         </div>
-                                        <span className="font-bold text-white text-sm truncate">{artist as string}</span>
+                                        <span className="font-bold text-white text-[13px] truncate">{artist as string}</span>
                                     </div>
                                 ))}
 
                                 {expandedMetric === "genres" && sortedGenres.map(([genre, count]: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center p-4 rounded-[20px] bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#EAB308]/50 transition-colors">
+                                    <div key={idx} className="flex justify-between items-center p-3.5 rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] hover:border-[#EAB308]/30 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-full bg-[#EAB308]/20 flex items-center justify-center text-[#EAB308] shrink-0 border border-[#EAB308]/30">
-                                                <Disc className="w-5 h-5" />
+                                            <div className="w-8 h-8 rounded-lg bg-[#EAB308]/10 flex items-center justify-center text-[#EAB308] shrink-0">
+                                                <Disc className="w-4 h-4" />
                                             </div>
-                                            <span className="font-bold text-white text-sm truncate capitalize">{genre}</span>
+                                            <span className="font-bold text-white text-[13px] truncate capitalize">{genre}</span>
                                         </div>
-                                        <span className="text-[#EAB308] font-bold bg-[#EAB308]/10 px-3 py-1 rounded-full text-xs shrink-0">{count} Tracks</span>
+                                        <span className="text-[#EAB308] font-bold bg-[#EAB308]/8 px-2.5 py-1 rounded-lg text-[11px] shrink-0">{count} tracks</span>
                                     </div>
                                 ))}
                             </div>
@@ -801,96 +772,92 @@ export default function DashboardOverviewPage() {
                     </div>
                 )}
 
-                {/* BOTTOM SPLIT SECTION */}
-                <div className="flex flex-col xl:flex-row gap-6 w-full">
+                {/* ═══ Bottom: Activity Chart + Top Tracks ═══ */}
+                <div className="flex flex-col xl:flex-row gap-5 w-full">
                     
-                    {/* Activity Manager Chart Container */}
-                    <div className="flex-1 bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[32px] p-6 lg:p-8 flex flex-col h-[400px]">
-                        <div className="flex justify-between items-center mb-6">
-                            <h4 className="text-sm font-bold text-white tracking-wider">Activity Manager</h4>
-                            <div className="flex items-center gap-2">
-                                <div className="flex bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full overflow-hidden text-xs font-medium p-1">
-                                    <button onClick={() => setActivityFilter("7D")} className={`px-4 py-1.5 rounded-full transition-colors ${activityFilter === "7D" ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}>7 Days</button>
-                                    <button onClick={() => setActivityFilter("30D")} className={`px-4 py-1.5 rounded-full transition-colors ${activityFilter === "30D" ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}>30 Days</button>
-                                    <button onClick={() => setActivityFilter("All Time")} className={`px-4 py-1.5 rounded-full transition-colors ${activityFilter === "All Time" ? "bg-[#2A364D] text-white" : "text-[#8293B4] hover:text-white"}`}>All Time</button>
-                                </div>
+                    {/* Activity Chart */}
+                    <div className="flex-1 card-premium p-5 lg:p-6 flex flex-col h-[380px]">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h4 className="text-sm font-bold text-white">Activity Manager</h4>
+                                <p className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">Listening patterns over time</p>
+                            </div>
+                            <div className="flex bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl overflow-hidden text-[11px] font-bold p-0.5">
+                                <button onClick={() => setActivityFilter("7D")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "7D" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>7D</button>
+                                <button onClick={() => setActivityFilter("30D")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "30D" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>30D</button>
+                                <button onClick={() => setActivityFilter("All Time")} className={`px-3 py-1.5 rounded-lg transition-colors ${activityFilter === "All Time" ? "bg-[var(--theme-panel)] text-white" : "text-[var(--theme-text-muted)] hover:text-white"}`}>All</button>
                             </div>
                         </div>
 
-                        {/* Chart body */}
-                        <div className="flex-1 min-h-[250px] w-full mt-2 relative">
-                            <div className="absolute inset-0 bg-[var(--theme-bg)]/50 rounded-[24px] pointer-events-none border border-white/5"></div>
-                            
-                            <div className="absolute top-4 left-4 z-10 flex gap-4 text-xs font-bold">
-                                <div className="flex items-center gap-2 text-white"><span className="w-2 h-2 rounded-full bg-[#D1F26D]"></span> Listening Time (m)</div>
-                                <div className="flex items-center gap-2 text-white"><span className="w-2 h-2 rounded-full bg-[#3B82F6]"></span> Avg Mood</div>
-                                <div className="flex items-center gap-2 text-white"><span className="w-2 h-2 rounded-full bg-[#A855F7]"></span> Avg Energy</div>
-                            </div>
+                        {/* Legend */}
+                        <div className="flex gap-4 text-[10px] font-bold mb-3">
+                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#D1F26D]" /> Time (m)</div>
+                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" /> Mood</div>
+                            <div className="flex items-center gap-1.5 text-[var(--theme-text-muted)]"><span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]" /> Energy</div>
+                        </div>
 
-                            <ResponsiveContainer width="100%" height="100%" className="pt-10 relative z-10">
-                                <AreaChart data={activityChartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                        <div className="flex-1 w-full relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={activityChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorGreen" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.2}/>
+                                            <stop offset="5%" stopColor="#D1F26D" stopOpacity={0.15}/>
                                             <stop offset="95%" stopColor="#D1F26D" stopOpacity={0}/>
                                         </linearGradient>
                                         <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
+                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15}/>
                                             <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                                         </linearGradient>
                                         <linearGradient id="colorPurple" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#A855F7" stopOpacity={0.2}/>
+                                            <stop offset="5%" stopColor="#A855F7" stopOpacity={0.15}/>
                                             <stop offset="95%" stopColor="#A855F7" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
-                                    <XAxis dataKey="name" tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} />
-                                    <YAxis tick={{ fill: '#8293B4', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                    <XAxis dataKey="name" tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} dy={8} />
+                                    <YAxis tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                                     <Tooltip 
-                                        contentStyle={{ backgroundColor: '#1B2332', borderColor: '#2A364D', borderRadius: '16px', padding: '12px' }}
-                                        labelStyle={{ color: 'white', fontWeight: 'bold', marginBottom: '8px' }}
-                                        itemStyle={{ color: '#D1F26D', fontSize: '12px' }}
+                                        contentStyle={{ backgroundColor: 'var(--theme-panel)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+                                        labelStyle={{ color: 'white', fontWeight: 'bold', marginBottom: '6px', fontSize: '12px' }}
+                                        itemStyle={{ fontSize: '11px' }}
                                     />
-                                    <Area type="monotone" dataKey="time" stroke="#D1F26D" strokeWidth={3} fillOpacity={1} fill="url(#colorGreen)" activeDot={{ r: 6, fill: "#D1F26D", stroke: "#111319", strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="mood" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorBlue)" activeDot={{ r: 6, fill: "#3B82F6", stroke: "#111319", strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="energy" stroke="#A855F7" strokeWidth={3} fillOpacity={1} fill="url(#colorPurple)" activeDot={{ r: 6, fill: "#A855F7", stroke: "#111319", strokeWidth: 2 }} />
+                                    <Area type="monotone" dataKey="time" stroke="#D1F26D" strokeWidth={2} fillOpacity={1} fill="url(#colorGreen)" activeDot={{ r: 4, fill: "#D1F26D", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
+                                    <Area type="monotone" dataKey="mood" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorBlue)" activeDot={{ r: 4, fill: "#3B82F6", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
+                                    <Area type="monotone" dataKey="energy" stroke="#A855F7" strokeWidth={2} fillOpacity={1} fill="url(#colorPurple)" activeDot={{ r: 4, fill: "#A855F7", stroke: "var(--theme-bg)", strokeWidth: 2 }} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Top Tracks (Right Sidebar equivalent) */}
-                    <div className="w-full xl:w-[450px] flex flex-col gap-6">
-                        
-                        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-[32px] p-6 lg:p-8 flex flex-col h-[400px]">
-                            <div className="flex justify-between items-center mb-6">
-                                <h4 className="text-sm font-bold text-white tracking-wider">Main Tracks<br/><span className="text-[10px] text-[#8293B4] font-normal tracking-normal">All Time Favorites</span></h4>
-                                <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full px-4 py-2 text-xs font-bold text-white flex items-center gap-2 cursor-pointer hover:bg-white/10 transition-colors">
-                                    by Plays <ChevronDown className="w-3 h-3" />
-                                </div>
+                    {/* Top Tracks */}
+                    <div className="w-full xl:w-[420px] card-premium p-5 lg:p-6 flex flex-col h-[380px]">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h4 className="text-sm font-bold text-white">Top Tracks</h4>
+                                <p className="text-[10px] text-[var(--theme-text-muted)] mt-0.5">All time favorites</p>
                             </div>
-
-                            <div className="flex-1 space-y-3 overflow-y-auto scrollbar-hide pr-2">
-                                {finalTracks.map((track: any) => (
-                                    <div key={track.rank} className="flex items-center gap-4 bg-[var(--theme-panel)] p-3 pr-4 rounded-[20px] hover:bg-white/10 transition-colors cursor-pointer border border-transparent hover:border-[var(--theme-border)]">
-                                        <div className="w-12 h-12 rounded-[14px] bg-[#2A364D] overflow-hidden flex items-center justify-center shrink-0 shadow-md">
-                                            {track.image ? (
-                                                <img src={track.image} alt={track.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <Music className="w-5 h-5 text-[#8293B4]" />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-bold text-white truncate">{track.name}</div>
-                                            <div className="text-[11px] text-[#8293B4] truncate">{track.artist}</div>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1 shrink-0">
-                                            <div className="text-xs font-bold text-[#D1F26D] bg-[#D1F26D]/10 px-2 py-1 rounded-md">{track.plays} plays</div>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl px-3 py-1.5 text-[11px] font-bold text-white flex items-center gap-1.5 cursor-pointer hover:border-[var(--theme-accent)]/30 transition-colors">
+                                by Plays <ChevronDown className="w-3 h-3" />
                             </div>
                         </div>
 
+                        <div className="flex-1 space-y-2 overflow-y-auto scrollbar-hide">
+                            {finalTracks.map((track: any) => (
+                                <div key={track.rank} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/3 transition-colors cursor-pointer group">
+                                    <div className="w-10 h-10 rounded-xl bg-[var(--theme-bg)] overflow-hidden flex items-center justify-center shrink-0 border border-[var(--theme-border)] group-hover:border-[var(--theme-accent)]/20 transition-colors">
+                                        {track.image ? (
+                                            <img src={track.image} alt={track.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Music className="w-4 h-4 text-[var(--theme-text-muted)]" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[13px] font-bold text-white truncate">{track.name}</div>
+                                        <div className="text-[10px] text-[var(--theme-text-muted)] truncate">{track.artist}</div>
+                                    </div>
+                                    <span className="text-[10px] font-black text-[var(--theme-accent)] bg-[var(--theme-accent)]/8 px-2 py-1 rounded-lg shrink-0">{track.plays}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 

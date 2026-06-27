@@ -2,33 +2,160 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════
+   THEME SYSTEM — CSS Custom Properties
+   Each .theme-* class defines a complete color palette.
+   Applied on the root wrapper in dashboard/layout.tsx
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  --theme-bg: #060910;
+  --theme-panel: #0D111A;
+  --theme-border: #1B2332;
+  --theme-text: #E2E8F0;
+  --theme-text-muted: #64748B;
+  --theme-accent: #D1F26D;
+  --theme-accent-hover: #BDE05A;
+  --theme-chart-1: #D1F26D;
+  --theme-chart-2: #A855F7;
+  --theme-chart-3: #3B82F6;
+}
+
+.theme-olive {
+  --theme-bg: #060910;
+  --theme-panel: #0D111A;
+  --theme-border: #1B2332;
+  --theme-text: #E2E8F0;
+  --theme-text-muted: #64748B;
+  --theme-accent: #D1F26D;
+  --theme-accent-hover: #BDE05A;
+  --theme-chart-1: #D1F26D;
+  --theme-chart-2: #A855F7;
+  --theme-chart-3: #3B82F6;
+}
+
+.theme-cyan {
+  --theme-bg: #060910;
+  --theme-panel: #0D1117;
+  --theme-border: #1B2332;
+  --theme-text: #E2E8F0;
+  --theme-text-muted: #64748B;
+  --theme-accent: #22D3EE;
+  --theme-accent-hover: #06B6D4;
+  --theme-chart-1: #22D3EE;
+  --theme-chart-2: #A855F7;
+  --theme-chart-3: #3B82F6;
+}
+
+.theme-glass {
+  --theme-bg: transparent;
+  --theme-panel: rgba(13, 17, 26, 0.6);
+  --theme-border: rgba(255, 255, 255, 0.08);
+  --theme-text: #E2E8F0;
+  --theme-text-muted: #94A3B8;
+  --theme-accent: #D1F26D;
+  --theme-accent-hover: #BDE05A;
+  --theme-chart-1: #D1F26D;
+  --theme-chart-2: #A855F7;
+  --theme-chart-3: #3B82F6;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════ */
+
 body {
-  background-color: #111418;
-  color: #FFFFFF;
+  background-color: #060910;
+  color: #E2E8F0;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide scrollbar globally but preserve scrolling functionality */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom thin scrollbar for panels */
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 999px; }
 
 ::selection {
-  background: #FFFFFF;
-  color: #111418;
+  background: var(--theme-accent);
+  color: #060910;
 }
 
-/* Specific text styling from the images */
+/* ═══════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════ */
+
+/* Premium card with gradient top accent */
+.card-premium {
+  background: var(--theme-panel);
+  border: 1px solid var(--theme-border);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.card-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--theme-accent), var(--theme-chart-2));
+  opacity: 0.6;
+}
+
+/* Pill control */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-panel);
+  color: var(--theme-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.pill:hover {
+  border-color: var(--theme-accent);
+  background: rgba(209, 242, 109, 0.04);
+}
+.pill.active {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+  background: rgba(209, 242, 109, 0.08);
+}
+
+/* Glow shadow */
+.glow-accent {
+  box-shadow: 0 0 30px rgba(209, 242, 109, 0.06);
+}
+
+/* Animated gradient shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Legacy compatibility */
 .text-label {
-  font-family: 'Courier New', Courier, monospace; /* Exact monospace aesthetic */
+  font-family: 'Courier New', Courier, monospace;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-size: 0.8rem;
@@ -39,4 +166,10 @@ body {
   stroke: #FFFFFF;
   stroke-width: 2;
   fill: none;
+}
+
+/* Marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
 }
