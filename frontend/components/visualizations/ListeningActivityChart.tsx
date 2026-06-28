@@ -30,17 +30,13 @@ export default function ListeningActivityChart({
         return `${hour % 12} ${hour >= 12 ? "PM" : "AM"}`;
     };
 
-    // Calculate a smooth continuous line for Mood (purple) and Tempo (blue)
-    const waveData = useMemo(() => {
-        const points = [];
-        for (let i = 0; i <= 6; i += 0.5) {
-            // Fake some smooth wave math that hits the middle generally
-            const moodY = 14 + Math.sin(i * 1.5) * 6 + Math.cos(i * 3) * 2;
-            const tempoY = 16 + Math.cos(i * 1.2) * 4 + Math.sin(i * 2.5) * 2;
-            points.push({ dayIndex: i, moodLine: moodY, tempoLine: tempoY });
-        }
-        return points;
-    }, []);
+    // Sort data chronologically so the line connects dots in order
+    const sortedData = useMemo(() => {
+        if (!data) return [];
+        return [...data].sort((a, b) => {
+            return new Date(a.originalTime).getTime() - new Date(b.originalTime).getTime();
+        });
+    }, [data]);
 
     const renderCustomDot = (props: any) => {
         const { cx, cy } = props;
@@ -97,7 +93,7 @@ export default function ListeningActivityChart({
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: "#64748B", fontSize: 11, fontWeight: 500 }}
-                        tickCount={7}
+                        ticks={[0, 1, 2, 3, 4, 5, 6]}
                         allowDuplicatedCategory={false}
                     />
                     <YAxis
@@ -114,32 +110,21 @@ export default function ListeningActivityChart({
                     <ZAxis type="number" dataKey="size" range={[40, 80]} />
                     <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#1B2332" }} />
                     
-                    {/* The Background smooth waves */}
-                    <Area 
-                        data={waveData}
-                        type="monotone" 
-                        dataKey="moodLine" 
-                        stroke="#A855F7" 
-                        strokeWidth={4}
-                        fillOpacity={1} 
-                        fill="url(#colorMood)" 
-                        isAnimationActive={false}
-                    />
-                    <Line 
-                        data={waveData}
-                        type="monotone" 
-                        dataKey="tempoLine" 
-                        stroke="#3B82F6" 
-                        strokeWidth={2}
-                        dot={false} 
-                        isAnimationActive={false}
-                    />
-
                     {/* The Scatter points on top */}
                     <Scatter
                         name="Listening Activity"
-                        data={data}
+                        data={sortedData}
                         shape={renderCustomDot}
+                    />
+
+                    <Line 
+                        data={sortedData}
+                        type="linear" 
+                        dataKey="timeOfDay" 
+                        stroke="#A855F7" 
+                        strokeWidth={3}
+                        dot={false} 
+                        isAnimationActive={false}
                     />
                 </ComposedChart>
             </ResponsiveContainer>
@@ -147,11 +132,7 @@ export default function ListeningActivityChart({
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-6">
                 <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#A855F7]" />
-                    <span className="text-[11px] font-bold text-gray-400">Mood Intensity</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-0.5 bg-[#3B82F6]" />
-                    <span className="text-[11px] font-bold text-gray-400">Tempo Line</span>
+                    <span className="text-[11px] font-bold text-gray-400">Listening Activity</span>
                 </div>
             </div>
         </div>

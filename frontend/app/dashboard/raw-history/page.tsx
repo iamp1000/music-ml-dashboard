@@ -225,6 +225,7 @@ export default function ListeningHistoryPage() {
                 const timeOfDay = dateObj.getHours() + (dateObj.getMinutes() / 60);
                 listeningData.push({
                     dayIndex,
+                    exactTime: dayIndex + (timeOfDay / 24),
                     timeOfDay,
                     size: 60,
                     trackName: t.track_name || t.name,
