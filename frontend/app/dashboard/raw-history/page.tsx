@@ -103,21 +103,21 @@ export default function ListeningHistoryPage() {
         let idCounter = 0;
 
         topGroups.forEach((groupName, index) => {
-            const groupTracks = history.filter(t => {
+            const groupTracks = history
+                .filter(t => {
                 if (timelineGrouping === "Artist") return (t.artist_name || "Unknown Artist") === groupName;
                 if (timelineGrouping === "Mood") return (t.ai_mood || t.mood_category || "Unknown Mood") === groupName;
                 if (timelineGrouping === "Listening Activity") return (t.ml_features?.time_of_day_fit || t.time_of_day_fit || "General Activity") === groupName;
                 if (timelineGrouping === "Context") return (t.ml_features?.cultural_context || t.ml_features?.context_tag || t.context || "Unknown Context") === groupName;
                 return false;
-            }).reverse(); // chronological
-            
-            if (groupTracks.length === 0) return;
+            })
+                .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()); // Chronological
 
             let currentSession = {
                 id: `sess-${idCounter++}`,
                 groupName: groupName,
                 groupIndex: index,
-                startTime: new Date(groupTracks[0].time),
+                startTime: new Date(new Date(groupTracks[0].time).getTime() - (groupTracks[0].played_ms || groupTracks[0].duration_ms || 180000)),
                 endTime: new Date(groupTracks[0].time),
                 mood: groupTracks[0].ai_mood || groupTracks[0].mood_category || "Unknown",
                 tracks: [groupTracks[0]]
@@ -125,9 +125,16 @@ export default function ListeningHistoryPage() {
 
             for (let i = 1; i < groupTracks.length; i++) {
                 const track = groupTracks[i];
-                const trackTime = new Date(track.time);
-                const prevTime = new Date(groupTracks[i-1].time);
-                const diffMins = (trackTime.getTime() - prevTime.getTime()) / 60000;
+                const trackEndTime = new Date(track.time);
+                const trackStartTime = new Date(trackEndTime.getTime() - (track.played_ms || track.duration_ms || 180000));
+                
+                const prevTrack = groupTracks[i-1];
+                const prevStartTime = new Date(new Date(prevTrack.time).getTime() - (prevTrack.played_ms || prevTrack.duration_ms || 180000));
+                
+                // Diff in minutes from the START of the previous (older) track to the END of this (newer) track.
+                // Wait, groupTracks is chronological. So prevTrack is OLDER than track.
+                // Gap is trackStartTime - prevEndTime (which is prevTrack.time).
+                const diffMins = (trackStartTime.getTime() - new Date(prevTrack.time).getTime()) / 60000;
 
                 if (diffMins > 15 || (track.ai_mood !== currentSession.mood && diffMins > 5)) {
                     sessionsByGroup.push(currentSession);
@@ -135,14 +142,14 @@ export default function ListeningHistoryPage() {
                         id: `sess-${idCounter++}`,
                         groupName: groupName,
                         groupIndex: index,
-                        startTime: trackTime,
-                        endTime: trackTime,
+                        startTime: trackStartTime,
+                        endTime: trackEndTime,
                         mood: track.ai_mood || track.mood_category || "Unknown",
                         tracks: [track]
                     };
                 } else {
                     currentSession.tracks.push(track);
-                    currentSession.endTime = trackTime;
+                    currentSession.endTime = trackEndTime; // Extends the session forward
                 }
             }
             sessionsByGroup.push(currentSession);

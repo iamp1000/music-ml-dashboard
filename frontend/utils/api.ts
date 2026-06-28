@@ -3,6 +3,9 @@
  * and custom rate-limiting event dispatching.
  */
 export async function fetchWithRateLimit(url: string, options: RequestInit = {}): Promise<any> {
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        url = url.replace("https://music-ml-dashboard.onrender.com", "http://localhost:8000");
+    }
     const token = typeof window !== "undefined" ? localStorage.getItem("jwt") : null;
     const headers = {
         "Content-Type": "application/json",
