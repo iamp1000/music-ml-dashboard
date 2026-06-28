@@ -10,8 +10,8 @@ load_dotenv()
 # For TiDB Serverless, we need ssl enabled
 host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
 port = 4000
-user = "2u2TczwT65g96ET.root"
-password = "Fs9jesHk5BPSdF2l"
+user = os.environ.get("TIDB_USER", "root")
+password = os.environ.get("TIDB_PASSWORD", "password")
 database = "test"
 
 from sqlalchemy import create_engine

@@ -93,11 +93,12 @@ async def async_fetch_history(task_instance, user_id, refresh_token_cipher, nonc
                 cursor = conn.cursor()
                 track_ids_tuple = tuple([t[1] for t in new_tracks])
                 if len(track_ids_tuple) == 1:
-                    query = f"SELECT track_id, valence, energy FROM track_features WHERE track_id = '{track_ids_tuple[0]}'"
-                    cursor.execute(query)
+                    query = "SELECT track_id, valence, energy FROM track_features WHERE track_id = ?"
+                    cursor.execute(query, (track_ids_tuple[0],))
                 elif len(track_ids_tuple) > 1:
-                    query = f"SELECT track_id, valence, energy FROM track_features WHERE track_id IN {track_ids_tuple}"
-                    cursor.execute(query)
+                    placeholders = ",".join("?" * len(track_ids_tuple))
+                    query = f"SELECT track_id, valence, energy FROM track_features WHERE track_id IN ({placeholders})"
+                    cursor.execute(query, track_ids_tuple)
                 else:
                     query = ""
                 
