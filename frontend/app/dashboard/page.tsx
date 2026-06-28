@@ -46,7 +46,7 @@ export default function DashboardPage() {
                 if (aggResp?.data) setAggregates(aggResp.data);
 
                 // Fetch AI insights
-                const insightsResp = await fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/ml/insights');
+                const insightsResp = await fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/telemetry/deep-insights');
                 if (!insightsResp?.data) {
                     setGeminiFailing(true);
                 }
