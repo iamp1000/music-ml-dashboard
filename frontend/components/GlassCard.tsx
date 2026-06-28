@@ -15,13 +15,13 @@ export function GlassCard({ children, className, title, icon, ...props }: GlassC
     return (
         <div 
             className={cn(
-                "relative flex flex-col rounded-2xl bg-theme-panel backdrop-blur-xl border border-theme-border shadow-2xl p-5 overflow-hidden transition-all duration-300",
+                "relative flex flex-col rounded-3xl bg-white/5 backdrop-blur-xl border border-white/5 shadow-2xl p-6 overflow-hidden transition-all duration-300",
                 className
             )}
             {...props}
         >
             {/* Subtle glow effect */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-theme-accent/20 to-transparent"></div>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
             
             {title && (
                 <div className="flex items-center gap-2 mb-4">

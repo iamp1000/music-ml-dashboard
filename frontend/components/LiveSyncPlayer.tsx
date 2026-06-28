@@ -301,7 +301,7 @@ export default function LiveSyncPlayer() {
     const isButtonsDisabled = !isActive || rateLimitSeconds > 0;
 
     return (
-        <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-4 text-[#8293B4] w-full flex flex-col space-y-4 relative">
+        <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-5 text-gray-300 w-full flex flex-col space-y-4 relative overflow-hidden">
             
             {/* Rate limit warning banner */}
             {rateLimitSeconds > 0 && (
@@ -312,16 +312,16 @@ export default function LiveSyncPlayer() {
             )}
 
             {/* Album Cover & Track Details */}
-            <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-[#06080C] border border-[#1B2332] shrink-0 overflow-hidden relative flex items-center justify-center text-theme-accent">
+            <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-black/20 border border-white/10 shrink-0 overflow-hidden relative flex items-center justify-center text-theme-accent">
                     {currentTrack && currentTrack.album?.images[0]?.url ? (
                         <img 
                             src={currentTrack?.album?.images[0]?.url || "/placeholder.jpg"} 
                             alt="Album" 
-                            className={`w-14 h-14 rounded-md object-cover shadow-sm ${rateLimitSeconds > 0 ? 'opacity-50 grayscale' : ''}`}
+                            className={`w-full h-full object-cover shadow-sm ${rateLimitSeconds > 0 ? 'opacity-50 grayscale' : ''}`}
                         />
                     ) : (
-                        <Music className="w-5 h-5 text-theme-accent" />
+                        <Music className="w-6 h-6 text-theme-accent" />
                     )}
                 </div>
 
@@ -365,8 +365,8 @@ export default function LiveSyncPlayer() {
             </div>
 
             {/* Sync connection status at the very bottom */}
-            <div className="flex items-center justify-center gap-1.5 border-t border-[#1B2332]/50 pt-3 text-[9px] font-bold uppercase tracking-widest text-[#22C55E]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shadow-[0_0_6px_#22C55E] animate-pulse"></span>
+            <div className="flex items-center justify-center gap-2 border-t border-white/5 pt-4 text-[9px] font-bold uppercase tracking-widest text-[#22C55E]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shadow-[0_0_8px_#22C55E] animate-pulse"></span>
                 <span>Spotify Connected</span>
             </div>
             

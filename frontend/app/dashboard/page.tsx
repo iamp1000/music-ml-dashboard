@@ -5,7 +5,7 @@ import { fetchWithRateLimit } from "@/utils/api";
 import { Music, Search, Bell, Clock, X, Loader2, Sparkles, Activity } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { BentoCard } from "@/components/effects/BentoCard";
-import AnimatedCounter from "@/components/effects/AnimatedCounter";
+import { AnimatedCounter } from "@/components/effects/AnimatedCounter";
 
 // Visualizations
 import TopArtistsList from "@/components/visualizations/TopArtistsList";

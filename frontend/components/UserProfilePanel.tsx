@@ -80,9 +80,9 @@ export default function UserProfilePanel({ isOpen, onClose, profile }: UserProfi
         <div className="fixed inset-0 z-50 flex justify-end">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
-            <div className="relative w-full max-w-md h-full bg-[#0A0D14] border-l border-[#1B2332] shadow-2xl flex flex-col overflow-y-auto">
+            <div className="relative w-full max-w-md h-full bg-[#0A0A0A]/80 backdrop-blur-3xl border-l border-white/10 shadow-2xl flex flex-col overflow-y-auto">
                 {/* Header */}
-                <div className="p-6 border-b border-[#1B2332] sticky top-0 bg-[#0A0D14]/90 backdrop-blur z-10 flex justify-between items-start">
+                <div className="p-8 border-b border-white/5 sticky top-0 z-10 flex justify-between items-start">
                     <div className="flex gap-4 items-center">
                         {profile?.images?.[0]?.url ? (
                             <img src={profile.images[0].url} className="w-16 h-16 rounded-full border-2 border-theme-accent shadow-[0_0_15px_var(--theme-accent)]" alt="Profile" />
@@ -99,7 +99,7 @@ export default function UserProfilePanel({ isOpen, onClose, profile }: UserProfi
                             </a>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-[#1B2332]/50 hover:bg-[#1B2332] rounded-full text-theme-text-muted transition-colors">
+                    <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors border border-white/5">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -121,21 +121,21 @@ export default function UserProfilePanel({ isOpen, onClose, profile }: UserProfi
                                             Spotify vs. Database Reality
                                         </h3>
                                         
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-[#1B2332]/30 border border-[#1B2332] rounded-xl p-4">
-                                                <div className="flex items-center gap-1 mb-2 text-[10px] uppercase font-bold text-theme-text-muted tracking-wider">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-black/20 border border-white/5 rounded-2xl p-5">
+                                                <div className="flex items-center gap-1.5 mb-3 text-[10px] uppercase font-bold text-gray-400 tracking-wider">
                                                     <Sparkles className="w-3 h-3" /> Spotify #1 Track
                                                 </div>
-                                                <p className="text-sm font-bold text-white truncate">{insights.spotifyFavorite?.name || "N/A"}</p>
-                                                <p className="text-xs text-theme-text-muted truncate">{insights.spotifyFavorite?.artists?.[0]?.name || "N/A"}</p>
+                                                <p className="text-sm font-semibold text-white truncate">{insights.spotifyFavorite?.name || "N/A"}</p>
+                                                <p className="text-xs text-[var(--theme-text-muted)] mt-1 truncate">{insights.spotifyFavorite?.artists?.[0]?.name || "N/A"}</p>
                                             </div>
 
-                                            <div className="bg-theme-accent/10 border border-theme-accent/30 rounded-xl p-4">
-                                                <div className="flex items-center gap-1 mb-2 text-[10px] uppercase font-bold text-theme-accent tracking-wider">
+                                            <div className="bg-[var(--theme-accent)]/10 border border-[var(--theme-accent)]/30 rounded-2xl p-5">
+                                                <div className="flex items-center gap-1.5 mb-3 text-[10px] uppercase font-bold text-[var(--theme-accent)] tracking-wider">
                                                     <BrainCircuit className="w-3 h-3" /> True Subconscious #1
                                                 </div>
-                                                <p className="text-sm font-bold text-white truncate">{insights.trueFavorite?.track_name || "N/A"}</p>
-                                                <p className="text-xs text-theme-text-muted truncate">Weight: {insights.trueFavorite?.listen_weight?.toFixed(2) || "1.00"}</p>
+                                                <p className="text-sm font-semibold text-white truncate">{insights.trueFavorite?.track_name || "N/A"}</p>
+                                                <p className="text-xs text-[var(--theme-accent)]/70 mt-1 truncate">Weight: {insights.trueFavorite?.listen_weight?.toFixed(2) || "1.00"}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -147,35 +147,35 @@ export default function UserProfilePanel({ isOpen, onClose, profile }: UserProfi
                                             Playlist Obsessions
                                         </h3>
                                         
-                                        <div className="grid grid-cols-1 gap-3">
+                                        <div className="grid grid-cols-1 gap-4">
                                             {insights.newObsession && (
-                                                <div className="bg-[#1B2332]/50 border border-[#1B2332] rounded-xl p-4 flex gap-4 items-center">
+                                                <div className="bg-black/20 border border-white/5 rounded-2xl p-4 flex gap-4 items-center">
                                                     {insights.newObsession.images?.[0]?.url ? (
-                                                        <img src={insights.newObsession.images[0].url} className="w-12 h-12 rounded-md shadow-md" />
+                                                        <img src={insights.newObsession.images[0].url} className="w-14 h-14 rounded-xl shadow-md object-cover" />
                                                     ) : (
-                                                        <div className="w-12 h-12 rounded-md bg-[#0A0D14] flex items-center justify-center">
-                                                            <ListMusic className="w-5 h-5 text-theme-text-muted" />
+                                                        <div className="w-14 h-14 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center">
+                                                            <ListMusic className="w-5 h-5 text-[var(--theme-text-muted)]" />
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="text-[10px] uppercase font-bold text-theme-accent tracking-wider mb-0.5">New Algorithmic Obsession</p>
-                                                        <p className="text-sm font-bold text-white leading-tight">{insights.newObsession.name}</p>
+                                                        <p className="text-[10px] uppercase font-bold text-[var(--theme-accent)] tracking-wider mb-1">New Algorithmic Obsession</p>
+                                                        <p className="text-sm font-semibold text-white leading-tight">{insights.newObsession.name}</p>
                                                     </div>
                                                 </div>
                                             )}
 
                                             {insights.longestListened && (
-                                                <div className="bg-[#1B2332]/30 border border-[#1B2332] rounded-xl p-4 flex gap-4 items-center">
+                                                <div className="bg-black/20 border border-white/5 rounded-2xl p-4 flex gap-4 items-center">
                                                     {insights.longestListened.images?.[0]?.url ? (
-                                                        <img src={insights.longestListened.images[0].url} className="w-12 h-12 rounded-md shadow-md opacity-80" />
+                                                        <img src={insights.longestListened.images[0].url} className="w-14 h-14 rounded-xl shadow-md opacity-80 object-cover" />
                                                     ) : (
-                                                        <div className="w-12 h-12 rounded-md bg-[#0A0D14] flex items-center justify-center">
-                                                            <ListMusic className="w-5 h-5 text-theme-text-muted" />
+                                                        <div className="w-14 h-14 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center">
+                                                            <ListMusic className="w-5 h-5 text-[var(--theme-text-muted)]" />
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider mb-0.5">Evergreen / Longest Listened</p>
-                                                        <p className="text-sm font-bold text-white leading-tight">{insights.longestListened.name}</p>
+                                                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Evergreen / Longest Listened</p>
+                                                        <p className="text-sm font-semibold text-white leading-tight">{insights.longestListened.name}</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -190,15 +190,15 @@ export default function UserProfilePanel({ isOpen, onClose, profile }: UserProfi
                                         </h3>
                                         <div className="flex gap-4">
                                             {insights.topArtists.map((artist: any, i: number) => (
-                                                <div key={artist.id} className="flex-1 flex flex-col items-center text-center gap-2">
+                                                <div key={artist.id} className="flex-1 flex flex-col items-center text-center gap-3">
                                                     {artist.images?.[0]?.url ? (
-                                                        <img src={artist.images[0].url} className="w-14 h-14 rounded-full object-cover border border-[#1B2332]" />
+                                                        <img src={artist.images[0].url} className="w-16 h-16 rounded-full object-cover border border-white/10" />
                                                     ) : (
-                                                        <div className="w-14 h-14 rounded-full bg-[#1B2332] flex items-center justify-center">
-                                                            <Music className="w-5 h-5 text-theme-text-muted" />
+                                                        <div className="w-16 h-16 rounded-full bg-black/20 border border-white/5 flex items-center justify-center">
+                                                            <Music className="w-5 h-5 text-gray-500" />
                                                         </div>
                                                     )}
-                                                    <span className="text-xs font-medium text-white line-clamp-1">{artist.name}</span>
+                                                    <span className="text-xs font-semibold text-white line-clamp-1">{artist.name}</span>
                                                 </div>
                                             ))}
                                         </div>
