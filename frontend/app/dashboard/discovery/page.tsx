@@ -83,12 +83,12 @@ export default function MusicRecommendationsHub() {
     // --- Sub-Render: Top Tracks & Artists ---
     const renderTopItems = () => {
         return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 {/* Top Artists List */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col">
+                <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                            <Mic2 className="w-5 h-5 text-theme-accent" />
+                        <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">
+                            <Mic2 className="w-5 h-5 text-[var(--theme-accent)]" />
                             Top Artists
                         </h3>
                     </div>
@@ -97,14 +97,14 @@ export default function MusicRecommendationsHub() {
                         {displayArtists.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
                                 {displayArtists.slice(0, 10).map((artist, i) => (
-                                    <div key={artist.name || i} className="flex items-center gap-3 p-2 bg-[#070A0F]/50 border border-[#1B2332]/50 rounded-xl hover:border-[#1B2332] transition-colors">
-                                        <div className="text-xs font-mono text-theme-text-muted w-4 shrink-0">{i + 1}</div>
-                                        <div className="w-10 h-10 rounded-lg bg-[#070A0F] border border-[#1B2332] flex items-center justify-center shrink-0 text-theme-accent font-bold text-[10px] overflow-hidden">
+                                    <div key={artist.name || i} className="flex items-center gap-4 p-3 bg-black/20 rounded-2xl hover:bg-black/40 transition-colors border border-transparent hover:border-white/5 cursor-pointer">
+                                        <div className="text-xs font-medium text-[var(--theme-text-muted)] w-4 shrink-0">{i + 1}</div>
+                                        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-[var(--theme-accent)] overflow-hidden">
                                             <Mic2 className="w-4 h-4" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <h4 className="text-xs font-bold text-white truncate">{artist.name}</h4>
-                                            <p className="text-[9px] text-theme-text-muted truncate mt-0.5 uppercase tracking-wide font-mono">
+                                            <h4 className="text-sm font-semibold text-white truncate">{artist.name}</h4>
+                                            <p className="text-[11px] text-[var(--theme-text-muted)] truncate mt-0.5 font-medium">
                                                 {artist.count} Plays
                                             </p>
                                         </div>
@@ -112,7 +112,7 @@ export default function MusicRecommendationsHub() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex-1 flex items-center justify-center py-20 text-xs text-theme-text-muted">
+                            <div className="flex-1 flex items-center justify-center py-20 text-sm text-[var(--theme-text-muted)] font-medium">
                                 No top artists available.
                             </div>
                         )}
@@ -120,40 +120,40 @@ export default function MusicRecommendationsHub() {
                 </div>
 
                 {/* Top Tracks List */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col">
+                <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                            <Music className="w-5 h-5 text-theme-accent" />
+                        <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">
+                            <Music className="w-5 h-5 text-[var(--theme-accent)]" />
                             Most Played Tracks
                         </h3>
                     </div>
 
                     {displayTracks.length > 0 ? (
-                        <div className="space-y-3 overflow-y-auto max-h-[420px] pr-2 scrollbar-thin">
+                        <div className="space-y-2 overflow-y-auto max-h-[420px] pr-2 scrollbar-thin">
                             {displayTracks.map((track, i) => (
-                                <div key={i} className="flex items-center gap-4 p-2.5 rounded-xl hover:bg-[#070A0F] border border-transparent hover:border-[#1B2332] transition-all group cursor-pointer">
-                                    <div className="text-xs font-mono text-theme-text-muted w-4 shrink-0">{i + 1}</div>
-                                    <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-[#070A0F] border border-[#1B2332] flex items-center justify-center text-theme-accent text-xs">
+                                <div key={i} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 border border-transparent transition-all group cursor-pointer">
+                                    <div className="text-xs font-medium text-[var(--theme-text-muted)] w-4 shrink-0">{i + 1}</div>
+                                    <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white/5 border border-white/10 flex items-center justify-center text-[var(--theme-accent)]">
                                         <Music className="w-4 h-4" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
                                             <Play className="w-4 h-4 text-white fill-white" />
                                         </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-xs font-bold text-white truncate group-hover:text-theme-accent transition-colors">{track.name}</h4>
-                                        <p className="text-[10px] text-theme-text-muted truncate mt-0.5">{track.artist}</p>
+                                        <h4 className="text-sm font-semibold text-white truncate group-hover:text-[var(--theme-accent)] transition-colors">{track.name}</h4>
+                                        <p className="text-[11px] text-[var(--theme-text-muted)] truncate mt-0.5">{track.artist}</p>
                                     </div>
                                     <div className="flex flex-col items-end shrink-0">
-                                        <span className="text-xs font-mono text-white font-bold">{track.count} plays</span>
-                                        <div className="w-16 h-1 bg-[#1B2332] rounded-full overflow-hidden mt-1">
-                                            <div className="h-full bg-theme-accent rounded-full shadow-[0_0_4px_var(--theme-accent)]" style={{ width: `${Math.min(100, Math.round((track.count / history.length) * 400 + 40))}%` }}></div>
+                                        <span className="text-[11px] text-[var(--theme-text-muted)] font-medium">{track.count} plays</span>
+                                        <div className="w-16 h-1.5 bg-black/40 rounded-full overflow-hidden mt-1.5">
+                                            <div className="h-full bg-[var(--theme-accent)] rounded-full shadow-[0_0_8px_var(--theme-accent)]" style={{ width: `${Math.min(100, Math.round((track.count / history.length) * 400 + 40))}%` }}></div>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center py-20 text-xs text-theme-text-muted">
+                        <div className="flex-1 flex items-center justify-center py-20 text-sm text-[var(--theme-text-muted)] font-medium">
                             No track play history recorded.
                         </div>
                     )}
@@ -202,51 +202,50 @@ export default function MusicRecommendationsHub() {
         ];
 
         return (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
                 {customMixes.map((mix, idx) => {
                     const MixIcon = mix.icon;
                     return (
-                        <div key={idx} className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-5 flex flex-col h-[400px]">
+                        <div key={idx} className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-6 flex flex-col h-[420px]">
                             {/* Header Box */}
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${mix.gradient} border border-[#1B2332] flex items-center justify-center`}>
-                                    <MixIcon className="w-5 h-5 text-theme-accent" />
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${mix.gradient} border border-white/10 flex items-center justify-center shadow-lg`}>
+                                    <MixIcon className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-black text-white uppercase tracking-wider leading-tight">{mix.title}</h4>
-                                    <span className="text-[9px] text-theme-text-muted">{mix.tagline}</span>
+                                    <h4 className="text-sm font-bold text-white tracking-wide">{mix.title}</h4>
+                                    <span className="text-[11px] text-[var(--theme-text-muted)] font-medium">{mix.tagline}</span>
                                 </div>
                             </div>
 
                             {/* Recommendations list */}
-                            <div className="flex-1 space-y-3 overflow-y-auto pr-1 scrollbar-thin">
+                            <div className="flex-1 space-y-2 overflow-y-auto pr-2 scrollbar-thin">
                                 {mix.tracks.length > 0 ? (
                                     mix.tracks.map((track: any, tIdx: number) => (
-                                        <div key={track.id || tIdx} className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[#070A0F] border border-transparent hover:border-[#1B2332] transition-colors group cursor-pointer">
-                                            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-[#1B2332] relative flex items-center justify-center text-theme-accent text-[10px]">
-                                                {/* No album art from history natively yet, fallback to icon */}
-                                                <Music className="w-3.5 h-3.5" />
+                                        <div key={track.id || tIdx} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 border border-transparent transition-colors group cursor-pointer">
+                                            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/10 relative flex items-center justify-center text-[var(--theme-accent)] bg-black/20">
+                                                <Music className="w-4 h-4" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                    <Play className="w-3.5 h-3.5 text-white fill-white" />
+                                                    <Play className="w-4 h-4 text-white fill-white" />
                                                 </div>
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h5 className="text-[10px] font-bold text-white truncate leading-tight group-hover:text-theme-accent transition-colors">{track.track_name}</h5>
-                                                <span className="text-[9px] text-theme-text-muted truncate block mt-0.5">{track.artist_name}</span>
+                                                <h5 className="text-[11px] font-semibold text-white truncate leading-tight group-hover:text-[var(--theme-accent)] transition-colors">{track.track_name}</h5>
+                                                <span className="text-[10px] text-[var(--theme-text-muted)] truncate block mt-1">{track.artist_name}</span>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="flex h-full items-center justify-center text-[10px] text-theme-text-muted text-center py-10">
+                                    <div className="flex h-full items-center justify-center text-xs text-[var(--theme-text-muted)] text-center py-10">
                                         No recommendations compiled.
                                     </div>
                                 )}
                             </div>
 
-                            <div className="border-t border-[#1B2332]/60 pt-3 mt-3 flex justify-between items-center text-[9px] text-theme-text-muted">
-                                <span className="font-mono">{mix.tracks.length} tracks synced</span>
-                                <span className="text-theme-accent uppercase font-bold tracking-wider hover:underline flex items-center gap-0.5">
-                                    Play Mix <span className="font-serif">→</span>
+                            <div className="border-t border-white/10 pt-4 mt-4 flex justify-between items-center text-[11px] text-[var(--theme-text-muted)] font-medium">
+                                <span>{mix.tracks.length} tracks synced</span>
+                                <span className="text-[var(--theme-accent)] font-semibold hover:underline flex items-center gap-1 cursor-pointer">
+                                    Play Mix &rarr;
                                 </span>
                             </div>
                         </div>
@@ -265,14 +264,14 @@ export default function MusicRecommendationsHub() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b border-white/5">
                 <div>
-                    <h2 className="text-2xl font-black tracking-tight text-white uppercase">Music & Discovery</h2>
-                    <p className="text-sm text-theme-text-muted mt-1">Live top Spotify tracks, artists, and customized recommendations.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-white">Discovery</h2>
+                    <p className="text-sm text-[var(--theme-text-muted)] mt-2 font-medium">Your personalized music universe, mapped and tracked.</p>
                 </div>
 
                 {/* Tab selector buttons */}
-                <div className="flex items-center gap-1.5 bg-[#0D111A] border border-[#1B2332] p-1 rounded-xl shrink-0">
+                <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-2xl shrink-0 backdrop-blur-md">
                     {tabsConfig.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -280,14 +279,14 @@ export default function MusicRecommendationsHub() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 ${
                                     isActive
-                                        ? "bg-theme-accent text-black shadow-[0_0_12px_rgba(34,197,94,0.15)]"
-                                        : "text-theme-text-muted hover:text-white hover:bg-white/5"
+                                        ? "bg-white/10 text-white shadow-sm"
+                                        : "text-[var(--theme-text-muted)] hover:text-white hover:bg-white/5"
                                 }`}
                             >
-                                <Icon className="w-3.5 h-3.5" />
-                                <span className="hidden md:inline">{tab.label}</span>
+                                <Icon className="w-4 h-4" />
+                                <span className="hidden sm:inline">{tab.label}</span>
                             </button>
                         );
                     })}

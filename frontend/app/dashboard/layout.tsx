@@ -7,8 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import LiveSyncPlayer from "@/components/LiveSyncPlayer";
 import { ParticleCanvas } from "@/components/effects/ParticleCanvas";
 import { 
-    LayoutDashboard, Activity, Compass, Settings, Clock
+    LayoutDashboard, Activity, Compass, Settings, Clock, Search
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { theme, gradientColors } = useThemeStore();
@@ -19,7 +20,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         const verifyAuth = async () => {
-            // Check URL for token first (from backend redirect)
             const urlParams = new URLSearchParams(window.location.search);
             const urlToken = urlParams.get('token');
             if (urlToken) {
@@ -35,7 +35,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }
             
             try {
-                // Actually verify the token with the backend
                 const res = await fetch("https://music-ml-dashboard.onrender.com/api/auth/profile", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
@@ -58,14 +57,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, [router]);
 
     if (!mounted || !isAuth) {
-        return <div className="min-h-screen bg-[#060910]"></div>;
+        return <div className="min-h-screen bg-[var(--theme-bg)]"></div>;
     }
 
     const navItems = [
         { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
-        { href: "/dashboard/raw-history", icon: Clock, label: "Listening History" },
-        { href: "/dashboard/history", icon: Activity, label: "Analytics Hub" },
-        { href: "/dashboard/discovery", icon: Compass, label: "Music & Discovery" },
+        { href: "/dashboard/raw-history", icon: Clock, label: "History" },
+        { href: "/dashboard/history", icon: Activity, label: "Analytics" },
+        { href: "/dashboard/discovery", icon: Compass, label: "Discovery" },
+    ];
+
+    const bottomItems = [
         { href: "/dashboard/settings", icon: Settings, label: "Settings" },
     ];
 
@@ -75,89 +77,102 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div 
-            className={`${theme} min-h-screen bg-[var(--theme-bg)] text-[var(--theme-text)] transition-colors duration-500 font-sans flex overflow-hidden relative`}
+            className={`${theme} min-h-screen bg-[var(--theme-bg)] text-[var(--theme-text)] font-sans flex overflow-hidden relative selection:bg-[var(--theme-accent)]/30`}
             style={glassStyle}
         >
-            {/* OS Background Elements */}
-            <div className="os-background" />
-            <div className="os-noise" />
-            <ParticleCanvas />
+            {/* Background Layer */}
+            <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[var(--theme-accent)]/5 via-[var(--theme-bg)] to-[var(--theme-bg)] opacity-60"></div>
+            <div className="absolute inset-0 z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+            <div className="z-0 pointer-events-none absolute inset-0"><ParticleCanvas /></div>
             
-            {/* ═══ Sidebar ═══ */}
-            <aside className="group w-[90px] hover:w-[260px] border-r border-[var(--theme-border)] bg-[var(--theme-panel)]/80 backdrop-blur-xl flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0 transition-all duration-400 ease-out z-50">
+            {/* Sidebar */}
+            <aside className="group w-20 hover:w-[260px] border-r border-white/5 bg-black/20 backdrop-blur-3xl flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] z-50">
                 
-                {/* Gradient accent line at top */}
-
-
                 {/* Branding */}
-                <div className="px-5 pt-6 pb-4 overflow-hidden whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                        {/* Equalizer bars logo */}
-                        <div className="flex items-end gap-[3px] h-7 shrink-0">
-                            <span className="w-[3px] rounded-full h-3" style={{ background: "#8B5CF6" }} />
-                            <span className="w-[3px] rounded-full h-5" style={{ background: "#3B82F6" }} />
-                            <span className="w-[3px] rounded-full h-7 animate-pulse" style={{ background: "#22C55E" }} />
-                            <span className="w-[3px] rounded-full h-4" style={{ background: "#EAB308" }} />
-                            <span className="w-[3px] rounded-full h-2" style={{ background: "#F97316" }} />
+                <div className="px-6 py-8 overflow-hidden whitespace-nowrap">
+                    <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[var(--theme-accent)] to-blue-500 flex items-center justify-center shrink-0 shadow-[0_0_15px_var(--theme-accent)]/20">
+                            <Activity className="w-4 h-4 text-white" />
                         </div>
-                        <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <span className="text-[15px] font-black tracking-wider text-white leading-none">SonicLens</span>
-                            <span className="text-[9px] text-[var(--theme-text-muted)] mt-1 font-semibold uppercase tracking-[0.15em]">for Spotify</span>
+                        <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">
+                            <span className="text-[14px] font-bold tracking-wide text-white leading-tight">SonicLens</span>
+                            <span className="text-[10px] text-[var(--theme-text-muted)] font-medium">Intelligence OS</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Section label */}
-                <div className="px-5 pt-4 pb-2 overflow-hidden whitespace-nowrap">
-                    <span className="text-[9px] font-bold text-[var(--theme-text-muted)] uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity duration-300">Menu</span>
-                </div>
-
                 {/* Navigation */}
-                <nav className="flex-1 px-3 space-y-1 overflow-y-auto scrollbar-hide">
+                <nav className="flex-1 px-4 space-y-2 overflow-y-auto scrollbar-hide py-4">
+                    <div className="px-2 mb-2">
+                        <span className="text-[10px] font-semibold text-[var(--theme-text-muted)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-200">Main</span>
+                    </div>
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
-                            <Link prefetch={false} 
+                            <Link 
+                                prefetch={false} 
                                 key={item.href} 
                                 href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                                className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
                                     isActive 
-                                        ? "bg-white/5 text-white font-bold" 
-                                        : "text-[var(--theme-text-muted)] hover:text-white"
+                                        ? "bg-white/10 text-white font-medium shadow-sm" 
+                                        : "text-[var(--theme-text-muted)] hover:text-white hover:bg-white/5"
                                 }`}
                             >
-                                {/* Active indicator dot */}
                                 {isActive && (
-                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full" style={{ background: "#22C55E" }} />
+                                    <motion.div layoutId="active-nav" className="absolute left-0 w-1 h-full bg-[var(--theme-accent)] rounded-r-full" />
                                 )}
                                 
-                                {/* Icon container */}
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isActive ? "bg-white/10" : "bg-transparent group-hover:bg-white/5"}`}>
-                                    <item.icon className={`w-5 h-5 ${isActive ? "text-white" : "text-[#8293B4] group-hover:text-white"} transition-colors`} />
-                                </div>
-                                
-                                <span className={`text-[13px] tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isActive ? "text-white" : ""}`}>{item.label}</span>
+                                <item.icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-[var(--theme-accent)]" : ""}`} />
+                                <span className={`text-sm tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-75`}>{item.label}</span>
+                            </Link>
+                        );
+                    })}
+
+                    <div className="mt-8 px-2 mb-2">
+                        <span className="text-[10px] font-semibold text-[var(--theme-text-muted)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-200">System</span>
+                    </div>
+                    {bottomItems.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link 
+                                prefetch={false} 
+                                key={item.href} 
+                                href={item.href}
+                                className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 relative ${
+                                    isActive 
+                                        ? "bg-white/10 text-white font-medium shadow-sm" 
+                                        : "text-[var(--theme-text-muted)] hover:text-white hover:bg-white/5"
+                                }`}
+                            >
+                                {isActive && (
+                                    <motion.div layoutId="active-nav" className="absolute left-0 w-1 h-full bg-[var(--theme-accent)] rounded-r-full" />
+                                )}
+                                <item.icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-[var(--theme-accent)]" : ""}`} />
+                                <span className={`text-sm tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-75`}>{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
                 {/* Sidebar Player */}
-                <div className="p-3 border-t border-[var(--theme-border)] overflow-hidden">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap min-w-[230px]">
+                <div className="p-4 border-t border-white/5 bg-black/10">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap min-w-[220px]">
                         <LiveSyncPlayer />
                     </div>
                 </div>
             </aside>
 
-            {/* ═══ Main Content ═══ */}
-            <main className="flex-1 overflow-y-auto h-screen relative">
-                <div className="w-full max-w-[1500px] mx-auto min-h-full flex flex-col">
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto h-screen relative z-10 scrollbar-thin">
+                <div className="w-full max-w-[1600px] mx-auto min-h-full flex flex-col">
                     <div className="flex-1">
                         {children}
                     </div>
-                    <div className="py-6 text-center text-[9px] text-[var(--theme-text-muted)]/30 uppercase tracking-[0.25em] font-bold">
-                        SonicLens Dashboard v2.0
+                    <div className="py-8 text-center">
+                        <span className="text-[10px] text-[var(--theme-text-muted)]/50 uppercase tracking-[0.3em] font-medium">
+                            SonicLens © 2026
+                        </span>
                     </div>
                 </div>
             </main>

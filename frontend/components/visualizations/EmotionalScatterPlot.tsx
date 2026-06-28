@@ -1,22 +1,24 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import * as d3 from 'd3';
 
-const EmotionalScatterPlot: React.FC = () => {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [data, setData] = useState<{x: number, y: number, name: string}[]>([]);
+interface EmotionalScatterPlotProps {
+  history?: any[];
+}
 
-  useEffect(() => {
-    // Generate some random data for the scatter plot
-    const mockData = Array.from({ length: 30 }, (_, i) => ({
-      x: (Math.random() - 0.5) * 2,
-      y: (Math.random() - 0.5) * 2,
-      name: `Track ${i + 1}`,
+const EmotionalScatterPlot: React.FC<EmotionalScatterPlotProps> = ({ history }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const data = React.useMemo(() => {
+    if (!history || history.length === 0) return [];
+    return history.slice(0, 50).map((item, i) => ({
+      x: ((item.valence ?? 0.5) * 2) - 1,     // Map 0-1 to -1 to 1
+      y: ((item.energy ?? item.arousal ?? 0.5) * 2) - 1,
+      name: item.track_name || `Track ${i + 1}`,
     }));
-    setData(mockData);
-  }, []);
+  }, [history]);
 
   useEffect(() => {
     if (!svgRef.current || data.length === 0) return;
@@ -74,7 +76,22 @@ const EmotionalScatterPlot: React.FC = () => {
       .attr('stroke', '#3f3f46')
       .attr('stroke-dasharray', '4,4');
 
-    // Data points
+    // Emotional trajectory line connecting the dots
+    const line = d3.line<any>()
+      .x(d => xScale(d.x))
+      .y(d => yScale(d.y))
+      .curve(d3.curveCatmullRom);
+
+    g.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3')
+      .attr('opacity', 0.15)
+      .attr('d', line);
+
+    // Data points with fade-in
     g.selectAll('.dot')
       .data(data)
       .join('circle')
@@ -88,13 +105,27 @@ const EmotionalScatterPlot: React.FC = () => {
         if (d.x < 0 && d.y < 0) return '#8b5cf6';
         return '#3b82f6';
       })
-      .attr('opacity', 0.7)
+      .attr('opacity', (_, i) => 0.3 + (0.7 * (i / data.length)))
+      .attr('stroke', '#1F2937')
+      .attr('stroke-width', 1)
       .transition()
-      .duration(1000)
-      .delay((_, i) => i * 30)
-      .attr('r', 6);
+      .duration(800)
+      .delay((_, i) => i * 20)
+      .attr('r', (_, i) => i === data.length - 1 ? 8 : 5);
 
   }, [data]);
+
+  if (!data || data.length === 0) {
+    return (
+      <motion.div
+        className="flex flex-col w-full h-full relative p-4 bg-slate-900/50 rounded-2xl border border-slate-800 items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <p className="text-sm text-gray-500">No emotional data available yet.</p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 

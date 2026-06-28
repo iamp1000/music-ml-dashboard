@@ -271,6 +271,25 @@ export default function ListeningHistoryPage() {
         return Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     }, [history]);
 
+    const topTracks = useMemo(() => {
+        const trackCounts: Record<string, {name: string, artist: string, count: number}> = {};
+        history.forEach(t => {
+            const key = t.track_id || t.track_name;
+            if (!trackCounts[key]) trackCounts[key] = {name: t.track_name, artist: t.artist_name, count: 0};
+            trackCounts[key].count++;
+        });
+        return Object.values(trackCounts).sort((a, b) => b.count - a.count).slice(0, 3);
+    }, [history]);
+
+    const topContexts = useMemo(() => {
+        const ctx: Record<string, number> = {};
+        history.forEach(t => {
+            const c = t.context || 'General';
+            ctx[c] = (ctx[c] || 0) + 1;
+        });
+        return Object.entries(ctx).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    }, [history]);
+
     const { groups, sessions, minLogicalHour, maxLogicalHour, daysOffset, LOGICAL_DAY_START_HOUR, artistData, moodData, contextData, listeningData } = processedTimelineData;
     const timeSpanHours = (maxLogicalHour || 24) - (minLogicalHour || 0);
 
@@ -515,95 +534,75 @@ export default function ListeningHistoryPage() {
 
                 {/* Bottom Stats Row */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Key Group Insights */}
+                    {/* Top Tracks */}
                     <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Key Group Insights</h3>
-                            <span className="text-gray-500 text-xs">...</span>
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Top Tracks</h3>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex gap-3 items-start">
-                                <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
-                                    <Music className="w-3 h-3 text-gray-400" />
+                            {topTracks.length > 0 ? topTracks.map((track, i) => (
+                                <div key={i} className="flex gap-3 items-start">
+                                    <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
+                                        <Music className="w-3 h-3 text-gray-400" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-xs text-white font-bold truncate">{track.name}</div>
+                                        <div className="text-[10px] text-gray-500">Played {track.count} time{track.count !== 1 ? 's' : ''}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-xs text-white font-bold">New release shared listen</div>
-                                    <div className="text-[10px] text-gray-500">New release shared listen</div>
-                                </div>
-                            </div>
-                            <div className="flex gap-3 items-start">
-                                <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
-                                    <Music className="w-3 h-3 text-gray-400" />
-                                </div>
-                                <div>
-                                    <div className="text-xs text-white font-bold">Remastered new lights</div>
-                                    <div className="text-[10px] text-gray-500">New release shared listen</div>
-                                </div>
-                            </div>
-                            <div className="flex gap-3 items-start">
-                                <div className="w-6 h-6 rounded-md bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center shrink-0 mt-0.5">
-                                    <Music className="w-3 h-3 text-gray-400" />
-                                </div>
-                                <div>
-                                    <div className="text-xs text-white font-bold">Group Activity</div>
-                                    <div className="text-[10px] text-gray-500">New release shared listen</div>
-                                </div>
-                            </div>
+                            )) : (
+                                <div className="text-xs text-gray-500">No listening data yet</div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Shared Playlist Synergy */}
+                    {/* Listening Contexts */}
                     <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Shared Playlist Synergy</h3>
-                            <span className="text-gray-500 text-xs">...</span>
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Listening Contexts</h3>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
-                                    <Music className="w-3 h-3 text-[var(--theme-accent)]" />
+                            {topContexts.length > 0 ? topContexts.map(([ctx, count], i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
+                                        <Music className="w-3 h-3 text-[var(--theme-accent)]" />
+                                    </div>
+                                    <span className="text-xs text-white flex-1 truncate">{ctx}</span>
+                                    <span className="text-[10px] text-gray-500">{count} plays</span>
                                 </div>
-                                <span className="text-xs text-white">Shared Playlist</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
-                                    <Music className="w-3 h-3 text-gray-400" />
-                                </div>
-                                <span className="text-xs text-white">Shared Playlist</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-full bg-[var(--theme-bg)] border border-[var(--theme-border)] flex items-center justify-center">
-                                    <Music className="w-3 h-3 text-[var(--theme-accent)]" />
-                                </div>
-                                <span className="text-xs text-white">Shared Playlist</span>
-                            </div>
+                            )) : (
+                                <div className="text-xs text-gray-500">No listening data yet</div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Group Stats */}
+                    {/* Library Stats */}
                     <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-6 flex flex-col justify-between">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Group Stats</h3>
-                            <span className="text-gray-500 text-xs">...</span>
+                            <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">Library Stats</h3>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                             <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl p-3 flex flex-col justify-between">
-                                <div className="text-[10px] text-gray-400 leading-tight">Total Group<br/>Listening Time</div>
-                                <div className="text-lg font-bold text-white mt-2">3:37m</div>
+                                <div className="text-[10px] text-gray-400 leading-tight">Total Listening<br/>Time</div>
+                                <div className="text-lg font-bold text-white mt-2">
+                                    {Math.round(history.reduce((s, t) => s + (t.duration_ms || 0), 0) / 60000)}m
+                                </div>
                             </div>
                             <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl p-3 flex flex-col justify-between">
                                 <div className="text-[10px] text-gray-400 leading-tight">Unique<br/>Tracks</div>
-                                <div className="text-lg font-bold text-white mt-2">383</div>
+                                <div className="text-lg font-bold text-white mt-2">
+                                    {new Set(history.map(t => t.track_id || t.track_name)).size}
+                                </div>
                             </div>
                             <div className="bg-[var(--theme-bg)] border border-[var(--theme-border)] rounded-xl p-3 flex flex-col justify-between">
-                                <div className="text-[10px] text-gray-400 leading-tight">Favorite<br/>Genre</div>
-                                <div className="text-lg font-bold text-white mt-2">34+</div>
+                                <div className="text-[10px] text-gray-400 leading-tight">Unique<br/>Artists</div>
+                                <div className="text-lg font-bold text-white mt-2">
+                                    {new Set(history.map(t => t.artist_name).filter(Boolean)).size}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-            </div>
             
             {editingSession && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">

@@ -2,46 +2,51 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { fetchWithRateLimit } from '@/utils/api';
 
 const EmotionalScatterPlot: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [data, setData] = useState<{valence: number, arousal: number, size: number}[]>([]);
+  const [data, setData] = useState<{valence: number, arousal: number, size: number, name: string}[]>([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('jwt');
     if (!token) return;
 
-    // Fetch initial history
-    fetch('https://music-ml-dashboard.onrender.com/api/telemetry/history', {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    // Fetch initial history using the centralized API helper
+    const loadHistory = async () => {
+      try {
+        const historyResp = await fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=50');
+        if (historyResp?.data) {
+          const historyData = historyResp.data.map((item: any) => ({
+            valence: ((item.valence ?? 0.5) * 2) - 1,
+            arousal: ((item.energy ?? item.arousal ?? 0.5) * 2) - 1,
+            size: 6,
+            name: item.track_name || 'Unknown'
+          }));
+          setData(historyData);
+        }
+      } catch (err) {
+        console.error("Error fetching history for scatter plot:", err);
       }
-    })
-    .then(res => res.json())
-    .then(historyResp => {
-      if (historyResp.status === 'success' && historyResp.data) {
-        const historyData = historyResp.data.map((item: any) => ({
-          valence: (item.valence * 2) - 1,
-          arousal: (item.arousal * 2) - 1,
-          size: 6
-        }));
-        setData(historyData);
-      }
-    })
-    .catch(err => console.error("Error fetching history:", err));
+    };
+    loadHistory();
 
     // Connect WebSocket for live updates
-    const ws = new WebSocket(`wss://music-ml-dashboard.onrender.com/ws/stream/live?token=${token}`);
+    const wsBase = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'ws://localhost:8000' : 'wss://music-ml-dashboard.onrender.com';
+    const ws = new WebSocket(`${wsBase}/ws/stream/live?token=${token}`);
     ws.onmessage = (event) => {
-      const parsed = JSON.parse(event.data);
-      if (parsed.metrics) {
-        const v = (parsed.metrics.valence * 2) - 1;
-        const a = (parsed.metrics.arousal * 2) - 1;
-        setData(prev => {
-          const newData = [...prev, { valence: v, arousal: a, size: 8 }];
-          return newData.length > 50 ? newData.slice(newData.length - 50) : newData;
-        });
-      }
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.metrics) {
+          const v = ((parsed.metrics.valence ?? 0.5) * 2) - 1;
+          const a = ((parsed.metrics.arousal ?? parsed.metrics.energy ?? 0.5) * 2) - 1;
+          setData(prev => {
+            const newData = [...prev, { valence: v, arousal: a, size: 8, name: parsed.metrics.track_name || 'Live' }];
+            return newData.length > 50 ? newData.slice(newData.length - 50) : newData;
+          });
+        }
+      } catch {}
     };
     return () => ws.close();
   }, []);
@@ -186,4 +191,3 @@ const EmotionalScatterPlot: React.FC = () => {
 };
 
 export default EmotionalScatterPlot;
-

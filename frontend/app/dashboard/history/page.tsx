@@ -233,58 +233,52 @@ export default function AnalyticsHubPage() {
         return (
             <div className="space-y-6">
             {/* 1. Today Dashboard - Premium stat cards */}
-            <div
-                className="rounded-2xl p-6 border"
-                style={{ background: "linear-gradient(135deg, #0A0F1A 0%, #0D111A 100%)", borderColor: "#1B2332" }}
-            >
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                        <div className="w-1 h-5 rounded-full bg-[#D1F26D]" />
+            <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-[var(--theme-accent)]" />
                         Today's Listening Session
                     </h3>
-                    <span className="text-[10px] font-bold text-[#8293B4] bg-[#1B2332]/60 px-3 py-1.5 rounded-full uppercase tracking-widest">
+                    <span className="text-[11px] font-medium text-[var(--theme-text-muted)] bg-white/5 px-3 py-1.5 rounded-full">
                         {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {/* Songs Played */}
-                    <div className="relative rounded-2xl p-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
-
-                        <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Songs Today</div>
-                        <div className="text-4xl font-black text-white">{todaySongsCount}</div>
-                        <div className="text-[10px] text-[#D1F26D] mt-2 font-semibold">tracks played</div>
+                    <div className="relative rounded-2xl p-5 bg-black/20 border border-white/5 hover:bg-black/30 transition-colors">
+                        <div className="text-xs font-semibold text-[var(--theme-text-muted)] mb-3">Songs Today</div>
+                        <div className="text-4xl font-bold text-white tracking-tight">{todaySongsCount}</div>
+                        <div className="text-[11px] text-[var(--theme-accent)] mt-2 font-medium">tracks played</div>
                     </div>
 
                     {/* Avg Energy */}
-                    <div className="relative rounded-2xl p-5 overflow-hidden" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
-
-                        <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Avg Energy</div>
-                        <div className="text-4xl font-black text-white">{(avgTodayEng * 100).toFixed(0)}<span className="text-lg text-[#8293B4] font-bold">%</span></div>
-                        <div className="text-[10px] text-[#8B5CF6] mt-2 font-semibold">audio arousal</div>
+                    <div className="relative rounded-2xl p-5 bg-black/20 border border-white/5 hover:bg-black/30 transition-colors">
+                        <div className="text-xs font-semibold text-[var(--theme-text-muted)] mb-3">Avg Energy</div>
+                        <div className="text-4xl font-bold text-white tracking-tight">{(avgTodayEng * 100).toFixed(0)}<span className="text-lg text-[var(--theme-text-muted)] font-bold ml-1">%</span></div>
+                        <div className="text-[11px] text-purple-400 mt-2 font-medium">audio arousal</div>
                     </div>
 
                     {/* Mood breakdown - spans 2 cols */}
-                    <div className="relative rounded-2xl p-5 overflow-hidden col-span-2" style={{ background: "linear-gradient(135deg, #0D111A, #111827)" }}>
-
-                        <div className="text-[10px] font-bold text-[#8293B4] uppercase tracking-widest mb-3">Mood Breakdown</div>
-                        <div className="flex gap-1 w-full h-3 rounded-full overflow-hidden mb-3" style={{ background: "#1B2332" }}>
-                            <div className="h-full transition-all duration-700 rounded-l-full" style={{ width: `${todaySongsCount ? (positive / todaySongsCount) * 100 : 33}%`, background: "linear-gradient(90deg,#22c55e,#84cc16)" }} />
-                            <div className="h-full transition-all duration-700" style={{ width: `${todaySongsCount ? (neutral / todaySongsCount) * 100 : 34}%`, background: "#F59E0B" }} />
-                            <div className="h-full transition-all duration-700 rounded-r-full" style={{ width: `${todaySongsCount ? (negative / todaySongsCount) * 100 : 33}%`, background: "#EF4444" }} />
+                    <div className="relative rounded-2xl p-5 bg-black/20 border border-white/5 col-span-2">
+                        <div className="text-xs font-semibold text-[var(--theme-text-muted)] mb-4">Mood Breakdown</div>
+                        <div className="flex gap-1 w-full h-2.5 rounded-full overflow-hidden mb-4 bg-white/5">
+                            <div className="h-full transition-all duration-700 rounded-l-full bg-emerald-400" style={{ width: `${todaySongsCount ? (positive / todaySongsCount) * 100 : 33}%` }} />
+                            <div className="h-full transition-all duration-700 bg-amber-400" style={{ width: `${todaySongsCount ? (neutral / todaySongsCount) * 100 : 34}%` }} />
+                            <div className="h-full transition-all duration-700 rounded-r-full bg-rose-400" style={{ width: `${todaySongsCount ? (negative / todaySongsCount) * 100 : 33}%` }} />
                         </div>
                         <div className="flex justify-between">
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-400">
-                                <div className="w-2 h-2 rounded-full bg-green-400" />
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                 {todaySongsCount ? Math.round((positive / todaySongsCount) * 100) : 0}% Positive
                             </span>
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-yellow-400">
-                                <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-400">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                                 {todaySongsCount ? Math.round((neutral / todaySongsCount) * 100) : 0}% Neutral
                             </span>
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400">
-                                <div className="w-2 h-2 rounded-full bg-red-400" />
-                                {todaySongsCount ? Math.round((negative / todaySongsCount) * 100) : 0}% Neg
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-rose-400">
+                                <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                {todaySongsCount ? Math.round((negative / todaySongsCount) * 100) : 0}% Negative
                             </span>
                         </div>
                     </div>
@@ -293,35 +287,31 @@ export default function AnalyticsHubPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* 2. Time Of Day Analysis - premium rows */}
-                <div
-                    className="rounded-2xl p-6 border"
-                    style={{ background: "#080B12", borderColor: "#1B2332" }}
-                >
-                    <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <div className="w-1 h-5 rounded-full bg-[#3B82F6]" />
+                <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8">
+                    <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2 mb-6">
+                        <Activity className="w-5 h-5 text-blue-400" />
                         Time of Day Analysis
                     </h3>
                     <div className="space-y-3">
                         {Object.entries(todBins).map(([key, data], idx) => {
                             const avg = data.count > 0 ? data.val / data.count : 0.5;
-                            const colors = ["#F59E0B", "#3B82F6", "#8B5CF6", "#1E293B"];
-                            const labels = ["Morning", "Afternoon", "Evening", "Night"];
+                            const colors = ["#F59E0B", "#3B82F6", "#8B5CF6", "#64748b"];
                             const c = colors[idx % colors.length];
                             const fillPct = Math.round(avg * 100);
                             return (
-                                <div key={key} className="relative rounded-xl p-4 border overflow-hidden group hover:border-white/10 transition-all duration-300" style={{ background: "#0A0F1A", borderColor: "#1B2332" }}>
-                                    <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl" style={{ background: c }} />
-                                    <div className="flex justify-between items-center pl-2">
+                                <div key={key} className="relative rounded-2xl p-4 bg-black/20 border border-white/5 hover:border-white/10 transition-colors group overflow-hidden">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl opacity-70 group-hover:opacity-100 transition-opacity" style={{ background: c }} />
+                                    <div className="flex justify-between items-center pl-3">
                                         <div>
-                                            <div className="text-xs font-bold text-white">{data.name}</div>
-                                            <div className="text-[10px] text-[#8293B4] mt-1">{getMoodString(avg)}</div>
+                                            <div className="text-sm font-semibold text-white">{data.name}</div>
+                                            <div className="text-[11px] text-[var(--theme-text-muted)] mt-1 font-medium">{getMoodString(avg)}</div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-4">
                                             <div className="text-right">
-                                                <div className="text-lg font-black" style={{ color: c }}>{fillPct}%</div>
-                                                <div className="text-[9px] text-[#8293B4] uppercase">valence</div>
+                                                <div className="text-lg font-bold" style={{ color: c }}>{fillPct}%</div>
+                                                <div className="text-[10px] text-[var(--theme-text-muted)] uppercase tracking-wider font-medium">valence</div>
                                             </div>
-                                            <div className="text-[10px] font-bold px-3 py-1.5 rounded-full border" style={{ color: c, borderColor: `${c}30`, background: `${c}10` }}>
+                                            <div className="text-xs font-semibold px-3 py-1.5 rounded-lg border bg-white/5 border-white/5">
                                                 {data.count} plays
                                             </div>
                                         </div>
@@ -333,35 +323,34 @@ export default function AnalyticsHubPage() {
                 </div>
 
                 {/* 3. Behavioral Timeline */}
-                <div
-                    className="rounded-2xl p-6 border"
-                    style={{ background: "#080B12", borderColor: "#1B2332" }}
-                >
-                    <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <div className="w-1 h-5 rounded-full bg-[#D1F26D]" />
+                <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8">
+                    <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2 mb-6">
+                        <Calendar className="w-5 h-5 text-[var(--theme-accent)]" />
                         Behavioral Timeline
                     </h3>
                     <div className="space-y-4 h-[300px] overflow-y-auto scrollbar-thin pr-2">
                         {Object.keys(timeline).length > 0 ? (
                             Object.entries(timeline).map(([day, periods]) => (
-                                <div key={day} className="mb-4 relative">
-                                    <div className="text-[11px] font-black text-[#D1F26D] mb-3 uppercase tracking-widest flex items-center gap-2">
-                                        <div className="w-4 h-[1px] bg-[#D1F26D]/40" />
+                                <div key={day} className="mb-6 relative">
+                                    <div className="text-[11px] font-semibold text-[var(--theme-accent)] mb-3 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-4 h-[1px] bg-[var(--theme-accent)] opacity-50" />
                                         {day}
                                     </div>
-                                    <div className="space-y-2 pl-3">
+                                    <div className="space-y-2 pl-3 border-l border-white/5">
                                         {Object.entries(periods as any).map(([period, vals]) => {
                                             const vArray = vals as number[];
                                             if (vArray.length === 0) return null;
                                             const pAvg = vArray.reduce((a, b) => a + b, 0) / vArray.length;
-                                            const pColor = pAvg > 0.6 ? "#22c55e" : pAvg < 0.4 ? "#EF4444" : "#F59E0B";
+                                            const pColor = pAvg > 0.6 ? "text-emerald-400" : pAvg < 0.4 ? "text-rose-400" : "text-amber-400";
+                                            const pBg = pAvg > 0.6 ? "bg-emerald-400/10" : pAvg < 0.4 ? "bg-rose-400/10" : "bg-amber-400/10";
+                                            const pDot = pAvg > 0.6 ? "bg-emerald-400" : pAvg < 0.4 ? "bg-rose-400" : "bg-amber-400";
                                             return (
-                                                <div key={period} className="flex justify-between items-center rounded-xl p-3 border" style={{ background: "#0A0F1A", borderColor: "#1B2332" }}>
-                                                    <span className="text-[11px] font-bold text-[#8293B4] flex items-center gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: pColor }} />
+                                                <div key={period} className="flex justify-between items-center rounded-2xl p-3 bg-black/20 border border-transparent hover:border-white/5 transition-colors">
+                                                    <span className="text-xs font-medium text-[var(--theme-text-muted)] flex items-center gap-2 relative -left-[19px]">
+                                                        <div className={`w-2.5 h-2.5 rounded-full ring-4 ring-black/40 ${pDot}`} />
                                                         {period}
                                                     </span>
-                                                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full" style={{ color: pColor, background: `${pColor}15` }}>
+                                                    <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${pColor} ${pBg}`}>
                                                         {getMoodString(pAvg)}
                                                     </span>
                                                 </div>
@@ -371,7 +360,7 @@ export default function AnalyticsHubPage() {
                                 </div>
                             ))
                         ) : (
-                            <div className="text-[#8293B4] text-sm flex h-full items-center justify-center">No timeline data available.</div>
+                            <div className="text-[var(--theme-text-muted)] text-sm flex h-full items-center justify-center font-medium">No timeline data available.</div>
                         )}
                     </div>
                 </div>
@@ -416,42 +405,34 @@ export default function AnalyticsHubPage() {
         const COLORS = ['var(--theme-accent)', '#8B5CF6', '#3B82F6', '#F59E0B'];
 
         return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
             {/* Audio Features Radar - premium panel */}
-            <div
-                className="rounded-2xl p-6 flex flex-col h-[450px] relative border overflow-hidden"
-                style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
-            >
-
-                <div className="flex items-center gap-2 mb-6">
-                    <Sliders className="w-4 h-4 text-[#8B5CF6]" />
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Audio Characteristics Radar</h3>
+            <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 flex flex-col h-[450px] relative">
+                <div className="flex items-center gap-2 mb-8">
+                    <Sliders className="w-5 h-5 text-purple-400" />
+                    <h3 className="text-sm font-semibold text-white tracking-wide">Audio Characteristics</h3>
                 </div>
                 <div className="flex-1 w-full min-h-0">
                     {hasHistory ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                                <PolarGrid stroke="#1B2332" strokeDasharray="4 4" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#8293B4', fontSize: 11, fontWeight: 700 }} />
+                                <PolarGrid stroke="rgba(255,255,255,0.1)" strokeDasharray="4 4" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--theme-text-muted)', fontSize: 11, fontWeight: 500 }} />
                                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                <Radar name="User" dataKey="A" stroke="#8B5CF6" strokeWidth={2.5} fill="#8B5CF6" fillOpacity={0.12} dot={{ fill: '#8B5CF6', r: 3 }} />
+                                <Radar name="User" dataKey="A" stroke="#a855f7" strokeWidth={2} fill="#a855f7" fillOpacity={0.2} dot={{ fill: '#a855f7', r: 3 }} />
                             </RadarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="flex h-full items-center justify-center text-sm text-[#8293B4]">No history records logged.</div>
+                        <div className="flex h-full items-center justify-center text-sm text-[var(--theme-text-muted)] font-medium">No history records logged.</div>
                     )}
                 </div>
             </div>
 
             {/* Genre Distributions - premium card grid */}
-            <div
-                className="rounded-2xl p-6 flex flex-col justify-between border overflow-hidden"
-                style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
-            >
-
+            <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 flex flex-col justify-between">
                 <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest mb-1">Top Genre Distributions</h3>
-                    <p className="text-[11px] text-[#8293B4] mb-6">Relative percentages derived from your top artists list</p>
+                    <h3 className="text-sm font-semibold text-white tracking-wide mb-1">Top Genre Distributions</h3>
+                    <p className="text-[11px] text-[var(--theme-text-muted)] mb-8 font-medium">Relative percentages derived from your top artists list</p>
                 </div>
 
                 {topGenres.length > 0 ? (
@@ -464,21 +445,20 @@ export default function AnalyticsHubPage() {
                             const color = COLORS[idx % COLORS.length];
 
                             return (
-                                <div key={idx} className="rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden border hover:border-white/10 transition-all group" style={{ background: "#0A0F1A", borderColor: `${color}20` }}>
-                                    <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${color}60, transparent)` }} />
-                                    <div className="absolute top-2 left-3 text-[10px] font-black text-white uppercase tracking-wider">{genre.name}</div>
+                                <div key={idx} className="rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden bg-black/20 border border-transparent hover:border-white/5 transition-colors group">
+                                    <div className="absolute top-3 left-4 text-[11px] font-semibold text-white tracking-wide">{genre.name}</div>
 
-                                    <div className="w-full h-24 flex items-center justify-center relative mt-2">
+                                    <div className="w-full h-24 flex items-center justify-center relative mt-6">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
-                                                <Pie data={chartData} cx="50%" cy="50%" innerRadius={28} outerRadius={38} paddingAngle={3} dataKey="value" stroke="none">
+                                                <Pie data={chartData} cx="50%" cy="50%" innerRadius={28} outerRadius={40} paddingAngle={2} dataKey="value" stroke="none">
                                                     <Cell fill={color} />
-                                                    <Cell fill="#1B2332" />
+                                                    <Cell fill="rgba(255,255,255,0.05)" />
                                                 </Pie>
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                            <span className="text-sm font-black text-white font-mono">{genre.percentage}%</span>
+                                            <span className="text-xs font-bold text-white">{genre.percentage}%</span>
                                         </div>
                                     </div>
                                 </div>
@@ -486,7 +466,7 @@ export default function AnalyticsHubPage() {
                         })}
                     </div>
                 ) : (
-                    <div className="flex-1 flex items-center justify-center text-xs text-[#8293B4]">
+                    <div className="flex-1 flex items-center justify-center text-sm text-[var(--theme-text-muted)] font-medium">
                         No genre distributions available. Syncing profile...
                     </div>
                 )}
@@ -531,24 +511,20 @@ export default function AnalyticsHubPage() {
         };
 
         return (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
             {/* Line Chart - premium wide panel */}
-            <div
-                className="lg:col-span-2 rounded-2xl p-6 flex flex-col h-[420px] relative border overflow-hidden"
-                style={{ background: "linear-gradient(160deg, #080B12 0%, #0D111A 100%)", borderColor: "#1B2332" }}
-            >
-
-                <div className="flex justify-between items-center mb-4">
+            <div className="lg:col-span-2 bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 flex flex-col h-[420px] relative">
+                <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-2">
-                        <Smile className="w-5 h-5 text-[#3B82F6]" />
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Mood Correlation Wave</h3>
+                        <Smile className="w-5 h-5 text-blue-400" />
+                        <h3 className="text-sm font-semibold text-white tracking-wide">Mood Correlation Wave</h3>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#8293B4]">
-                            <div className="w-3 h-0.5 rounded bg-[#D1F26D]" /> Valence
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--theme-text-muted)]">
+                            <div className="w-2.5 h-0.5 rounded bg-[var(--theme-accent)]" /> Valence
                         </span>
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#8293B4]">
-                            <div className="w-3 h-0.5 rounded bg-[#8B5CF6]" /> Energy
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--theme-text-muted)]">
+                            <div className="w-2.5 h-0.5 rounded bg-purple-400" /> Energy
                         </span>
                     </div>
                 </div>
@@ -557,19 +533,19 @@ export default function AnalyticsHubPage() {
                     {hasHistory ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={lineData} margin={{ top: 10, right: 20, left: -20, bottom: 10 }}>
-                                <XAxis dataKey="index" tick={{ fill: '#4B5563', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fill: '#4B5563', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                                <XAxis dataKey="index" tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fill: 'var(--theme-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#080B12', borderColor: '#1B2332', borderRadius: '12px', fontSize: '12px' }}
+                                    contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px', backdropFilter: 'blur(8px)' }}
                                     labelStyle={{ color: 'white', fontWeight: 'bold' }}
                                     itemStyle={{ fontSize: '12px' }}
                                 />
-                                <Line type="monotone" name="Valence" dataKey="valence" stroke="#D1F26D" strokeWidth={2.5} dot={{ r: 3, fill: '#D1F26D' }} />
-                                <Line type="monotone" name="Energy" dataKey="energy" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} />
+                                <Line type="monotone" name="Valence" dataKey="valence" stroke="var(--theme-accent)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--theme-accent)' }} />
+                                <Line type="monotone" name="Energy" dataKey="energy" stroke="#a855f7" strokeWidth={2.5} dot={{ r: 3, fill: '#a855f7' }} />
                             </LineChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="flex h-full items-center justify-center text-sm text-[#8293B4]">No listening history found.</div>
+                        <div className="flex h-full items-center justify-center text-sm text-[var(--theme-text-muted)] font-medium">No listening history found.</div>
                     )}
                 </div>
             </div>
@@ -577,66 +553,66 @@ export default function AnalyticsHubPage() {
                 {/* Logging & predicted state */}
                 <div className="flex flex-col gap-6">
                     {/* Predicted state */}
-                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex-1 flex flex-col justify-center">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-6 border-b border-[#1B2332] pb-2">Predicted State</h4>
+                    <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-6 flex-1 flex flex-col justify-center">
+                        <h4 className="text-xs font-semibold text-white tracking-wide mb-6 border-b border-white/5 pb-3">Predicted State</h4>
                         
                         {latestTrack ? (
                             <div className="space-y-4">
-                                <div className="text-[10px] text-theme-text-muted uppercase">Based on: <span className="text-white font-bold">{latestTrack.track_name}</span></div>
-                                <div className="flex justify-between items-center px-2">
+                                <div className="text-[11px] text-[var(--theme-text-muted)] font-medium">Based on: <span className="text-white font-semibold">{latestTrack.track_name}</span></div>
+                                <div className="flex justify-between items-center px-2 py-2">
                                     <div className="flex flex-col items-center transition-opacity duration-300" style={{ opacity: moodOpacity.melancholy }}>
-                                        <span className="text-xs mb-1 font-bold text-theme-text-muted uppercase">Low</span>
-                                        <span className="text-[9px] text-theme-text-muted uppercase font-semibold">Melancholy</span>
+                                        <span className="text-xs mb-1 font-semibold text-[var(--theme-text-muted)]">Low</span>
+                                        <span className="text-[10px] text-[var(--theme-text-muted)] font-medium">Melancholy</span>
                                     </div>
                                     <div className="flex flex-col items-center transition-opacity duration-300" style={{ opacity: moodOpacity.chill }}>
-                                        <span className="text-xs mb-1 font-bold text-theme-text-muted uppercase">Mid</span>
-                                        <span className="text-[9px] text-theme-text-muted uppercase font-semibold">Chill</span>
+                                        <span className="text-xs mb-1 font-semibold text-[var(--theme-text-muted)]">Mid</span>
+                                        <span className="text-[10px] text-[var(--theme-text-muted)] font-medium">Chill</span>
                                     </div>
                                     <div className="flex flex-col items-center transition-opacity duration-300" style={{ opacity: moodOpacity.energetic }}>
-                                        <span className="text-xs mb-1 font-bold text-theme-text-muted uppercase">High</span>
-                                        <span className="text-[9px] text-theme-text-muted uppercase font-semibold">Energetic</span>
+                                        <span className="text-xs mb-1 font-semibold text-[var(--theme-text-muted)]">High</span>
+                                        <span className="text-[10px] text-[var(--theme-text-muted)] font-medium">Energetic</span>
                                     </div>
                                 </div>
                                 <div className="text-center pt-2">
-                                    <span className="inline-block text-xs font-black text-theme-accent bg-theme-accent/10 border border-theme-accent/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                                    <span className="inline-block text-xs font-bold text-[var(--theme-accent)] bg-[var(--theme-accent)]/10 border border-[var(--theme-accent)]/20 px-4 py-1.5 rounded-full tracking-wide">
                                         {moodName}
                                     </span>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center text-xs text-theme-text-muted py-6">
+                            <div className="text-center text-xs text-[var(--theme-text-muted)] font-medium py-6">
                                 Connect to Spotify to calculate predicted mood state.
                             </div>
                         )}
                     </div>
 
                     {/* Actual Mood Log */}
-                    <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex-1 flex flex-col justify-center">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Log Actual Mood</h4>
+                    <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-6 flex-1 flex flex-col justify-center">
+                        <h4 className="text-xs font-semibold text-white tracking-wide mb-4">Log Actual Mood</h4>
                         
                         <input 
                             type="range" 
                             min="0" max="100" 
                             value={sliderValue}
                             onChange={(e) => setSliderValue(parseInt(e.target.value))}
-                            className="w-full h-1 bg-[#1B2332] rounded-lg appearance-none cursor-pointer accent-theme-accent mb-4"
+                            className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-[var(--theme-accent)] mb-4"
                         />
                         
-                        <div className="flex justify-between text-xs px-1 mb-5 font-bold text-theme-text-muted">
-                            <span className="cursor-pointer uppercase hover:text-white transition-colors" onClick={() => setSliderValue(10)}>Low</span>
-                            <span className="cursor-pointer uppercase hover:text-white transition-colors" onClick={() => setSliderValue(50)}>Mid</span>
-                            <span className="cursor-pointer uppercase hover:text-white transition-colors" onClick={() => setSliderValue(90)}>High</span>
+                        <div className="flex justify-between text-[11px] px-1 mb-6 font-medium text-[var(--theme-text-muted)]">
+                            <span className="cursor-pointer hover:text-white transition-colors" onClick={() => setSliderValue(10)}>Low</span>
+                            <span className="cursor-pointer hover:text-white transition-colors" onClick={() => setSliderValue(50)}>Mid</span>
+                            <span className="cursor-pointer hover:text-white transition-colors" onClick={() => setSliderValue(90)}>High</span>
                         </div>
 
                         <button 
                             onClick={handleMoodLog}
-                            className="w-full py-2.5 rounded-xl bg-theme-accent/15 hover:bg-theme-accent text-theme-accent hover:text-black font-bold text-xs uppercase tracking-widest transition-all duration-300 border border-theme-accent/30 hover:border-transparent"
+                            className="w-full py-2.5 rounded-xl bg-[var(--theme-accent)]/10 hover:bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-semibold text-xs transition-colors border border-[var(--theme-accent)]/20"
                         >
                             Log Mood
                         </button>
 
                         {logStatus && (
-                            <div className="text-[9px] font-bold text-center text-theme-accent bg-theme-accent/5 border border-theme-accent/15 py-1.5 rounded-lg mt-3 uppercase tracking-wider animate-pulse">
+                            <div className="text-[10px] font-medium text-center text-[var(--theme-accent)] bg-[var(--theme-accent)]/10 border border-[var(--theme-accent)]/20 py-2 rounded-xl mt-3 animate-pulse">
                                 {logStatus}
                             </div>
                         )}
@@ -667,31 +643,31 @@ export default function AnalyticsHubPage() {
         };
 
         return (
-            <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 flex flex-col min-h-[500px]">
-                <div className="flex justify-between items-center border-b border-[#1B2332]/60 pb-4 mb-8">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <BrainCircuit className="w-5 h-5 text-theme-accent animate-pulse" />
+            <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 flex flex-col min-h-[500px] mt-8">
+                <div className="flex justify-between items-center border-b border-white/5 pb-6 mb-8">
+                    <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">
+                        <BrainCircuit className="w-5 h-5 text-[var(--theme-accent)] animate-pulse" />
                         Neural Mood Predictor (CARS)
                     </h3>
-                    <span className="text-[10px] text-theme-text-muted bg-white/5 border border-white/10 px-3 py-1 rounded-full font-bold">
+                    <span className="text-[11px] text-[var(--theme-text-muted)] bg-white/5 border border-white/10 px-3 py-1.5 rounded-full font-medium">
                         Interactive Sandbox
                     </span>
                 </div>
 
-                <div className="flex-1 flex flex-col items-center relative bg-[#070A0F] border border-[#1B2332]/60 rounded-xl p-8 mb-6 overflow-hidden">
+                <div className="flex-1 flex flex-col items-center relative bg-black/20 border border-white/5 rounded-2xl p-8 mb-8 overflow-hidden">
                     {/* Neural Network SVG visualization */}
                     <div className="flex justify-between h-64 w-full max-w-2xl relative z-10">
                         {layers.map((layer, lIndex) => (
                             <div key={lIndex} className="flex flex-col justify-between items-center h-full relative z-10" style={{ width: '120px' }}>
-                                <h4 className="text-[10px] font-black text-theme-text-muted uppercase tracking-widest mb-4">{layer.name}</h4>
+                                <h4 className="text-[11px] font-semibold text-[var(--theme-text-muted)] uppercase tracking-widest mb-4">{layer.name}</h4>
                                 <div className="flex flex-col justify-around flex-1 w-full gap-4">
                                     {Array.from({ length: layer.nodes }).map((_, nIndex) => (
                                         <div key={nIndex} className="flex flex-col items-center">
-                                            <div className="w-6 h-6 rounded-full border border-blue-400 bg-blue-500/20 z-20 relative shadow-[0_0_12px_rgba(59,130,246,0.5)]">
+                                            <div className="w-6 h-6 rounded-full border border-blue-400 bg-blue-500/20 z-20 relative shadow-[0_0_12px_rgba(59,130,246,0.3)]">
                                                 <div className="absolute inset-0 bg-blue-400 rounded-full animate-pulse opacity-40"></div>
                                             </div>
                                             {layer.labels[nIndex] && (
-                                                <span className="text-[9px] mt-2 font-bold text-theme-text-muted">{layer.labels[nIndex]}</span>
+                                                <span className="text-[10px] mt-2 font-medium text-[var(--theme-text-muted)]">{layer.labels[nIndex]}</span>
                                             )}
                                         </div>
                                     ))}
@@ -703,9 +679,9 @@ export default function AnalyticsHubPage() {
                     <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" style={{ paddingTop: '5.5rem' }}>
                         <defs>
                             <linearGradient id="sandboxLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.1" />
-                                <stop offset="50%" stopColor="#3B82F6" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.1" />
+                                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.05" />
+                                <stop offset="50%" stopColor="#3B82F6" stopOpacity="0.2" />
+                                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.05" />
                             </linearGradient>
                         </defs>
                         
@@ -728,7 +704,7 @@ export default function AnalyticsHubPage() {
                                         x1={x1} y1={y1} 
                                         x2={x2} y2={y2} 
                                         stroke="url(#sandboxLineGrad)" 
-                                        strokeWidth={1.5 + (Math.random() * 2)}
+                                        strokeWidth={1.5}
                                         className="transition-all duration-300"
                                     />
                                 );
@@ -739,28 +715,28 @@ export default function AnalyticsHubPage() {
 
                     {/* Output Label */}
                     <div className="mt-8 flex flex-col items-center">
-                        <span className="text-[10px] text-theme-text-muted uppercase tracking-wider mb-2">Mood Classification</span>
-                        <div className="px-6 py-2 bg-theme-accent/10 border border-theme-accent/20 rounded-xl text-theme-accent font-mono font-bold tracking-widest uppercase">
+                        <span className="text-[11px] text-[var(--theme-text-muted)] font-medium uppercase tracking-wider mb-3">Mood Classification</span>
+                        <div className="px-6 py-2 bg-[var(--theme-accent)]/10 border border-[var(--theme-accent)]/20 rounded-xl text-[var(--theme-accent)] font-mono font-semibold tracking-wide">
                             {sandboxMood}
                         </div>
                     </div>
                 </div>
 
                 {/* Interactive Sliders */}
-                <div className="bg-[#070A0F] border border-[#1B2332] p-6 rounded-xl space-y-6">
+                <div className="bg-black/20 border border-white/5 p-8 rounded-3xl space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {/* Time of Day Slider */}
                         <div className="flex flex-col">
-                            <div className="flex justify-between items-center mb-3">
-                                <label className="text-xs font-bold text-white uppercase tracking-wider">Time of Day (h)</label>
-                                <span className="bg-[#1B2332] text-white text-[10px] font-mono px-2 py-1 rounded">{sandboxTime}:00</span>
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-xs font-semibold text-white tracking-wide">Time of Day (h)</label>
+                                <span className="bg-white/5 border border-white/5 text-white text-[11px] font-mono px-2.5 py-1 rounded-lg">{sandboxTime}:00</span>
                             </div>
                             <input 
                                 type="range" min="0" max="23" 
                                 value={sandboxTime} onChange={(e) => setSandboxTime(Number(e.target.value))}
-                                className="w-full h-1 bg-[#1B2332] rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
                             />
-                            <div className="flex justify-between text-[9px] text-theme-text-muted mt-2 uppercase">
+                            <div className="flex justify-between text-[10px] text-[var(--theme-text-muted)] mt-3 font-medium">
                                 <span>Midnight</span>
                                 <span>Noon</span>
                                 <span>11 PM</span>
@@ -769,16 +745,16 @@ export default function AnalyticsHubPage() {
 
                         {/* Energy Slider */}
                         <div className="flex flex-col">
-                            <div className="flex justify-between items-center mb-3">
-                                <label className="text-xs font-bold text-white uppercase tracking-wider">Track Energy</label>
-                                <span className="bg-[#1B2332] text-white text-[10px] font-mono px-2 py-1 rounded">{sandboxEnergy.toFixed(2)}</span>
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-xs font-semibold text-white tracking-wide">Track Energy</label>
+                                <span className="bg-white/5 border border-white/5 text-white text-[11px] font-mono px-2.5 py-1 rounded-lg">{sandboxEnergy.toFixed(2)}</span>
                             </div>
                             <input 
                                 type="range" min="0" max="1" step="0.01"
                                 value={sandboxEnergy} onChange={(e) => setSandboxEnergy(Number(e.target.value))}
-                                className="w-full h-1 bg-[#1B2332] rounded-lg appearance-none cursor-pointer accent-theme-accent"
+                                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[var(--theme-accent)]"
                             />
-                            <div className="flex justify-between text-[9px] text-theme-text-muted mt-2 uppercase">
+                            <div className="flex justify-between text-[10px] text-[var(--theme-text-muted)] mt-3 font-medium">
                                 <span>Calm</span>
                                 <span>Intense</span>
                             </div>
@@ -786,16 +762,16 @@ export default function AnalyticsHubPage() {
 
                         {/* Valence Slider */}
                         <div className="flex flex-col">
-                            <div className="flex justify-between items-center mb-3">
-                                <label className="text-xs font-bold text-white uppercase tracking-wider">Track Valence</label>
-                                <span className="bg-[#1B2332] text-white text-[10px] font-mono px-2 py-1 rounded">{sandboxValence.toFixed(2)}</span>
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-xs font-semibold text-white tracking-wide">Track Valence</label>
+                                <span className="bg-white/5 border border-white/5 text-white text-[11px] font-mono px-2.5 py-1 rounded-lg">{sandboxValence.toFixed(2)}</span>
                             </div>
                             <input 
                                 type="range" min="0" max="1" step="0.01"
                                 value={sandboxValence} onChange={(e) => setSandboxValence(Number(e.target.value))}
-                                className="w-full h-1 bg-[#1B2332] rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
+                                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
                             />
-                            <div className="flex justify-between text-[9px] text-theme-text-muted mt-2 uppercase">
+                            <div className="flex justify-between text-[10px] text-[var(--theme-text-muted)] mt-3 font-medium">
                                 <span>Sad</span>
                                 <span>Happy</span>
                             </div>
@@ -820,14 +796,13 @@ export default function AnalyticsHubPage() {
         const data = deepInsights;
 
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                 {/* 1. Cognitive Load Radar */}
-                <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden" style={{ background: "#080B12", borderColor: "#1B2332" }}>
-
+                <div className="relative bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-6 flex flex-col h-[300px]">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
-                            <BrainCircuit className="w-5 h-5 text-[#8B5CF6]" />
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Lyrical Load</h3>
+                            <BrainCircuit className="w-5 h-5 text-purple-400" />
+                            <h3 className="text-sm font-semibold text-white tracking-wide">Lyrical Load</h3>
                         </div>
                     </div>
                     <div className="flex-1 w-full relative">
@@ -836,12 +811,11 @@ export default function AnalyticsHubPage() {
                 </div>
 
                 {/* 2. Attention Decay Horizon */}
-                <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden" style={{ background: "#080B12", borderColor: "#1B2332" }}>
-
+                <div className="relative bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-6 flex flex-col h-[300px]">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-[#3B82F6]" />
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Skip Horizon</h3>
+                            <Clock className="w-5 h-5 text-blue-400" />
+                            <h3 className="text-sm font-semibold text-white tracking-wide">Skip Horizon</h3>
                         </div>
                     </div>
                     <div className="flex-1 w-full relative">
@@ -850,14 +824,13 @@ export default function AnalyticsHubPage() {
                 </div>
 
                 {/* 3. Emotional Volatility Globe */}
-                <div className="relative rounded-2xl p-6 flex flex-col h-[300px] border overflow-hidden md:col-span-2 lg:col-span-1" style={{ background: "#080B12", borderColor: "#1B2332" }}>
-
+                <div className="relative bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-6 flex flex-col h-[300px] md:col-span-2 lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
-                            <Activity className="w-5 h-5 text-[#EF4444]" />
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Volatility</h3>
+                            <Activity className="w-5 h-5 text-rose-400" />
+                            <h3 className="text-sm font-semibold text-white tracking-wide">Volatility</h3>
                         </div>
-                        <span className="text-[10px] font-black px-3 py-1 rounded-full" style={{ color: data.emotional_volatility > 0.5 ? "#EF4444" : "#22c55e", background: data.emotional_volatility > 0.5 ? "#EF444415" : "#22c55e15" }}>
+                        <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${data.emotional_volatility > 0.5 ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
                             {data.emotional_volatility > 0.5 ? "High" : "Low"} Volatility
                         </span>
                     </div>
@@ -867,16 +840,16 @@ export default function AnalyticsHubPage() {
                 </div>
                 
                 {/* Context Tagging Tool */}
-                <div className="bg-[#0D111A] border border-[#1B2332] rounded-2xl p-6 lg:col-span-3">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <Filter className="w-5 h-5 text-theme-accent" />
+                <div className="bg-white/5 border border-white/5 backdrop-blur-xl rounded-3xl p-8 lg:col-span-3">
+                    <h3 className="text-sm font-semibold text-white tracking-wide mb-4 flex items-center gap-2">
+                        <Filter className="w-5 h-5 text-[var(--theme-accent)]" />
                         Retroactive Session Tagging
                     </h3>
-                    <p className="text-xs text-theme-text-muted mb-4">
+                    <p className="text-sm text-[var(--theme-text-muted)] font-medium mb-6">
                         Select a context to dampen algorithmic disruption for the selected time window (e.g. "Gym", "Sleep").
                     </p>
                     <div className="flex gap-4">
-                        <input type="text" placeholder="e.g. Gym, Sleep, Study" className="bg-[#070A0F] border border-[#1B2332] rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-theme-accent w-64" id="tag_input" />
+                        <input type="text" placeholder="e.g. Gym, Sleep, Study" className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 w-72 transition-colors" id="tag_input" />
                         <button 
                             onClick={async () => {
                                 const tagVal = (document.getElementById("tag_input") as HTMLInputElement).value;
@@ -889,7 +862,7 @@ export default function AnalyticsHubPage() {
                                 });
                                 alert(`Tagged last 2 hours as ${tagVal}`);
                             }}
-                            className="bg-theme-accent/20 border border-theme-accent/40 text-theme-accent hover:bg-theme-accent hover:text-black font-bold uppercase text-xs px-6 rounded-lg transition-colors"
+                            className="bg-[var(--theme-accent)] text-black hover:bg-white font-bold text-sm px-6 rounded-xl transition-colors"
                         >
                             Tag Last 2 Hours
                         </button>
@@ -913,14 +886,14 @@ export default function AnalyticsHubPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-b border-white/5">
                 <div>
-                    <h2 className="text-3xl font-black tracking-tight text-white">Analytics Hub</h2>
-                    <p className="text-sm text-[#8293B4] mt-1.5">Consolidated listening patterns, emotional mapping &amp; inference models.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-white">Analytics Hub</h2>
+                    <p className="text-sm text-[var(--theme-text-muted)] mt-2 font-medium">Consolidated listening patterns, emotional mapping &amp; inference models.</p>
                 </div>
 
                 {/* Premium pill tab selector */}
-                <div className="flex items-center gap-1 bg-[#080B12] border border-[#1B2332] p-1 rounded-2xl shrink-0 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+                <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-2xl shrink-0 backdrop-blur-md">
                     {tabsConfig.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -928,15 +901,14 @@ export default function AnalyticsHubPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                style={isActive ? { background: `${tab.color}18`, borderColor: `${tab.color}40`, color: tab.color } : {}}
-                                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 ${
                                     isActive
-                                        ? "border shadow-lg"
-                                        : "text-[#8293B4] border-transparent hover:text-white hover:bg-white/5"
+                                        ? "bg-white/10 text-white shadow-sm"
+                                        : "text-[var(--theme-text-muted)] hover:text-white hover:bg-white/5"
                                 }`}
                             >
-                                <Icon className="w-3.5 h-3.5" />
-                                <span className="hidden md:inline">{tab.label}</span>
+                                <Icon className="w-4 h-4" />
+                                <span className="hidden sm:inline">{tab.label}</span>
                             </button>
                         );
                     })}

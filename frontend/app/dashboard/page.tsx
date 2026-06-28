@@ -1,165 +1,116 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import { Loader2, Search, X, Bell, Clock, Music, Users } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from "recharts";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { fetchWithRateLimit } from "@/utils/api";
+import { Music, Search, Bell, Clock, X, Loader2, Sparkles, Activity } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { BentoCard } from "@/components/effects/BentoCard";
+import AnimatedCounter from "@/components/effects/AnimatedCounter";
 
+// Visualizations
+import TopArtistsList from "@/components/visualizations/TopArtistsList";
 import SonicGenreTopology from "@/components/visualizations/SonicGenreTopology";
-import TopTracksList from "@/components/visualizations/TopTracksList";
 import EmotionalScatterPlot from "@/components/visualizations/EmotionalScatterPlot";
+import { AIInsightHero } from "@/components/visualizations/AIInsightHero";
 import BioOptimizationGraph from "@/components/visualizations/BioOptimizationGraph";
 
-import { BentoCard } from "@/components/effects/BentoCard";
-import { AIInsightHero } from "@/components/visualizations/AIInsightHero";
-import { AnimatedCounter } from "@/components/effects/AnimatedCounter";
-import TopArtistsList from "@/components/visualizations/TopArtistsList";
-
-export default function DashboardOverviewPage() {
+export default function DashboardPage() {
     const [profile, setProfile] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [aggregates, setAggregates] = useState<any>(null);
-    const [fullHistoryLoaded, setFullHistoryLoaded] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [geminiFailing, setGeminiFailing] = useState(false);
     const [searchExpanded, setSearchExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [geminiFailing, setGeminiFailing] = useState(false);
 
-    // Setup fetching logic
+    const { scrollYProgress } = useScroll();
+    const yHero = useTransform(scrollYProgress, [0, 1], [0, -200]);
+    const opacityHero = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+
     useEffect(() => {
-        let isMounted = true;
-        const loadDashboardData = async () => {
+        const loadData = async () => {
             try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const urlToken = urlParams.get('token');
-                if (urlToken) {
-                    localStorage.setItem("jwt", urlToken);
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                // Fetch profile
+                const profResp = await fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/auth/profile');
+                if (profResp?.data) {
+                    setProfile(profResp.data);
                 }
 
-                const token = localStorage.getItem("jwt");
-                if (!token) {
-                    if(isMounted) setLoading(false);
-                    return;
+                // Fetch full history & aggregates concurrently
+                const [histResp, aggResp] = await Promise.all([
+                    fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=200'),
+                    fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/telemetry/aggregates')
+                ]);
+
+                if (histResp?.data) setHistory(histResp.data);
+                if (aggResp?.data) setAggregates(aggResp.data);
+
+                // Fetch AI insights
+                const insightsResp = await fetchWithRateLimit('https://music-ml-dashboard.onrender.com/api/ml/insights');
+                if (!insightsResp?.data) {
+                    setGeminiFailing(true);
                 }
-
-                const fetchProfileOnce = async () => {
-                    try {
-                        const data = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/auth/profile");
-                        if (data && isMounted) {
-                            setProfile(data.data || data);
-                            return true;
-                        }
-                    } catch (e: any) {
-                        if(isMounted) setErrorMsg(e.message);
-                    }
-                    return false;
-                };
-
-                const fetchHistoryData = async () => {
-                    try {
-                        const cached = sessionStorage.getItem("dashboard_history");
-                        if (cached) {
-                            const parsed = JSON.parse(cached);
-                            setHistory(parsed);
-                        }
-                        const historyData = await fetchWithRateLimit(`https://music-ml-dashboard.onrender.com/api/telemetry/history?limit=15`);
-                        if (historyData && isMounted) {
-                            const data = historyData.data || historyData || [];
-                            setHistory(data);
-                            sessionStorage.setItem("dashboard_history", JSON.stringify(data));
-                        }
-                    } catch (e: any) {}
-                };
-
-                const fetchAggregates = async () => {
-                    try {
-                        const cached = sessionStorage.getItem("dashboard_aggregates");
-                        if (cached && isMounted) {
-                            setAggregates(JSON.parse(cached));
-                        }
-                        const aggData = await fetchWithRateLimit("https://music-ml-dashboard.onrender.com/api/telemetry/aggregates");
-                        if (aggData && isMounted) {
-                            setAggregates(aggData.data);
-                            sessionStorage.setItem("dashboard_aggregates", JSON.stringify(aggData.data));
-                        }
-                    } catch(e) {}
-                };
-
-                const success = await fetchProfileOnce();
-                if (success) {
-                    await fetchAggregates();
-                    await fetchHistoryData();
-                }
-                
-                const fetchGeminiStatus = async () => {
-                    try {
-                        const res = await fetch("https://music-ml-dashboard.onrender.com/api/telemetry/gemini_status");
-                        const data = await res.json();
-                        setGeminiFailing(data.is_failing || false);
-                    } catch (e) {}
-                };
-                fetchGeminiStatus();
-                
-                if (isMounted) setLoading(false);
-            } catch (err: any) {
-                if(isMounted) {
-                    setErrorMsg(err.message);
-                    setLoading(false);
-                }
+            } catch (error) {
+                console.error("Dashboard failed to load data:", error);
+            } finally {
+                setLoading(false);
             }
         };
 
-        loadDashboardData();
-        return () => { isMounted = false; };
+        loadData();
     }, []);
 
-    // Derived Metrics
-    const tracksPlayedCount = aggregates ? aggregates.total_tracks_played : history.length;
-    const totalListeningTime = aggregates ? aggregates.total_listening_time_mins : Math.round(history.reduce((sum, item) => sum + ((item.duration_ms || 204000) / 60000), 0));
-    const artistsDiscoveredCount = aggregates ? aggregates.artists_discovered : new Set(history.map(item => item.artist_name)).size;
-    const genresExploredCount = aggregates ? aggregates.genres_explored : 0;
-    
-    // Sparkline real data
     const safeHistory = Array.isArray(history) ? history : [];
-    const sparklineData = safeHistory.slice(-10).map((h, i) => ({ 
-        val: h?.energy !== undefined ? h.energy * 100 : (h?.duration_ms ? Math.min(100, (h.duration_ms / 300000) * 100) : 50),
-        i 
-    }));
+    
+    // Dynamic Stats
+    const totalListeningTime = Math.round(safeHistory.reduce((acc, curr) => acc + (curr.duration_ms || 0), 0) / 60000);
+    const tracksPlayedCount = safeHistory.length;
 
-    // Loading State
+    const neuralConfidence = safeHistory.length > 0 
+        ? ((safeHistory.reduce((s, h) => s + (h.valence || 0.5), 0) / safeHistory.length) * 0.6 + 
+           (safeHistory.reduce((s, h) => s + (h.energy || 0.5), 0) / safeHistory.length) * 0.4) * 100 
+        : 0;
+
     if (loading) {
         return (
-            <div className="flex flex-col min-h-screen items-center justify-center space-y-6">
-                <Loader2 className="w-12 h-12 text-[var(--theme-accent)] animate-spin" />
-                <p className="text-[var(--theme-text-muted)] text-sm tracking-widest uppercase font-bold">Initializing OS...</p>
+            <div className="flex flex-col min-h-screen items-center justify-center space-y-6 bg-black">
+                <div className="relative">
+                    <Loader2 className="w-16 h-16 text-[var(--theme-accent)] animate-spin opacity-50" />
+                    <div className="absolute inset-0 blur-xl bg-[var(--theme-accent)] opacity-20 rounded-full" />
+                </div>
+                <p className="text-[var(--theme-text-muted)] text-sm tracking-[0.3em] uppercase font-bold animate-pulse">Establishing Neural Link...</p>
             </div>
         );
     }
 
     if (!profile) {
         return (
-            <div className="flex flex-col min-h-screen items-center justify-center p-8">
-                <BentoCard className="flex flex-col items-center justify-center p-12 max-w-md w-full">
-                    <h2 className="text-2xl font-black mb-3">System Locked</h2>
-                    <p className="text-[var(--theme-text-muted)] text-center mb-8 font-medium">Please authenticate via Spotify to access the Intelligence OS.</p>
-                    <a href="https://music-ml-dashboard.onrender.com/api/auth/login" className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-black hover:scale-105 transition-transform shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+            <div className="flex flex-col min-h-screen items-center justify-center p-8 bg-black">
+                <div className="flex flex-col items-center justify-center p-12 max-w-md w-full relative z-10 text-center">
+                    <div className="absolute -inset-20 bg-purple-500/10 blur-[100px] rounded-full z-0" />
+                    <h2 className="text-3xl font-black mb-4 tracking-tighter relative z-10">System Locked</h2>
+                    <p className="text-gray-400 mb-10 font-medium relative z-10">Please authenticate via Spotify to access the Intelligence OS.</p>
+                    <a href="https://music-ml-dashboard.onrender.com/api/auth/login" className="relative z-10 px-8 py-4 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white font-black hover:scale-105 transition-transform shadow-[0_0_40px_rgba(168,85,247,0.5)]">
                         Initialize Session
                     </a>
-                </BentoCard>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 min-h-screen relative z-10 w-full overflow-hidden">
+        <div className="min-h-screen w-full bg-black text-white selection:bg-purple-500/30 overflow-x-hidden pb-40">
             
-            {/* Header */}
-            <div className="flex justify-between items-center px-6 lg:px-10 py-6 sticky top-0 z-40 bg-[var(--theme-bg)]/40 backdrop-blur-3xl border-b border-white/5">
-                <div className="flex items-center gap-4 group cursor-pointer">
-                    <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-300">
+            {/* Ambient Background Room Lighting */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 blur-[150px] mix-blend-screen animate-pulse duration-[10s]" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] mix-blend-screen" />
+            </div>
+
+            {/* Header (Minimal, floating) */}
+            <div className="flex justify-between items-center px-6 lg:px-12 py-8 fixed top-0 w-full z-50">
+                <div className="flex items-center gap-4 group cursor-pointer backdrop-blur-xl bg-white/5 p-2 pr-6 rounded-full border border-white/5 hover:bg-white/10 transition-colors">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
                         {profile?.images?.[0]?.url ? (
                             <img src={profile.images[0].url} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
@@ -169,170 +120,131 @@ export default function DashboardOverviewPage() {
                         )}
                     </div>
                     <div>
-                        <h1 className="text-xl font-black text-white leading-tight tracking-tight">
+                        <h1 className="text-sm font-black text-white leading-none tracking-tight">
                             {profile.display_name}
                         </h1>
-                        <p className="text-[12px] text-[var(--theme-accent)] font-bold tracking-widest uppercase">System Online</p>
+                        <p className="text-[10px] text-[var(--theme-accent)] font-bold tracking-widest uppercase mt-1 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                            Active Sync
+                        </p>
                     </div>
                 </div>
 
-                {/* Right controls */}
                 <div className="flex items-center gap-3">
                     {geminiFailing && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-xl cursor-help group relative">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-red-900/40 border border-red-500/30 rounded-full backdrop-blur-xl cursor-help">
                             <Bell className="w-4 h-4 text-red-400 animate-pulse" />
-                            <span className="text-xs font-bold text-red-400">AI Degradation</span>
+                            <span className="text-xs font-bold text-red-400">Degradation Detected</span>
                         </div>
                     )}
-                    <div className={`flex items-center bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl transition-all duration-400 overflow-hidden ${searchExpanded ? "w-80 px-4 py-3" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/10"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
-                        <Search className="w-5 h-5 text-[var(--theme-text-muted)] shrink-0" />
+                    <div className={`flex items-center bg-white/5 border border-white/10 backdrop-blur-xl rounded-full transition-all duration-500 overflow-hidden ${searchExpanded ? "w-80 px-4 py-3" : "w-12 h-12 justify-center cursor-pointer hover:bg-white/10"}`} onClick={() => !searchExpanded && setSearchExpanded(true)}>
+                        <Search className="w-4 h-4 text-gray-400 shrink-0" />
                         {searchExpanded && (
                             <input 
                                 autoFocus
                                 type="text" 
-                                placeholder="Search the musical continuum..." 
-                                className="bg-transparent border-none outline-none text-sm px-3 flex-1 text-white placeholder:text-[var(--theme-text-muted)] font-medium"
+                                placeholder="Search continuum..." 
+                                className="bg-transparent border-none outline-none text-sm px-3 flex-1 text-white font-medium"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         )}
                         {searchExpanded && (
-                            <X className="w-4 h-4 text-[var(--theme-text-muted)] cursor-pointer hover:text-white shrink-0" onClick={(e) => { e.stopPropagation(); setSearchExpanded(false); setSearchQuery(""); }} />
+                            <X className="w-4 h-4 text-gray-400 cursor-pointer hover:text-white shrink-0" onClick={(e) => { e.stopPropagation(); setSearchExpanded(false); setSearchQuery(""); }} />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Narrative Flow Layout */}
-            <div className="p-6 lg:p-12 max-w-[1200px] mx-auto w-full flex flex-col gap-24 pb-32">
+            {/* Immersive Narrative Flow */}
+            <div className="relative z-10 w-full flex flex-col items-center pt-32">
                 
-                {/* Hero section */}
+                {/* 1. The Entry Room (Hero) */}
                 <motion.div 
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
+                    style={{ y: yHero, opacity: opacityHero }}
+                    className="min-h-[80vh] w-full max-w-[1400px] flex items-center justify-center px-6 relative"
                 >
-                    <AIInsightHero />
+                    <AIInsightHero history={safeHistory} />
                 </motion.div>
 
-                {/* Stats Row */}
-                <motion.div 
-                    className="flex flex-col md:flex-row gap-6"
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-                >
-                    <BentoCard className="flex-1 flex flex-col justify-between group h-[200px]">
-                        <div>
-                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-purple-500/10 text-purple-400 mb-4 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)] group-hover:bg-purple-500/20 transition-colors">
-                                <Clock className="w-5 h-5" />
-                            </div>
-                            <p className="text-xs text-[var(--theme-text-muted)] font-bold uppercase tracking-widest mb-2">Immersion Time</p>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-white tracking-tighter">
-                                <AnimatedCounter from={0} to={totalListeningTime} />
-                            </span>
-                            <span className="text-sm font-bold text-purple-400 uppercase">Min</span>
-                        </div>
-                    </BentoCard>
+                {/* Narrative Transition */}
+                <div className="w-full flex justify-center py-24 opacity-30">
+                    <div className="w-[1px] h-32 bg-gradient-to-b from-purple-500 to-transparent" />
+                </div>
 
-                    <BentoCard className="flex-1 flex flex-col justify-between group h-[200px]">
-                        <div>
-                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-blue-500/10 text-blue-400 mb-4 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)] group-hover:bg-blue-500/20 transition-colors">
-                                <Music className="w-5 h-5" />
-                            </div>
-                            <p className="text-xs text-[var(--theme-text-muted)] font-bold uppercase tracking-widest mb-2">Sonic Fragments</p>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-white tracking-tighter">
-                                <AnimatedCounter from={0} to={tracksPlayedCount} />
-                            </span>
-                            <span className="text-sm font-bold text-blue-400 uppercase">Tracks</span>
-                        </div>
-                    </BentoCard>
-                </motion.div>
-
-                {/* BioOptimization Matrix */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                >
-                    <BentoCard className="relative group overflow-hidden h-[500px]">
-                        <div className="absolute top-6 left-6 z-20">
-                            <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                                Bio-Optimization Matrix
-                            </h2>
-                            <p className="text-xs text-[var(--theme-text-muted)] font-medium mt-1">Real-time reward trajectory</p>
-                        </div>
-                        <div className="w-full h-full pt-16">
-                            <BioOptimizationGraph />
-                        </div>
-                    </BentoCard>
-                </motion.div>
-
-                {/* Emotional Weather */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                >
-                    <BentoCard className="relative overflow-hidden group h-[500px]">
-                        <div className="absolute top-6 left-6 z-20">
-                            <h2 className="text-lg font-black tracking-tight text-white">Emotional Weather</h2>
-                            <p className="text-xs text-[var(--theme-text-muted)] font-medium mt-1">Affective state space</p>
-                        </div>
-                        <div className="w-full h-full pt-8">
-                            <EmotionalScatterPlot />
-                        </div>
-                    </BentoCard>
-                </motion.div>
-
-                {/* Music Galaxy */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                >
-                    <BentoCard className="relative p-0 overflow-hidden h-[700px]" noPadding={true}>
-                        <div className="absolute top-8 left-8 z-20 pointer-events-none">
-                            <h2 className="text-2xl font-black tracking-tight text-white shadow-black drop-shadow-lg">Music Galaxy</h2>
-                            <p className="text-sm text-gray-300 font-medium mt-1 shadow-black drop-shadow-md">Explore your genre clusters</p>
-                        </div>
-                        <div className="w-full h-full scale-105">
-                            <SonicGenreTopology />
-                        </div>
-                    </BentoCard>
-                </motion.div>
-
-                {/* Bottom Row */}
-                <motion.div 
-                    className="flex flex-col md:flex-row gap-6 h-[400px]"
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                >
-                    {/* Top Artists Orbit / List */}
-                    <TopArtistsList artists={aggregates?.top_artists_json?.slice(0, 5) || []} />
+                {/* 2. Bio-Optimization Room */}
+                <div className="w-full max-w-[1400px] px-6 py-24">
+                    <div className="mb-16 md:px-12 flex flex-col items-center text-center">
+                        <span className="text-green-400 text-xs font-bold tracking-[0.3em] uppercase mb-4 flex items-center gap-2">
+                            <Activity className="w-4 h-4" /> Neural Engagement
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-black tracking-tighter">Bio-Optimization Matrix</h2>
+                        <p className="text-gray-400 mt-4 max-w-xl text-lg">Your musical consumption directly maps to physical state changes. This is your real-time reward trajectory.</p>
+                    </div>
                     
-                    {/* Neural Confidence */}
-                    <BentoCard className="flex-1 relative overflow-hidden flex flex-col justify-center items-center group cursor-pointer">
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 group-hover:opacity-100 opacity-0 transition-opacity duration-500 pointer-events-none" />
-                        <h2 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-2">Neural Confidence</h2>
-                        <div className="text-4xl font-black text-white tracking-tighter">87.4%</div>
-                        <div className="w-2/3 h-1.5 bg-white/10 rounded-full mt-4 overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full w-[87%]" />
-                        </div>
+                    <BentoCard borderless noPadding className="h-[600px] w-full">
+                        <BioOptimizationGraph />
                     </BentoCard>
-                </motion.div>
+                </div>
+
+                {/* 3. The Analytics Nexus (Split Flow) */}
+                <div className="w-full max-w-[1400px] px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16">
+                    {/* Left: Emotional State */}
+                    <div className="flex flex-col">
+                        <div className="mb-10">
+                            <h2 className="text-3xl font-black tracking-tighter">Emotional Weather</h2>
+                            <p className="text-gray-400 mt-2">Mapping the affective state space of your listening habits.</p>
+                        </div>
+                        <BentoCard borderless className="h-[500px]">
+                            <EmotionalScatterPlot />
+                        </BentoCard>
+                    </div>
+
+                    {/* Right: Telemetry Hub */}
+                    <div className="flex flex-col justify-center gap-8">
+                        <div className="flex gap-8">
+                            <div className="flex-1">
+                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Immersion</p>
+                                <div className="text-6xl font-black text-white tracking-tighter flex items-baseline gap-2">
+                                    <AnimatedCounter from={0} to={totalListeningTime} />
+                                    <span className="text-lg text-purple-400">min</span>
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Confidence</p>
+                                <div className="text-6xl font-black text-white tracking-tighter flex items-baseline gap-2">
+                                    {neuralConfidence.toFixed(1)}
+                                    <span className="text-lg text-blue-400">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8">
+                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-6">Dominant Frequencies</p>
+                            <TopArtistsList artists={aggregates?.top_artists_json?.slice(0, 5) || []} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Narrative Transition */}
+                <div className="w-full flex justify-center py-24 opacity-30">
+                    <div className="w-[1px] h-32 bg-gradient-to-b from-blue-500 to-transparent" />
+                </div>
+
+                {/* 4. The Galaxy Room */}
+                <div className="w-full max-w-[1400px] px-6 py-24">
+                    <div className="mb-16 md:px-12">
+                        <span className="text-blue-400 text-xs font-bold tracking-[0.3em] uppercase mb-4 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4" /> Spatial Mapping
+                        </span>
+                        <h2 className="text-5xl md:text-6xl font-black tracking-tighter">The Musical Galaxy</h2>
+                        <p className="text-gray-400 mt-4 max-w-xl text-lg">Your top genres form gravitational clusters. Navigate the constellations of your acoustic preferences.</p>
+                    </div>
+                    
+                    <BentoCard borderless noPadding className="h-[700px] w-full rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(30,58,138,0.2)]">
+                        <SonicGenreTopology genres={aggregates?.top_genres_json} />
+                    </BentoCard>
+                </div>
 
             </div>
         </div>

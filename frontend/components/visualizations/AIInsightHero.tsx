@@ -1,10 +1,68 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { BentoCard } from '../effects/BentoCard';
 
-export function AIInsightHero() {
+export function AIInsightHero({ history }: { history?: any[] }) {
+  const { headline, subtitle } = useMemo(() => {
+    if (!history || history.length === 0) {
+      return {
+        headline: "Awaiting Neural Data",
+        subtitle: "Play some tracks and your AI pattern insights will appear here."
+      };
+    }
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    let todayValenceSum = 0, todayCount = 0;
+    let yesterdayValenceSum = 0, yesterdayCount = 0;
+    
+    const artistCounts: Record<string, number> = {};
+    let todayEnergySum = 0;
+
+    history.forEach(t => {
+      const d = new Date(t.time);
+      if (d.getDate() === today.getDate() && d.getMonth() === today.getMonth()) {
+        todayValenceSum += (t.valence ?? 0.5);
+        todayEnergySum += (t.energy ?? 0.5);
+        todayCount++;
+        if (t.artist_name) artistCounts[t.artist_name] = (artistCounts[t.artist_name] || 0) + 1;
+      } else if (d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth()) {
+        yesterdayValenceSum += (t.valence ?? 0.5);
+        yesterdayCount++;
+      }
+    });
+
+    const topArtist = Object.keys(artistCounts).length > 0 
+      ? Object.entries(artistCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0] 
+      : "various artists";
+
+    const avgTodayEnergy = todayCount > 0 ? todayEnergySum / todayCount : 0.5;
+    const moodDesc = avgTodayEnergy > 0.7 ? "high-energy" : avgTodayEnergy < 0.3 ? "ambient & reflective" : "balanced";
+
+    let hl = "perfectly consistent";
+    if (todayCount > 0 && yesterdayCount > 0) {
+      const vToday = todayValenceSum / todayCount;
+      const vYesterday = yesterdayValenceSum / yesterdayCount;
+      const diff = vToday - vYesterday;
+      
+      if (Math.abs(diff) < 0.05) hl = "perfectly consistent";
+      else if (diff > 0) hl = `${Math.round(diff * 100)}% more upbeat`;
+      else hl = `${Math.round(Math.abs(diff) * 100)}% calmer`;
+    } else if (todayCount > 0) {
+      hl = "establishing a baseline";
+    }
+
+    return {
+      headline: hl,
+      subtitle: `Gravitating toward ${topArtist} with a ${moodDesc} sonic profile.`
+    };
+
+  }, [history]);
+
   return (
     <BentoCard className="col-span-1 md:col-span-2 lg:col-span-3 min-h-[400px] flex flex-col justify-center items-center relative overflow-hidden group">
       
@@ -36,7 +94,7 @@ export function AIInsightHero() {
             AI Pattern Detected
           </span>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight max-w-3xl mx-auto">
-            Your music today was <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">34% calmer</span> than yesterday
+            Your music today was <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{headline}</span>{headline !== "Awaiting Neural Data" && headline !== "establishing a baseline" && " than yesterday"}
           </h1>
         </motion.div>
         
@@ -46,7 +104,7 @@ export function AIInsightHero() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.8 }}
         >
-          Transitioning from high-energy EDM in the morning to ambient soundscapes. You are currently entering a deep focus state.
+          {subtitle}
         </motion.p>
       </div>
       
