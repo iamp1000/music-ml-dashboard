@@ -17,7 +17,7 @@ from ml_engine.utils.vector_math import VectorMathEngine
 import pandas as pd
 
 from database import SessionLocal, get_db
-from routers import auth, telemetry, settings, spotify, ml
+from routers import auth, telemetry, settings, spotify, ml, analytics
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
@@ -53,6 +53,7 @@ app.include_router(telemetry.router, prefix="/api/telemetry", tags=["Telemetry"]
 app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(spotify.router, prefix="/api/spotify", tags=["Spotify"])
 app.include_router(ml.router, prefix="/api/ml", tags=["ML"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 
 # Allow CORS for GitHub Pages / Next.js frontend
 app.add_middleware(
@@ -80,6 +81,7 @@ async def get_pending_ml_jobs(limit: int = 3):
         # TiDB will use the audio_ml_analyzed index and return results instantly
         raw_pending = db.query(ListeningHistory.id, ListeningHistory.track_name, ListeningHistory.artist_name)\
                     .filter(ListeningHistory.audio_ml_analyzed == 0)\
+                    .order_by(ListeningHistory.id.desc())\
                     .limit(limit * 10).all()
         
         seen = set()

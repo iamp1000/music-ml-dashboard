@@ -44,7 +44,7 @@ async def get_listening_history(authorization: str = Header(None), limit: int = 
     
     try:
         results = db.query(ListeningHistory)\
-                    .filter(ListeningHistory.tenant_id == user_id)\
+                    .filter(ListeningHistory.tenant_id == user_id, ListeningHistory.audio_ml_analyzed == 1)\
                     .order_by(desc(ListeningHistory.time))\
                     .limit(limit)\
                     .all()

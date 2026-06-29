@@ -13,6 +13,7 @@ import torch
 import warnings
 import concurrent.futures
 import multiprocessing
+import csv
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -122,41 +123,85 @@ def run_extraction_pipeline_process(track_name: str, artist_name: str):
             "arousal": arousal
         }
 
+CACHE_FILE = "ml_cache.csv"
+
+def load_cache():
+    cache = {}
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, mode="r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                key = f"{row['track_name']} - {row['artist_name']}"
+                cache[key] = {
+                    "real_bpm": float(row["real_bpm"]),
+                    "rhythm_regularity": float(row["rhythm_regularity"]),
+                    "real_genre": row["real_genre"],
+                    "genre_confidence": float(row["genre_confidence"]),
+                    "valence": float(row["valence"]),
+                    "arousal": float(row["arousal"])
+                }
+    return cache
+
+def save_to_cache(track_name, artist_name, results):
+    file_exists = os.path.exists(CACHE_FILE)
+    with open(CACHE_FILE, mode="a", encoding="utf-8", newline="") as f:
+        fieldnames = ["track_name", "artist_name", "real_bpm", "rhythm_regularity", "real_genre", "genre_confidence", "valence", "arousal"]
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        
+        row = {
+            "track_name": track_name,
+            "artist_name": artist_name,
+            **results
+        }
+        writer.writerow(row)
+
 class LocalMLWorker:
     def __init__(self):
         logging.info("Initializing Main Process ML Worker coordinator...")
         self.executor = None
+        self.cache = load_cache()
+        logging.info(f"Loaded {len(self.cache)} cached songs from local CSV.")
 
     async def process_job(self, client: httpx.AsyncClient, job: dict):
         doc_id = job["doc_id"]
         track_name = job["track_name"]
         artist_name = job["artist_name"]
         
-        logging.info(f"[{track_name}] Dispatching to ProcessPool...")
-        
-        # Run in ProcessPoolExecutor
-        loop = asyncio.get_running_loop()
-        try:
-            results = await loop.run_in_executor(
-                self.executor,
-                run_extraction_pipeline_process,
-                track_name,
-                artist_name
-            )
-        except Exception as e:
-            logging.error(f"[{track_name}] Process crashed: {e}")
-            results = None
-        
-        if not results:
-            logging.warning(f"[{track_name}] Extraction failed. Posting fallback results to clear job.")
-            results = {
-                "real_bpm": 120.0,
-                "rhythm_regularity": 0.5,
-                "real_genre": "Unknown",
-                "genre_confidence": 0.0,
-                "valence": 0.5,
-                "arousal": 0.5
-            }
+        cache_key = f"{track_name} - {artist_name}"
+        if cache_key in self.cache:
+            logging.info(f"[{track_name}] Found in local CSV cache! Skipping ML inference.")
+            results = self.cache[cache_key]
+        else:
+            logging.info(f"[{track_name}] Dispatching to ProcessPool...")
+            
+            # Run in ProcessPoolExecutor
+            loop = asyncio.get_running_loop()
+            try:
+                results = await loop.run_in_executor(
+                    self.executor,
+                    run_extraction_pipeline_process,
+                    track_name,
+                    artist_name
+                )
+            except Exception as e:
+                logging.error(f"[{track_name}] Process crashed: {e}")
+                results = None
+            
+            if not results:
+                logging.warning(f"[{track_name}] Extraction failed. Posting fallback results to clear job.")
+                results = {
+                    "real_bpm": 120.0,
+                    "rhythm_regularity": 0.5,
+                    "real_genre": "Unknown",
+                    "genre_confidence": 0.0,
+                    "valence": 0.5,
+                    "arousal": 0.5
+                }
+            else:
+                save_to_cache(track_name, artist_name, results)
+                self.cache[cache_key] = results
             
         # 6. Post Results back to Cloud
         payload = {
