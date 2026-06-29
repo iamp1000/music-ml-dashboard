@@ -68,6 +68,11 @@ async def get_gemini_status():
     global is_gemini_failing
     return {"is_failing": is_gemini_failing}
 
+@app.get("/google416fb1ef855d328e.html")
+async def google_verification():
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content="google-site-verification: google416fb1ef855d328e.html")
+
 @app.get("/ml_jobs/pending")
 async def get_pending_ml_jobs(limit: int = 3):
     with SessionLocal() as db:
