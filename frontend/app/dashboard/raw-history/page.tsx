@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
 import { fetchWithRateLimit } from "@/utils/api";
-import { ArrowLeft, Loader2, ChevronDown, CheckCircle2, Star, Music, Search } from "lucide-react";
+import { Loader2, ChevronDown, CheckCircle2, Star, Music, Search } from "lucide-react";
 import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import EmotionalScatterPlot from "@/components/EmotionalScatterPlot";
+import { RawHistoryHeader } from "@/components/RawHistoryHeader";
+import { WeekNavigationControls } from "@/components/WeekNavigationControls";
 import ArtistBarChart from "@/components/visualizations/ArtistBarChart";
 import ListeningActivityChart from "@/components/visualizations/ListeningActivityChart";
 import MoodPieChart from "@/components/visualizations/MoodPieChart";
@@ -382,14 +383,7 @@ export default function ListeningHistoryPage() {
             <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in duration-700">
                 
                 {/* Header & Navigation */}
-                <div className="flex items-center gap-4 mb-8">
-                    <Link prefetch={false} href="/dashboard" className="p-2 bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-full hover:border-[var(--theme-accent)] transition-colors">
-                        <ArrowLeft className="w-5 h-5 text-gray-400" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white uppercase">Listening Journey Timeline</h1>
-                    </div>
-                </div>
+                <RawHistoryHeader backHref="/dashboard" title="Listening Journey Timeline" />
 
                 {/* Filter Bar */}
                 <div className="flex flex-wrap gap-4">
@@ -449,24 +443,11 @@ export default function ListeningHistoryPage() {
                                 </div>
 
                                 {/* Week navigation - pill style like reference image */}
-                                <div className="flex items-center rounded-full border border-[var(--theme-border)] bg-[var(--theme-bg)] overflow-hidden">
-                                    <button
-                                        onClick={() => setWeekOffset(w => w + 1)}
-                                        className="px-3 py-2 text-gray-400 hover:text-white hover:bg-[var(--theme-accent)]/10 transition-all border-r border-[var(--theme-border)]"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                                    </button>
-                                    <span className="text-xs font-black text-white px-5 py-2 tracking-wide">
-                                        {weekOffset === 0 ? "Current Week" : `${weekOffset}W Ago`}
-                                    </span>
-                                    <button
-                                        onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
-                                        disabled={weekOffset === 0}
-                                        className="px-3 py-2 text-gray-400 hover:text-white hover:bg-[var(--theme-accent)]/10 transition-all border-l border-[var(--theme-border)] disabled:opacity-25 disabled:cursor-not-allowed"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                                    </button>
-                                </div>
+                                <WeekNavigationControls
+                                    weekOffset={weekOffset}
+                                    onOlderWeekClick={() => setWeekOffset(w => w + 1)}
+                                    onNewerWeekClick={() => setWeekOffset(w => Math.max(0, w - 1))}
+                                />
 
                                 {/* Legend */}
                                 <div className="flex items-center gap-4 ml-auto">
