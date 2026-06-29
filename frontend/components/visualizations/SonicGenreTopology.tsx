@@ -7,13 +7,16 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
     const constellations = useMemo(() => {
         if (!genres || genres.length === 0) return [];
         
-        const palette = ['#A855F7', '#EAB308', '#F97316', '#22D3EE', '#EC4899'];
+        // Colors closely matched to the image: Purple, Yellow-Green, Orange, Cyan, Green
+        const palette = ['#A855F7', '#D9F99D', '#FDBA74', '#67E8F9', '#86EFAC'];
+        
+        // Updated base positions to spread out nicely
         const basePositions = [
-            { x: 150, y: 100 },
-            { x: 350, y: 80 },
-            { x: 250, y: 180 },
-            { x: 480, y: 150 },
-            { x: 400, y: 220 }
+            { x: 180, y: 120 },
+            { x: 400, y: 80 },
+            { x: 280, y: 220 },
+            { x: 480, y: 200 },
+            { x: 500, y: 120 }
         ];
 
         // Basic string hasher for seeded randomization
@@ -33,24 +36,24 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
             const center = basePositions[index % basePositions.length];
             const color = palette[index % palette.length];
             
-            // Generate 3-5 stars
-            const numStars = Math.floor(randomSeed(seed++) * 3) + 3;
+            // Generate 4-7 stars
+            const numStars = Math.floor(randomSeed(seed++) * 4) + 4;
             const stars = [];
             for (let i = 0; i < numStars; i++) {
                 const angle = (Math.PI * 2 * i) / numStars + randomSeed(seed++) * 0.5;
-                const radius = 20 + randomSeed(seed++) * 30;
+                const radius = 25 + randomSeed(seed++) * 40;
                 stars.push({
                     x: center.x + Math.cos(angle) * radius,
                     y: center.y + Math.sin(angle) * radius
                 });
             }
 
-            // Generate blob path around stars
+            // Generate blob path around stars (smooth, organic)
             const blobPoints = [];
-            const numBlobPoints = 6;
+            const numBlobPoints = 8;
             for (let i = 0; i < numBlobPoints; i++) {
                 const angle = (Math.PI * 2 * i) / numBlobPoints;
-                const radius = 45 + randomSeed(seed++) * 20;
+                const radius = 60 + randomSeed(seed++) * 25;
                 blobPoints.push({
                     x: center.x + Math.cos(angle) * radius,
                     y: center.y + Math.sin(angle) * radius
@@ -65,12 +68,15 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
                 blob += ` Q ${ctrlX} ${ctrlY}, ${next.x} ${next.y}`;
             }
 
-            // Generate connections
+            // Generate connections (constellation lines)
             const connections = [];
             for (let i = 0; i < numStars; i++) {
                 connections.push([i, (i + 1) % numStars]);
             }
-            if (numStars > 3) connections.push([0, 2]);
+            if (numStars > 3) {
+                connections.push([0, Math.floor(numStars / 2)]);
+                if (numStars > 5) connections.push([1, Math.floor(numStars / 2) + 1]);
+            }
 
             return {
                 id: g.name.replace(/\W/g, '').toLowerCase() || `g-${index}`,
@@ -80,7 +86,8 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
                 blob,
                 stars,
                 connections,
-                labelPos: { x: center.x, y: center.y - 50 }
+                // Place label near top left of the cluster to match design
+                labelPos: { x: center.x - 30, y: center.y - 45 }
             };
         });
     }, [genres]);
@@ -88,40 +95,50 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
     const totalPlays = useMemo(() => genres?.reduce((sum, g) => sum + g.count, 0) || 0, [genres]);
 
     return (
-        <div className="bg-[var(--theme-panel)] border border-[var(--theme-border)] rounded-3xl p-5 flex flex-col relative overflow-hidden h-full">
-            {/* Header */}
-            <div className="flex justify-between items-start z-10">
-                <div>
-                    <h3 className="text-[12px] font-bold text-white uppercase tracking-widest">
+        <div className="bg-[#1A1C23]/90 border border-white/10 rounded-2xl p-5 flex flex-col relative overflow-hidden h-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+            
+            {/* Header matches the exact design in the image */}
+            <div className="flex justify-between items-start z-10 w-full relative">
+                <div className="flex flex-col">
+                    <h3 className="text-[14px] font-semibold text-white tracking-wide">
                         SONIC GENRE TOPOLOGY
                     </h3>
-                    <p className="text-[11px] text-[var(--theme-text-muted)] font-normal capitalize tracking-normal mt-0.5">
-                        (Active Resonance)
+                    <p className="text-[13px] text-gray-400 font-normal mt-0.5">
+                        (Last Year)
                     </p>
                 </div>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-bg)] hover:border-[var(--theme-accent)]/30 transition-all z-10">
-                    <Calendar className="w-3.5 h-3.5 text-white" />
-                    <span className="text-[10px] text-white">Calendar</span>
+                <button className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 transition-colors z-10 text-gray-300">
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-[12px] font-medium">Calendar</span>
                 </button>
             </div>
 
             {constellations.length === 0 ? (
                 <div className="flex-1 w-full h-full flex flex-col items-center justify-center text-center opacity-50 z-10 mt-8">
-                    <Hexagon className="w-12 h-12 text-[var(--theme-accent)]/50 mb-3" />
+                    <Hexagon className="w-12 h-12 text-white/50 mb-3" />
                     <p className="text-sm font-bold text-white">No Constellations Formed</p>
-                    <p className="text-xs text-[var(--theme-text-muted)] mt-1 max-w-[200px]">
-                        Awaiting further auditory telemetry to construct your genre galaxy.
+                    <p className="text-xs text-gray-400 mt-1 max-w-[200px]">
+                        Awaiting data to construct topology.
                     </p>
                 </div>
             ) : (
                 <>
                     {/* SVG Constellation Graph */}
                     <div className="flex-1 w-full h-full relative -mt-4">
-                        <svg viewBox="0 0 600 280" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                        <svg viewBox="0 0 700 320" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                            
+                            {/* Render Blobs and glowing lines */}
                             <defs>
+                                <filter id="glow-blob" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="8" result="blur" />
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
                                 {constellations.map(c => (
                                     <radialGradient id={`glow-${c.id}`} key={`glow-${c.id}`}>
-                                        <stop offset="0%" stopColor={c.color} stopOpacity="1" />
+                                        <stop offset="0%" stopColor={c.color} stopOpacity="0.8" />
                                         <stop offset="100%" stopColor={c.color} stopOpacity="0" />
                                     </radialGradient>
                                 ))}
@@ -133,10 +150,11 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
                                     key={`blob-${c.id}`}
                                     d={c.blob}
                                     fill={c.color}
-                                    fillOpacity="0.05"
+                                    fillOpacity="0.04"
                                     stroke={c.color}
-                                    strokeWidth="1.5"
-                                    strokeOpacity="0.3"
+                                    strokeWidth="2"
+                                    strokeOpacity="0.8"
+                                    filter="url(#glow-blob)"
                                 />
                             ))}
 
@@ -152,7 +170,7 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
                                                 x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
                                                 stroke={c.color}
                                                 strokeWidth="1.5"
-                                                strokeOpacity="0.5"
+                                                strokeOpacity="0.8"
                                             />
                                         );
                                     })}
@@ -165,28 +183,47 @@ export default function SonicGenreTopology({ genres }: { genres?: { name: string
                                     {c.stars.map((star, idx) => (
                                         <g key={`star-${c.id}-${idx}`}>
                                             {/* Outer glow */}
-                                            <circle cx={star.x} cy={star.y} r="8" fill={`url(#glow-${c.id})`} opacity="0.6" />
+                                            <circle cx={star.x} cy={star.y} r="12" fill={`url(#glow-${c.id})`} opacity="0.6" />
                                             {/* Inner bright star */}
-                                            <circle cx={star.x} cy={star.y} r="2.5" fill="#fff" />
+                                            <circle cx={star.x} cy={star.y} r="2.5" fill="#ffffff" />
                                         </g>
                                     ))}
                                 </g>
                             ))}
 
-                            {/* Render Labels */}
+                            {/* Render Labels EXACTLY matching the design */}
                             {constellations.map(c => (
-                                <g key={`label-${c.id}`} transform={`translate(${c.labelPos.x}, ${c.labelPos.y})`} className="opacity-90">
-                                    <text x="0" y="0" fill="#fff" fontSize="13" fontWeight="bold" textAnchor="middle">{c.name}</text>
-                                    <text x="0" y="14" fill="var(--theme-text-muted)" fontSize="10" textAnchor="middle">{c.plays} plays</text>
+                                <g key={`label-${c.id}`} transform={`translate(${c.labelPos.x}, ${c.labelPos.y})`}>
+                                    <text 
+                                        x="0" 
+                                        y="0" 
+                                        fill={c.color} 
+                                        fontSize="15" 
+                                        fontWeight="600" 
+                                        textAnchor="middle"
+                                        style={{ textShadow: "0px 2px 4px rgba(0,0,0,0.8)" }}
+                                    >
+                                        {c.name}
+                                    </text>
+                                    <text 
+                                        x="0" 
+                                        y="16" 
+                                        fill="#9CA3AF" 
+                                        fontSize="12" 
+                                        fontWeight="400" 
+                                        textAnchor="middle"
+                                    >
+                                        {c.plays} plays
+                                    </text>
                                 </g>
                             ))}
                         </svg>
                     </div>
 
-                    {/* Total Label */}
-                    <div className="absolute bottom-5 right-5 flex flex-col items-end z-10 bg-[var(--theme-panel)]/80 px-3 py-1.5 rounded-xl backdrop-blur-md border border-[var(--theme-border)]">
-                        <span className="text-[10px] text-[var(--theme-text-muted)] font-bold">Total Tracks</span>
-                        <span className="text-2xl font-black text-white leading-none">{totalPlays}</span>
+                    {/* Total Label matching the bottom right of the image */}
+                    <div className="absolute bottom-6 right-8 flex flex-col items-end z-10">
+                        <span className="text-[13px] text-gray-400 font-normal">Total</span>
+                        <span className="text-[36px] font-bold text-white leading-none tracking-tight mt-1">{totalPlays}</span>
                     </div>
                 </>
             )}

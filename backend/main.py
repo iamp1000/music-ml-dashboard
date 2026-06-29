@@ -76,20 +76,25 @@ async def google_verification():
 @app.get("/ml_jobs/pending")
 async def get_pending_ml_jobs(limit: int = 3):
     with SessionLocal() as db:
-        # Group by track and artist so local worker doesn't analyze same track 100 times
-        from sqlalchemy import func
-        pending = db.query(ListeningHistory.track_name, ListeningHistory.artist_name, func.max(ListeningHistory.id).label('doc_id'))\
+        # Fetch slightly more to account for duplicates, but avoid expensive GROUP BY
+        # TiDB will use the audio_ml_analyzed index and return results instantly
+        raw_pending = db.query(ListeningHistory.id, ListeningHistory.track_name, ListeningHistory.artist_name)\
                     .filter(ListeningHistory.audio_ml_analyzed == 0)\
-                    .group_by(ListeningHistory.track_name, ListeningHistory.artist_name)\
-                    .limit(limit).all()
+                    .limit(limit * 10).all()
         
+        seen = set()
         jobs = []
-        for p in pending:
-            jobs.append({
-                "doc_id": p.doc_id,
-                "track_name": p.track_name,
-                "artist_name": p.artist_name
-            })
+        for p in raw_pending:
+            key = (p.track_name, p.artist_name)
+            if key not in seen:
+                seen.add(key)
+                jobs.append({
+                    "doc_id": p.id,
+                    "track_name": p.track_name,
+                    "artist_name": p.artist_name
+                })
+                if len(jobs) >= limit:
+                    break
         return {"data": jobs}
 
 class MLJobResult(BaseModel):
