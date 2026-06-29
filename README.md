@@ -15,6 +15,10 @@
   </p>
 
   <p>
+    <strong>Live Demo:</strong> <a href="https://iamp1000.github.io/music-ml-dashboard/">https://iamp1000.github.io/music-ml-dashboard/</a>
+  </p>
+
+  <p>
     <img src="https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next JS"/>
     <img src="https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white" alt="PyTorch"/>
     <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
