@@ -31,7 +31,7 @@
 
 ## 🎯 Our Goal (And How We Built It For $0)
 
-The ultimate goal of this project is to create an enterprise-grade music analytics platform that feels like magic—all without spending a dime (yet). We managed to make it live with **0 cost for now** by utilizing a creative hybrid architecture:
+This project explores a full-stack music-analysis workflow with a hybrid architecture that separates web requests, offline inference, and storage. Some components currently use free-tier services; limits and availability depend on those providers:
 
 - 🗄️ **Free-Tier Database**: Leveraging TiDB Serverless for zero-cost distributed SQL.
 - ☁️ **Free-Tier Backend**: Hosting the FastAPI backend on free cloud tiers (like Render).
@@ -41,7 +41,7 @@ The ultimate goal of this project is to create an enterprise-grade music analyti
 
 ## 😅 A Note from the Creator
 
-As a newer developer, this project serves as a sandbox for learning full-stack development, ML, and deployment. Please call out mistakes, submit issues, or laugh at stray `console.log` statements. If Sheldon were reviewing the model, he would ask for reproducibility before he allowed the playlist to have feelings. Your feedback and contributions are welcome!
+As a newer developer, this project serves as a sandbox for learning full-stack development, ML, and deployment. Please call out mistakes, submit issues, or laugh at stray `console.log` statements. A useful model needs reproducible inputs and evaluation before its predictions deserve a dramatic soundtrack. Your feedback and contributions are welcome!
 
 ---
 
