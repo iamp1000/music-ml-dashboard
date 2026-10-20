@@ -41,7 +41,7 @@ The ultimate goal of this project is to create an enterprise-grade music analyti
 
 ## 😅 A Note from the Creator
 
-As a newer developer, this project serves as a sandbox for learning full-stack development, ML, and production deployment. Please feel free to call out mistakes, submit issues, or laugh at stray `console.log` statements. Your feedback and contributions are highly valued!
+As a newer developer, this project serves as a sandbox for learning full-stack development, ML, and deployment. Please call out mistakes, submit issues, or laugh at stray `console.log` statements. If Sheldon were reviewing the model, he would ask for reproducibility before he allowed the playlist to have feelings. Your feedback and contributions are welcome!
 
 ---
 
